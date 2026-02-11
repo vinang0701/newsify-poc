@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+# supabase  -- commented out due to build error on Windows
+postgrest
+gotrue
+realtime
+feedparser
+apscheduler
+python-dotenv
+google-generativeai
+pydantic
+requests
+beautifulsoup4
