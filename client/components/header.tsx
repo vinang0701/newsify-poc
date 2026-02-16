@@ -20,7 +20,7 @@ export function Header() {
             edges={["top"]}
             style={[
                 styles.headerContainer,
-                { backgroundColor: Colors[colorScheme].background },
+                { backgroundColor: Colors[colorScheme].bg_light },
             ]}
         >
             <TouchableOpacity>

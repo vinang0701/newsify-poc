@@ -1,14 +1,13 @@
 import { Tabs } from "expo-router";
 import React from "react";
-import Feather from "@expo/vector-icons/Feather";
-
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { HapticTab } from "@/components/haptic-tab";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Header } from "@/components/header";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { View } from "react-native";
+import { House, User } from "lucide-react-native";
 
 export default function TabLayout() {
     const colorScheme = useColorScheme();
@@ -19,7 +18,10 @@ export default function TabLayout() {
             <Tabs
                 screenOptions={{
                     tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+                    tabBarInactiveTintColor:
+                        Colors[colorScheme ?? "light"].text,
                     headerShown: false,
+                    tabBarStyle: { height: 80 },
                     tabBarShowLabel: false,
                     tabBarButton: HapticTab,
                 }}
@@ -28,9 +30,9 @@ export default function TabLayout() {
                     name="index"
                     options={{
                         tabBarIcon: ({ color }) => (
-                            <IconSymbol
-                                size={28}
-                                name="house.fill"
+                            <MaterialIcons
+                                size={30}
+                                name="home"
                                 color={color}
                             />
                         ),
@@ -39,25 +41,39 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="create-post"
                     options={{
-                        tabBarIcon: ({ color }) => (
-                            <Feather
-                                size={28}
-                                name="plus-circle"
-                                color={color}
-                            />
-                        ),
+                        tabBarIcon: ({ focused, color }) =>
+                            focused ? (
+                                <MaterialIcons
+                                    size={30}
+                                    name="add-circle"
+                                    color={color}
+                                />
+                            ) : (
+                                <MaterialIcons
+                                    size={30}
+                                    name="add-circle-outline"
+                                    color={color}
+                                />
+                            ),
                     }}
                 />
                 <Tabs.Screen
                     name="explore"
                     options={{
-                        tabBarIcon: ({ color }) => (
-                            <IconSymbol
-                                size={28}
-                                name="paperplane.fill"
-                                color={color}
-                            />
-                        ),
+                        tabBarIcon: ({ focused, color }) =>
+                            focused ? (
+                                <MaterialIcons
+                                    name="person"
+                                    size={30}
+                                    color={color}
+                                />
+                            ) : (
+                                <MaterialIcons
+                                    name="person-outline"
+                                    size={30}
+                                    color={color}
+                                />
+                            ),
                     }}
                 />
             </Tabs>
