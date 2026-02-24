@@ -1,21 +1,16 @@
-import { Image } from "expo-image";
+import { Heart } from "lucide-react-native";
 import {
-    Platform,
-    StyleSheet,
-    Button,
-    useColorScheme,
-    View,
-    Text,
-    ViewStyle,
-    StyleProp,
     Pressable,
     ScrollView,
+    StyleSheet,
+    Text,
+    useColorScheme,
+    View
 } from "react-native";
-import { Heart } from "lucide-react-native";
 
-import { Colors, Fonts } from "@/constants/theme";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
+import AnimatedSearchBar from "@/components/ui/animated_search_bar";
+import { Colors } from "@/constants/theme";
 
 export default function ComponentsScreen() {
     const colorScheme = useColorScheme() ?? "light";
@@ -101,6 +96,9 @@ export default function ComponentsScreen() {
                             Log in
                         </Text>
                     </Pressable>
+                </View>
+                <View>
+                    <AnimatedSearchBar />
                 </View>
             </View>
         </ScrollView>

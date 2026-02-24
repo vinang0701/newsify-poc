@@ -1,5 +1,12 @@
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
+import newsArticles from "@/data/news.json";
+import Feather from "@expo/vector-icons/Feather";
+import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import { Image } from "expo-image";
+import { Link } from "expo-router";
 import * as React from "react";
+import { useEffect, useState } from "react";
 import {
     ScrollView,
     StyleSheet,
@@ -7,24 +14,6 @@ import {
     useColorScheme,
     View,
 } from "react-native";
-import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import Animated, {
-    interpolate,
-    useAnimatedRef,
-    useAnimatedStyle,
-    useScrollOffset,
-} from "react-native-reanimated";
-import Feather from "@expo/vector-icons/Feather";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
-import { useThemeColor } from "@/hooks/use-theme-color";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { Header } from "@/components/header";
-import { useState, useEffect } from "react";
-import newsArticles from "@/data/news.json";
-import { Link } from "expo-router";
 
 const HEADER_HEIGHT = 250;
 

@@ -1,26 +1,32 @@
-import { View } from "react-native/Libraries/Components/View/View";
+import { Colors } from "@/constants/theme";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import {
-    Alert,
-    Button,
+    BackHandler,
+    Pressable,
     StyleSheet,
-    TouchableHighlight,
+    TextInput,
     TouchableOpacity,
     useColorScheme,
 } from "react-native";
-import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import { Colors } from "@/constants/theme";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { ThemedView } from "./themed-view";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Link, usePathname, useRouter } from "expo-router";
+import Feather from "@expo/vector-icons/Feather";
+import Animated from "react-native-reanimated";
+import React from "react";
 
 export function Header() {
-    const colorScheme = useColorScheme() ?? "light";
+    const colorScheme = useColorScheme() || "light";
+    const path = usePathname();
+    const router = useRouter();
+
     return (
         <SafeAreaView
             edges={["top"]}
             style={[
                 styles.headerContainer,
-                { backgroundColor: Colors[colorScheme].bg_light },
+                {
+                    backgroundColor: Colors[colorScheme].bg_light,
+                },
             ]}
         >
             <TouchableOpacity>
@@ -31,13 +37,13 @@ export function Header() {
                     weight="bold"
                 />
             </TouchableOpacity>
-            <TouchableOpacity>
-                <SimpleLineIcons
-                    name="magnifier"
-                    size={24}
-                    color={Colors[colorScheme].text}
-                />
-            </TouchableOpacity>
+            <Link href="/search" push asChild>
+                <Pressable onPress={() => console.log("hello")}>
+                    <Animated.View>
+                        <Feather name="search" size={24} />
+                    </Animated.View>
+                </Pressable>
+            </Link>
         </SafeAreaView>
     );
 }
@@ -50,5 +56,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         alignItems: "center",
+    },
+    searchBar: {
+        flex: 1,
+        textAlignVertical: "center",
+        justifyContent: "center",
+        marginLeft: 8,
+        borderRadius: 20,
+
+        paddingLeft: 8,
     },
 });

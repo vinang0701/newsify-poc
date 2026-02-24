@@ -1,13 +1,11 @@
-import { Tabs } from "expo-router";
-import React from "react";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { HapticTab } from "@/components/haptic-tab";
+import { Header } from "@/components/header";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { Header } from "@/components/header";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { Tabs } from "expo-router";
+import React from "react";
 import { View } from "react-native";
-import { House, User } from "lucide-react-native";
 
 export default function TabLayout() {
     const colorScheme = useColorScheme();
@@ -16,6 +14,7 @@ export default function TabLayout() {
         <View style={{ flex: 1 }}>
             <Header />
             <Tabs
+                backBehavior="order"
                 screenOptions={{
                     tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
                     tabBarInactiveTintColor:
