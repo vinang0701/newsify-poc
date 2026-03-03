@@ -1,12 +1,14 @@
 import { Colors } from "@/constants/theme";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import {
-    BackHandler,
-    Pressable,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    useColorScheme,
+	Text,
+	View,
+	BackHandler,
+	Pressable,
+	StyleSheet,
+	TextInput,
+	TouchableOpacity,
+	useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, usePathname, useRouter } from "expo-router";
@@ -32,51 +34,61 @@ export function Header() {
         },
     });
 
-    return (
-        <SafeAreaView
-            edges={["top"]}
-            style={[
-                styles.headerContainer,
-                {
-                    backgroundColor: Colors[colorScheme].bg_light,
-                },
-            ]}
-        >
-            <TouchableOpacity>
-                <MaterialIcons
-                    name="menu"
-                    size={24}
-                    color={Colors[colorScheme].text}
-                    weight="bold"
-                />
-            </TouchableOpacity>
-            <Link href="/search" push asChild>
-                <Pressable onPress={() => console.log("hello")}>
-                    <Animated.View>
-                        <Feather name="search" size={24} />
-                    </Animated.View>
-                </Pressable>
-            </Link>
-        </SafeAreaView>
-    );
+	return (
+		<SafeAreaView
+			edges={["top"]}
+			style={[
+				styles.headerContainer,
+				{
+					backgroundColor: Colors[colorScheme].bg_light,
+				},
+			]}
+		>
+			<TouchableOpacity>
+				<Feather
+					name="bell"
+					size={24}
+					color={Colors[colorScheme].text}
+					weight="bold"
+				/>
+			</TouchableOpacity>
+
+			<Text
+				style={{
+					fontSize: 24,
+					color: Colors[colorScheme].tint,
+				}}
+			>
+				N
+			</Text>
+
+			<Link href="/search" push asChild>
+				<Pressable onPress={() => console.log("hello")}>
+					<Animated.View>
+						<Feather name="search" size={24} />
+					</Animated.View>
+				</Pressable>
+			</Link>
+		</SafeAreaView>
+	);
 }
 
 const styles = StyleSheet.create({
-    headerContainer: {
-        flex: 0,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        alignItems: "center",
-    },
-    searchBar: {
-        flex: 1,
-        textAlignVertical: "center",
-        justifyContent: "center",
-        marginLeft: 8,
-        borderRadius: 20,
+	headerContainer: {
+		flex: 0,
+		flexDirection: "row",
+		justifyContent: "space-between",
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		alignItems: "center",
+	},
+	searchBar: {
+		flex: 1,
+		textAlignVertical: "center",
+		justifyContent: "center",
+		marginLeft: 8,
+		borderRadius: 20,
 
-        paddingLeft: 8,
-    },
+		paddingLeft: 8,
+	},
 });
