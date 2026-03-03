@@ -2,7 +2,9 @@ import { HapticTab } from "@/components/haptic-tab";
 import { Header } from "@/components/header";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import Feather from "@expo/vector-icons/Feather";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Tabs } from "expo-router";
 import React from "react";
 import { View } from "react-native";
@@ -19,7 +21,7 @@ export default function TabLayout() {
                     animation: "shift",
                     tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
                     tabBarInactiveTintColor:
-                        Colors[colorScheme ?? "light"].tint,
+                        Colors[colorScheme ?? "light"].tabIconSelected,
                     headerShown: false,
                     tabBarStyle: { height: 80 },
                     tabBarShowLabel: false,
@@ -29,13 +31,39 @@ export default function TabLayout() {
                 <Tabs.Screen
                     name="index"
                     options={{
-                        tabBarIcon: ({ color }) => (
-                            <MaterialIcons
-                                size={30}
-                                name="home"
-                                color={color}
-                            />
-                        ),
+                        tabBarIcon: ({ focused, color }) =>
+                            focused ? (
+                                <MaterialCommunityIcons
+                                    size={28}
+                                    name="home"
+                                    color={color}
+                                />
+                            ) : (
+                                <MaterialCommunityIcons
+                                    size={28}
+                                    name="home-outline"
+                                    color={color}
+                                />
+                            ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="communities"
+                    options={{
+                        tabBarIcon: ({ focused, color }) =>
+                            focused ? (
+                                <MaterialCommunityIcons
+                                    size={28}
+                                    name="account-group"
+                                    color={color}
+                                />
+                            ) : (
+                                <MaterialCommunityIcons
+                                    size={28}
+                                    name="account-group-outline"
+                                    color={color}
+                                />
+                            ),
                     }}
                 />
                 <Tabs.Screen
@@ -43,15 +71,35 @@ export default function TabLayout() {
                     options={{
                         tabBarIcon: ({ focused, color }) =>
                             focused ? (
-                                <MaterialIcons
-                                    size={30}
-                                    name="add-circle"
+                                <MaterialCommunityIcons
+                                    size={28}
+                                    name="plus-box"
                                     color={color}
                                 />
                             ) : (
-                                <MaterialIcons
-                                    size={30}
-                                    name="add-circle-outline"
+                                <MaterialCommunityIcons
+                                    size={28}
+                                    name="plus-box-outline"
+                                    fill={color}
+                                    color={color}
+                                />
+                            ),
+                    }}
+                />
+                <Tabs.Screen
+                    name="stream"
+                    options={{
+                        tabBarIcon: ({ focused, color }) =>
+                            focused ? (
+                                <MaterialCommunityIcons
+                                    name="play-box"
+                                    size={28}
+                                    color={color}
+                                />
+                            ) : (
+                                <MaterialCommunityIcons
+                                    name="play-box-outline"
+                                    size={28}
                                     color={color}
                                 />
                             ),
@@ -62,15 +110,15 @@ export default function TabLayout() {
                     options={{
                         tabBarIcon: ({ focused, color }) =>
                             focused ? (
-                                <MaterialIcons
-                                    name="person"
-                                    size={30}
+                                <MaterialCommunityIcons
+                                    name="account"
+                                    size={28}
                                     color={color}
                                 />
                             ) : (
-                                <MaterialIcons
-                                    name="person-outline"
-                                    size={30}
+                                <MaterialCommunityIcons
+                                    name="account-outline"
+                                    size={28}
                                     color={color}
                                 />
                             ),

@@ -1,60 +1,78 @@
-import { StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from "react-native";
 
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { useThemeColor } from "@/hooks/use-theme-color";
 
 export type ThemedTextProps = TextProps & {
-  lightColor?: string;
-  darkColor?: string;
-  type?: 'default' | 'title' | 'defaultSemiBold' | 'subtitle' | 'link';
+    lightColor?: string;
+    darkColor?: string;
+    type?:
+        | "default"
+        | "defaultSemiBold"
+        | "body_medium"
+        | "heading"
+        | "sub_heading"
+        | "link"
+        | "caption";
 };
 
 export function ThemedText({
-  style,
-  lightColor,
-  darkColor,
-  type = 'default',
-  ...rest
+    style,
+    lightColor,
+    darkColor,
+    type = "default",
+    ...rest
 }: ThemedTextProps) {
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, 'text');
+    const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
 
-  return (
-    <Text
-      style={[
-        { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
-        style,
-      ]}
-      {...rest}
-    />
-  );
+    return (
+        <Text
+            style={[
+                { color },
+                type === "default" ? styles.default : undefined,
+                type === "heading" ? styles.heading : undefined,
+                type === "defaultSemiBold" ? styles.defaultSemiBold : undefined,
+                type === "body_medium" ? styles.body_medium : undefined,
+                type === "sub_heading" ? styles.sub_heading : undefined,
+                type === "link" ? styles.link : undefined,
+                style,
+            ]}
+            {...rest}
+        />
+    );
 }
 
 const styles = StyleSheet.create({
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  defaultSemiBold: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    lineHeight: 32,
-  },
-  subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  link: {
-    lineHeight: 30,
-    fontSize: 16,
-    color: '#0a7ea4',
-  },
+    default: {
+        fontSize: 16,
+        lineHeight: 24,
+    },
+    defaultSemiBold: {
+        fontSize: 16,
+        lineHeight: 24,
+        fontWeight: "600",
+    },
+    body_medium: {
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    heading: {
+        fontSize: 32,
+        fontWeight: "bold",
+        lineHeight: 40,
+    },
+    sub_heading: {
+        fontSize: 24,
+        fontWeight: "bold",
+        lineHeight: 32,
+    },
+    caption: {
+        fontSize: 11,
+        lineHeight: 16,
+        color: "hsl(0, 0%, 40%)",
+    },
+    link: {
+        lineHeight: 30,
+        fontSize: 16,
+        color: "#0a7ea4",
+    },
 });

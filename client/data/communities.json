@@ -1,0 +1,186 @@
+{
+  "status": "ok",
+  "totalResults": 20,
+  "communities": [
+    {
+      "id": "c1",
+      "name": "Full Stack Developers Guild",
+      "desc": "A community for frontend, backend, and mobile engineers to share knowledge, projects, and career advice.",
+      "member_count": 8421,
+      "category": "Technology",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c2",
+      "name": "AI & Machine Learning Circle",
+      "desc": "Discussions on neural networks, LLMs, computer vision, and applied AI in production.",
+      "member_count": 653002,
+      "category": "Technology",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c3",
+      "name": "Startup Founders Network",
+      "desc": "Early-stage founders sharing product validation, fundraising, and growth strategies.",
+      "member_count": 39100,
+      "category": "Business",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c4",
+      "name": "Product Managers Hub",
+      "desc": "Roadmapping, stakeholder management, and product-led growth discussions.",
+      "member_count": 4788,
+      "category": "Business",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c5",
+      "name": "UI/UX Design Collective",
+      "desc": "Design systems, user research, accessibility, and interface critiques.",
+      "member_count": 5120,
+      "category": "Design",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c6",
+      "name": "Open Source Contributors",
+      "desc": "Collaborate on open-source projects and find maintainers seeking contributors.",
+      "member_count": 2897,
+      "category": "Technology",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c7",
+      "name": "Cybersecurity Alliance",
+      "desc": "Security best practices, penetration testing, and vulnerability research.",
+      "member_count": 3344,
+      "category": "Technology",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c8",
+      "name": "DevOps & Cloud Engineers",
+      "desc": "CI/CD pipelines, Kubernetes, AWS, and scalable infrastructure discussions.",
+      "member_count": 4211,
+      "category": "Technology",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c9",
+      "name": "Data Science Society",
+      "desc": "Data analysis, visualization, statistics, and predictive modeling.",
+      "member_count": 3675,
+      "category": "Technology",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c10",
+      "name": "Mobile App Builders",
+      "desc": "iOS, Android, React Native, and cross-platform app development.",
+      "member_count": 2988,
+      "category": "Technology",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c11",
+      "name": "Fitness & Wellness Club",
+      "desc": "Workouts, nutrition tips, and accountability challenges.",
+      "member_count": 5402,
+      "category": "Health",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c12",
+      "name": "Book Lovers Circle",
+      "desc": "Monthly book picks, author discussions, and reading challenges.",
+      "member_count": 2198,
+      "category": "Literature",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c13",
+      "name": "Photography Enthusiasts",
+      "desc": "Landscape, portrait, and street photography critiques and tips.",
+      "member_count": 1876,
+      "category": "Art",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c14",
+      "name": "Crypto & Web3 Forum",
+      "desc": "Blockchain technology, DeFi projects, and decentralized applications.",
+      "member_count": 3120,
+      "category": "Finance",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c15",
+      "name": "Gamers Unite",
+      "desc": "PC, console, and indie gaming discussions and tournaments.",
+      "member_count": 7244,
+      "category": "Gaming",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c16",
+      "name": "Music Producers Lab",
+      "desc": "Beat making, mixing, mastering, and music collaboration.",
+      "member_count": 1654,
+      "category": "Music",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c17",
+      "name": "Investing & Personal Finance",
+      "desc": "Stock market insights, long-term investing, and wealth building.",
+      "member_count": 6033,
+      "category": "Finance",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c18",
+      "name": "Remote Workers Collective",
+      "desc": "Productivity hacks, remote job leads, and digital nomad lifestyle.",
+      "member_count": 2489,
+      "category": "Lifestyle",
+      "public": true,
+      "joined": false
+    },
+    {
+      "id": "c19",
+      "name": "Entrepreneurs & Creators",
+      "desc": "Content creators, indie hackers, and online business builders.",
+      "member_count": 4377,
+      "category": "Business",
+      "public": true,
+      "joined": true
+    },
+    {
+      "id": "c20",
+      "name": "Sustainability & Climate Action",
+      "desc": "Environmental awareness, green tech, and climate advocacy.",
+      "member_count": 1942,
+      "category": "Environment",
+      "public": true,
+      "joined": false
+    }
+  ]
+}

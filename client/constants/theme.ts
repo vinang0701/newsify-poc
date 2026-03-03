@@ -12,6 +12,7 @@ export const Colors = {
     light: {
         text: "hsl(0, 0%, 5%)",
         text_light: "hsl(0, 0%, 10%)",
+        caption: "hsl(0, 0%, 40%)",
         bg_light: "hsl(0 0% 100%)",
         bg: "hsl(0, 0%, 95%)",
         bg_dark: "hsl(0 0% 90%)",
@@ -20,10 +21,13 @@ export const Colors = {
         tabIconDefault: "#687076",
         tabIconSelected: tintColorLight,
         buttonPressed: "hsl(221, 100%, 45%)",
+        secondary: "hsl(161, 100%, 50%)",
+        secondary_dark: "hsl(161, 100%, 30%)"
     },
     dark: {
         text: "hsl(0, 0%, 95%)",
         text_light: "hsl(0, 0%, 100%)",
+        caption: "hsl(0, 0%, 40%)",
         bg_light: "hsl(200, 7%, 14%)",
         bg: "hsl(200, 7%, 9%)",
         bg_dark: "hsl(200, 7%, 4%)",
@@ -32,6 +36,8 @@ export const Colors = {
         tabIconDefault: "#9BA1A6",
         tabIconSelected: tintColorDark,
         buttonPressed: "hsl(0 0% 90%)",
+        secondary: "hsl(161, 100%, 30%)",
+        secondary_dark: "hsl(161, 100%, 50%)"
     },
 };
 
