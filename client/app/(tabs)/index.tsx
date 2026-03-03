@@ -53,19 +53,21 @@ export default function HomeScreen() {
             // } catch (error) {
             //     console.error(error);
             // }
-            newsArticles.articles.forEach((newsItem) => {
-                news.push({
-                    title: newsItem.title,
-                    author: newsItem.author ?? "",
-                    desc: newsItem.description ?? "",
-                    url: newsItem.url ?? "",
-                    urlToImage: newsItem.urlToImage ?? "",
-                    content: newsItem.content ?? "",
-                });
-            });
+            if (!newsArticles?.articles) return;
+
+            const formattedNews = newsArticles.articles.map((newsItem) => ({
+                title: newsItem.title,
+                author: newsItem.author ?? "",
+                desc: newsItem.description ?? "",
+                url: newsItem.url ?? "",
+                urlToImage: newsItem.urlToImage ?? "",
+                content: newsItem.content ?? "",
+            }));
+
+            setNews(formattedNews);
         };
         fetchNews();
-    }, [news]);
+    }, []);
     return (
         <ScrollView>
             {news.map((newsItem, index) => {
@@ -75,7 +77,7 @@ export default function HomeScreen() {
                         style={[
                             styles.card,
                             {
-                                backgroundColor: Colors[colorScheme].bg_dark,
+                                backgroundColor: Colors[colorScheme].bg_light,
                             },
                         ]}
                     >
@@ -114,7 +116,7 @@ export default function HomeScreen() {
                                 style={{
                                     width: "100%",
                                     height: 200,
-                                    resizeMode: "cover",
+                                    objectFit: "contain",
                                 }}
                             />
                             <ThemedText
@@ -177,8 +179,8 @@ const styles = StyleSheet.create({
         gap: 8,
         alignContent: "flex-start",
         borderRadius: 8,
-        paddingVertical: 24,
-        marginBottom: 4,
+        paddingVertical: 12,
+        marginBottom: 8,
         minHeight: 200,
     },
     cardInfoContainer: {

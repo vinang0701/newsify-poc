@@ -11,13 +11,26 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link, usePathname, useRouter } from "expo-router";
 import Feather from "@expo/vector-icons/Feather";
-import Animated from "react-native-reanimated";
+
 import React from "react";
+import Animated, {
+    useSharedValue,
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    withTiming,
+} from "react-native-reanimated";
 
 export function Header() {
     const colorScheme = useColorScheme() || "light";
     const path = usePathname();
     const router = useRouter();
+    const scrollY = useSharedValue(0);
+
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            scrollY.value = event.contentOffset.y;
+        },
+    });
 
     return (
         <SafeAreaView

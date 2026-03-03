@@ -8,7 +8,7 @@ import React from "react";
 import { View } from "react-native";
 
 export default function TabLayout() {
-    const colorScheme = useColorScheme();
+    const colorScheme = useColorScheme() || "light";
 
     return (
         <View style={{ flex: 1 }}>
@@ -16,9 +16,10 @@ export default function TabLayout() {
             <Tabs
                 backBehavior="order"
                 screenOptions={{
+                    animation: "shift",
                     tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
                     tabBarInactiveTintColor:
-                        Colors[colorScheme ?? "light"].text,
+                        Colors[colorScheme ?? "light"].tint,
                     headerShown: false,
                     tabBarStyle: { height: 80 },
                     tabBarShowLabel: false,

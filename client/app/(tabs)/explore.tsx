@@ -5,11 +5,11 @@ import {
     StyleSheet,
     Text,
     useColorScheme,
-    View
+    View,
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import AnimatedSearchBar from "@/components/ui/animated_search_bar";
+
 import { Colors } from "@/constants/theme";
 
 export default function ComponentsScreen() {
@@ -96,9 +96,6 @@ export default function ComponentsScreen() {
                             Log in
                         </Text>
                     </Pressable>
-                </View>
-                <View>
-                    <AnimatedSearchBar />
                 </View>
             </View>
         </ScrollView>
