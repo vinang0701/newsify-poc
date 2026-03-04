@@ -28,7 +28,7 @@ const DATA = [
     },
     {
         id: "2",
-        title: "Sports",
+        title: "Tech",
     },
     {
         id: "3",
@@ -43,7 +43,7 @@ const DATA = [
 export default function communities() {
     const colorScheme = useColorScheme() ?? "light";
     const [comm, setComm] = useState<Community[]>([]);
-    const [activeFilter, setActiveFilter] = useState("");
+    const [activeFilter, setActiveFilter] = useState("All");
 
     function formatMemberCount(count: number) {
         if (count < 1000) {
@@ -78,8 +78,16 @@ export default function communities() {
         fetchData();
     }, []);
     return (
-        <ScrollView style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-            <ThemedText type="defaultSemiBold" style={{ marginBottom: 12 }}>
+        <ScrollView
+            style={{
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                backgroundColor: Colors[colorScheme].bg,
+            }}
+        >
+            <ThemedText
+                style={{ marginBottom: 12, fontSize: 22, fontWeight: 800 }}
+            >
                 Communities
             </ThemedText>
             <View>
@@ -94,14 +102,16 @@ export default function communities() {
                                 backgroundColor:
                                     activeFilter === item.title
                                         ? Colors[colorScheme].tint
-                                        : Colors[colorScheme].bg_light,
+                                        : Colors[colorScheme].bg,
+                                borderColor: Colors[colorScheme].border,
+                                borderWidth: 1,
                                 marginRight: 8,
                                 borderRadius: 4,
                             }}
                             onPress={() => {
                                 // Check if active state is pressed
                                 if (activeFilter === item.title) {
-                                    setActiveFilter("");
+                                    return;
                                 } else {
                                     setActiveFilter(item.title);
                                 }
@@ -111,8 +121,8 @@ export default function communities() {
                                 style={{
                                     color:
                                         activeFilter === item.title
-                                            ? Colors[colorScheme].bg_light
-                                            : Colors[colorScheme].tint,
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].text,
                                 }}
                             >
                                 {item.title}
@@ -163,13 +173,22 @@ export default function communities() {
                                             height: 36,
                                             width: 36,
                                             borderRadius: 100,
+                                            borderWidth: 1,
+                                            borderColor:
+                                                Colors[colorScheme].border,
                                         }}
                                     />
                                     <View>
                                         <ThemedText type="defaultSemiBold">
                                             {item.name}
                                         </ThemedText>
-                                        <ThemedText type="caption">
+                                        <ThemedText
+                                            type="caption"
+                                            style={{
+                                                color: Colors[colorScheme]
+                                                    .text_light,
+                                            }}
+                                        >
                                             {item.member_count}k members
                                         </ThemedText>
                                     </View>

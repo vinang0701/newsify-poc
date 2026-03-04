@@ -89,7 +89,13 @@ export default function HomeScreen() {
         fetchNews();
     }, []);
     return (
-        <ScrollView style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+        <ScrollView
+            style={{
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                backgroundColor: Colors[colorScheme].bg,
+            }}
+        >
             <View>
                 <FlashList
                     style={{ marginBottom: 12, elevation: 10 }}
@@ -99,10 +105,16 @@ export default function HomeScreen() {
                             style={{
                                 paddingHorizontal: 12,
                                 paddingVertical: 4,
+                                // backgroundColor:
+                                //     activeFilter === item.title
+                                //         ? Colors[colorScheme].tint
+                                //         : Colors[colorScheme].button_text,
                                 backgroundColor:
                                     activeFilter === item.title
                                         ? Colors[colorScheme].tint
-                                        : Colors[colorScheme].bg_light,
+                                        : Colors[colorScheme].bg,
+                                borderColor: Colors[colorScheme].border,
+                                borderWidth: 1,
                                 marginRight: 8,
                                 borderRadius: 4,
                             }}
@@ -119,8 +131,8 @@ export default function HomeScreen() {
                                 style={{
                                     color:
                                         activeFilter === item.title
-                                            ? Colors[colorScheme].bg_light
-                                            : Colors[colorScheme].tint,
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].text,
                                 }}
                             >
                                 {item.title}
@@ -180,7 +192,7 @@ export default function HomeScreen() {
                                 }}
                             />
                             <ThemedText
-                                type="title"
+                                type="sub_heading"
                                 style={{
                                     paddingTop: 12,
                                     paddingHorizontal: 12,
@@ -294,7 +306,7 @@ const styles = StyleSheet.create({
         alignContent: "flex-start",
         borderRadius: 8,
         paddingVertical: 12,
-        marginBottom: 12,
+        marginBottom: 4,
         minHeight: 200,
     },
     cardInfoContainer: {

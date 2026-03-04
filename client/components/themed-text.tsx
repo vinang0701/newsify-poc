@@ -68,7 +68,6 @@ const styles = StyleSheet.create({
     caption: {
         fontSize: 11,
         lineHeight: 16,
-        color: "hsl(0, 0%, 40%)",
     },
     link: {
         lineHeight: 30,
