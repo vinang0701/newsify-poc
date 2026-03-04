@@ -20,6 +20,8 @@ import {
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { News } from "@/types";
+import { Header } from "@/components/header";
+import { SafeAreaView } from "react-native-safe-area-context";
 const HEADER_HEIGHT = 250;
 
 const DATA = [
@@ -89,205 +91,220 @@ export default function HomeScreen() {
         fetchNews();
     }, []);
     return (
-        <ScrollView
-            style={{
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                backgroundColor: Colors[colorScheme].bg,
-            }}
+        <SafeAreaView
+            edges={["top"]}
+            style={[
+                {
+                    backgroundColor: Colors[colorScheme].bg_light,
+                },
+            ]}
         >
-            <View>
-                <FlashList
-                    style={{ marginBottom: 12, elevation: 10 }}
-                    data={DATA}
-                    renderItem={({ item }) => (
-                        <Pressable
-                            style={{
-                                paddingHorizontal: 12,
-                                paddingVertical: 4,
-                                // backgroundColor:
-                                //     activeFilter === item.title
-                                //         ? Colors[colorScheme].tint
-                                //         : Colors[colorScheme].button_text,
-                                backgroundColor:
-                                    activeFilter === item.title
-                                        ? Colors[colorScheme].tint
-                                        : Colors[colorScheme].bg,
-                                borderColor: Colors[colorScheme].border,
-                                borderWidth: 1,
-                                marginRight: 8,
-                                borderRadius: 4,
-                            }}
-                            onPress={() => {
-                                // Check if active state is pressed
-                                if (activeFilter === item.title) {
-                                    return;
-                                } else {
-                                    setActiveFilter(item.title);
-                                }
-                            }}
-                        >
-                            <Text
+            <Header />
+            <ScrollView
+                style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    backgroundColor: Colors[colorScheme].bg,
+                }}
+            >
+                <View>
+                    <FlashList
+                        keyExtractor={(item) => item.id}
+                        horizontal
+                        style={{ marginBottom: 12, elevation: 10 }}
+                        data={DATA}
+                        renderItem={({ item }) => (
+                            <Pressable
                                 style={{
-                                    color:
-                                        activeFilter === item.title
-                                            ? Colors[colorScheme].button_text
-                                            : Colors[colorScheme].text,
-                                }}
-                            >
-                                {item.title}
-                            </Text>
-                        </Pressable>
-                    )}
-                    horizontal
-                />
-            </View>
-            {news.map((newsItem, index) => {
-                return (
-                    <View
-                        key={index}
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: Colors[colorScheme].bg_light,
-                            },
-                        ]}
-                    >
-                        <View style={styles.cardInfoContainer}>
-                            <Image
-                                source={require("@/assets/images/profile.png")}
-                                style={{ width: 28, height: 28 }}
-                            />
-                            <ThemedText type="defaultSemiBold">
-                                Author
-                            </ThemedText>
-                            <ThemedText
-                                type="default"
-                                style={{
-                                    fontSize: 10,
-                                    color: "hsl(0, 0%, 5%)",
-                                }}
-                            >
-                                1d
-                            </ThemedText>
-                            <TouchableHighlight style={{ marginLeft: "auto" }}>
-                                <Feather
-                                    name="more-vertical"
-                                    size={20}
-                                    color={Colors[colorScheme].icon}
-                                />
-                            </TouchableHighlight>
-                        </View>
-                        <View>
-                            {/* Content */}
-                            <Image
-                                alt="image"
-                                source={{
-                                    uri: newsItem.urlToImage,
-                                }}
-                                style={{
-                                    width: "100%",
-                                    height: 200,
-                                    objectFit: "contain",
-                                }}
-                            />
-                            <ThemedText
-                                type="sub_heading"
-                                style={{
-                                    paddingTop: 12,
                                     paddingHorizontal: 12,
-                                    fontSize: 20,
-                                }}
-                            >
-                                {newsItem.title}
-                            </ThemedText>
-                            <ThemedText
-                                style={{
                                     paddingVertical: 4,
-                                    paddingHorizontal: 12,
-                                    fontSize: 14,
+                                    backgroundColor:
+                                        activeFilter === item.title
+                                            ? Colors[colorScheme].tint
+                                            : Colors[colorScheme].bg,
+                                    borderColor: Colors[colorScheme].border,
+                                    borderWidth: 1,
+                                    marginRight: 8,
+                                    borderRadius: 4,
+                                }}
+                                onPress={() => {
+                                    // Check if active state is pressed
+                                    if (activeFilter === item.title) {
+                                        return;
+                                    } else {
+                                        setActiveFilter(item.title);
+                                    }
                                 }}
                             >
-                                {newsItem.content?.replace(
-                                    /\s*\[\+\d+ chars\]$/,
-                                    "",
-                                )}
-                                <Link href="/(tabs)/create-post">
-                                    <ThemedText
-                                        type="link"
-                                        style={{ fontSize: 14 }}
-                                    >
-                                        Read More
-                                    </ThemedText>
-                                </Link>
-                            </ThemedText>
-                        </View>
-
-                        <View style={styles.iconsContainer}>
-                            {/* Interaction */}
-                            <View
-                                style={{
-                                    flex: 1,
-                                    flexDirection: "row",
-                                    justifyContent: "flex-start",
-                                    gap: 24,
-                                }}
-                            >
-                                <Pressable
+                                <Text
                                     style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        alignItems: "center",
-                                        justifyContent: "flex-start",
+                                        color:
+                                            activeFilter === item.title
+                                                ? Colors[colorScheme]
+                                                      .button_text
+                                                : Colors[colorScheme].text,
                                     }}
                                 >
-                                    <Feather
-                                        name="heart"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                                <Pressable
+                                    {item.title}
+                                </Text>
+                            </Pressable>
+                        )}
+                    />
+                </View>
+                {news.map((newsItem, index) => {
+                    return (
+                        <View
+                            key={index}
+                            style={[
+                                styles.card,
+                                {
+                                    backgroundColor:
+                                        Colors[colorScheme].bg_light,
+                                },
+                            ]}
+                        >
+                            <View style={styles.cardInfoContainer}>
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 28, height: 28 }}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    Author
+                                </ThemedText>
+                                <ThemedText
+                                    type="default"
                                     style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        justifyContent: "flex-start",
-                                        alignItems: "center",
+                                        fontSize: 10,
+                                        color: "hsl(0, 0%, 5%)",
                                     }}
                                 >
-                                    <Feather
-                                        name="message-square"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        justifyContent: "flex-start",
-                                        gap: 4,
-                                        alignItems: "center",
-                                    }}
+                                    1d
+                                </ThemedText>
+                                <TouchableHighlight
+                                    style={{ marginLeft: "auto" }}
                                 >
                                     <Feather
-                                        name="repeat"
-                                        size={24}
-                                        color="black"
+                                        name="more-vertical"
+                                        size={20}
+                                        color={Colors[colorScheme].icon}
                                     />
-                                    <Text>100</Text>
-                                </Pressable>
+                                </TouchableHighlight>
                             </View>
-                            <Feather name="bookmark" size={24} color="black" />
+                            <View>
+                                {/* Content */}
+                                <Image
+                                    alt="image"
+                                    source={{
+                                        uri: newsItem.urlToImage,
+                                    }}
+                                    style={{
+                                        width: "100%",
+                                        height: 200,
+                                        objectFit: "contain",
+                                    }}
+                                />
+                                <ThemedText
+                                    type="sub_heading"
+                                    style={{
+                                        paddingTop: 12,
+                                        paddingHorizontal: 12,
+                                        fontSize: 20,
+                                    }}
+                                >
+                                    {newsItem.title}
+                                </ThemedText>
+                                <ThemedText
+                                    style={{
+                                        paddingVertical: 4,
+                                        paddingHorizontal: 12,
+                                        fontSize: 14,
+                                    }}
+                                >
+                                    {newsItem.content?.replace(
+                                        /\s*\[\+\d+ chars\]$/,
+                                        "",
+                                    )}
+                                    <Link href="/(tabs)/create-post">
+                                        <ThemedText
+                                            type="link"
+                                            style={{ fontSize: 14 }}
+                                        >
+                                            Read More
+                                        </ThemedText>
+                                    </Link>
+                                </ThemedText>
+                            </View>
+
+                            <View style={styles.iconsContainer}>
+                                {/* Interaction */}
+                                <View
+                                    style={{
+                                        flex: 1,
+                                        flexDirection: "row",
+                                        justifyContent: "flex-start",
+                                        gap: 24,
+                                    }}
+                                >
+                                    <Pressable
+                                        style={{
+                                            flex: 0,
+                                            flexDirection: "row",
+                                            gap: 4,
+                                            alignItems: "center",
+                                            justifyContent: "flex-start",
+                                        }}
+                                    >
+                                        <Feather
+                                            name="heart"
+                                            size={24}
+                                            color="black"
+                                        />
+                                        <Text>100</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        style={{
+                                            flex: 0,
+                                            flexDirection: "row",
+                                            gap: 4,
+                                            justifyContent: "flex-start",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <Feather
+                                            name="message-square"
+                                            size={24}
+                                            color="black"
+                                        />
+                                        <Text>100</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        style={{
+                                            flex: 0,
+                                            flexDirection: "row",
+                                            justifyContent: "flex-start",
+                                            gap: 4,
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <Feather
+                                            name="repeat"
+                                            size={24}
+                                            color="black"
+                                        />
+                                        <Text>100</Text>
+                                    </Pressable>
+                                </View>
+                                <Feather
+                                    name="bookmark"
+                                    size={24}
+                                    color="black"
+                                />
+                            </View>
                         </View>
-                    </View>
-                );
-            })}
-        </ScrollView>
+                    );
+                })}
+            </ScrollView>
+        </SafeAreaView>
     );
 }
 

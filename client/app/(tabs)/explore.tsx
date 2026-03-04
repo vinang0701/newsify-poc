@@ -34,7 +34,7 @@ export default function ComponentsScreen() {
                     },
                 ]}
             >
-                <ThemedText type="subtitle">Buttons</ThemedText>
+                <ThemedText type="sub_heading">Buttons</ThemedText>
                 <View style={styles.btnCtn}>
                     <Pressable
                         onPress={() => console.warn("pressed")}
@@ -137,6 +137,5 @@ const styles = StyleSheet.create({
     },
     elevation: {
         elevation: 20,
-        shadowColor: "#333",
     },
 });

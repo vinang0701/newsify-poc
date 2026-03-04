@@ -14,7 +14,6 @@ export default function TabLayout() {
 
     return (
         <View style={{ flex: 1 }}>
-            <Header />
             <Tabs
                 backBehavior="order"
                 screenOptions={{
@@ -48,7 +47,7 @@ export default function TabLayout() {
                     }}
                 />
                 <Tabs.Screen
-                    name="communities"
+                    name="community"
                     options={{
                         tabBarIcon: ({ focused, color }) =>
                             focused ? (
