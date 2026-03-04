@@ -6,6 +6,7 @@ import {
     Image,
     View,
     ScrollView,
+    Modal,
 } from "react-native";
 import BottomSheet, {
     BottomSheetBackdrop,
@@ -37,7 +38,7 @@ export default function CommunityPage() {
     const router = useRouter();
     const [news, setNews] = useState<News[]>([]);
     const snapPoints = useMemo(() => ["20%"], []);
-
+    const [modalVisible, setModalVisible] = useState(false);
     // ref
     const bottomSheetRef = useRef<BottomSheet>(null);
 
@@ -163,7 +164,7 @@ export default function CommunityPage() {
                             </View>
                         </View>
                         {/* Join Button */}
-                        <Pressable>
+                        <Pressable onPress={() => setModalVisible(true)}>
                             <ThemedText
                                 type="caption"
                                 style={{
@@ -213,7 +214,11 @@ export default function CommunityPage() {
                         ]}
                     >
                         <ThemedText>Sort</ThemedText>
-                        <MaterialCommunityIcons name="chevron-down" />
+                        <MaterialCommunityIcons
+                            name="chevron-down"
+                            size={16}
+                            color={Colors[colorScheme].text}
+                        />
                     </View>
                     <View style={{ flex: 1 }}>
                         <FlashList
@@ -410,6 +415,79 @@ export default function CommunityPage() {
                     </Pressable>
                 </BottomSheetView>
             </BottomSheet>
+            {/* Join/Leave button Action*/}
+            <Modal
+                animationType="slide"
+                visible={modalVisible}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() => {
+                    setModalVisible(!modalVisible);
+                }}
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            { backgroundColor: Colors[colorScheme].bg_light },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={styles.modalText}
+                        >
+                            Leave group?
+                        </ThemedText>
+                        <View style={{ flexDirection: "row", gap: 24 }}>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() => setModalVisible(!modalVisible)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].alert_red,
+                                    },
+                                ]}
+                                onPress={() => setModalVisible(!modalVisible)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Leave
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </GestureHandlerRootView>
     );
 }
@@ -472,5 +550,41 @@ const styles = StyleSheet.create({
         flex: 0,
         flexDirection: "row",
         gap: 8,
+    },
+    modalView: {
+        width: "100%",
+        gap: 16,
+
+        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    button: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        elevation: 2,
+    },
+    textStyle: {
+        textAlign: "center",
+    },
+    modalText: {
+        fontWeight: "bold",
+    },
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
     },
 });
