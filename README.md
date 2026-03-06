@@ -23,6 +23,7 @@ git clone https://github.com/vinang0701/newsify-poc.git
 ### Requirements
 
 Nodejs, JDK (Java SE Development Kit), Android Studio (for testing)/Expo Go (install on your mobile)
+
 Guide: https://reactnative.dev/docs/set-up-your-environment
 
 ### Installation
