@@ -76,9 +76,9 @@ export const Fonts = Platform.select({
         mono: "ui-monospace",
     },
     default: {
-        sans: "normal",
+        sans: "sans",
         serif: "serif",
-        rounded: "normal",
+        rounded: "rounded",
         mono: "monospace",
     },
     web: {

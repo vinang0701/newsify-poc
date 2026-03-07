@@ -1,6 +1,7 @@
 import { StyleSheet, Text, type TextProps } from "react-native";
 
 import { useThemeColor } from "@/hooks/use-theme-color";
+import { Roboto_400Regular } from "@expo-google-fonts/roboto";
 
 export type ThemedTextProps = TextProps & {
     lightColor?: string;
@@ -34,6 +35,7 @@ export function ThemedText({
                 type === "body_medium" ? styles.body_medium : undefined,
                 type === "sub_heading" ? styles.sub_heading : undefined,
                 type === "link" ? styles.link : undefined,
+                type === "caption" ? styles.caption : undefined,
                 style,
             ]}
             {...rest}
@@ -61,9 +63,9 @@ const styles = StyleSheet.create({
         lineHeight: 40,
     },
     sub_heading: {
-        fontSize: 24,
-        fontWeight: "bold",
-        lineHeight: 32,
+        fontSize: 22,
+        fontWeight: "700",
+        lineHeight: 28,
     },
     caption: {
         fontSize: 11,

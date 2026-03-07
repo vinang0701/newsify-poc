@@ -53,6 +53,9 @@
           "microphonePermission": "Allow Newsify to access your microphone",
           "recordAudioAndroid": true
         }
+      ],
+      [
+        "expo-font"
       ]
     ],
     "experiments": {
