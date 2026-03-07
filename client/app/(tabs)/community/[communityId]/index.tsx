@@ -64,8 +64,12 @@ export default function CommunityPage() {
                 author: newsItem.author ?? "",
                 desc: newsItem.description ?? "",
                 url: newsItem.url ?? "",
-                urlToImage: newsItem.urlToImage ?? "",
-                content: newsItem.content ?? "",
+                urlToImage:
+                    newsItem.urlToImage != null
+                        ? newsItem.urlToImage
+                        : "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
+                content:
+                    newsItem.content?.replace(/\s*\[\+\d+ chars\]$/, "") ?? "",
             }));
 
             setNews(formattedNews);
@@ -74,7 +78,7 @@ export default function CommunityPage() {
     }, []);
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <GestureHandlerRootView>
             {/* Header */}
             <SafeAreaView>
                 <View
@@ -124,20 +128,14 @@ export default function CommunityPage() {
                     }}
                 >
                     <View
-                        style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 8,
-                            justifyContent: "space-between",
-                        }}
+                        style={[
+                            styles.flexRowContainer,
+                            {
+                                justifyContent: "space-between",
+                            },
+                        ]}
                     >
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 8,
-                            }}
-                        >
+                        <View style={styles.flexRowContainer}>
                             <Image
                                 source={require("@/assets/images/icon.png")}
                                 style={{
@@ -192,24 +190,16 @@ export default function CommunityPage() {
 
                 <View
                     style={{
-                        flex: 1,
                         backgroundColor: Colors[colorScheme].bg,
                         paddingHorizontal: 16,
                     }}
                 >
                     <View
                         style={[
+                            styles.sortButtonContainer,
                             {
-                                alignSelf: "flex-start",
-                                flexDirection: "row",
-                                alignItems: "center",
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                                borderRadius: 4,
-                                borderWidth: 1,
                                 borderColor: Colors[colorScheme].border,
                                 backgroundColor: Colors[colorScheme].bg_light,
-                                marginVertical: 12,
                             },
                         ]}
                     >
@@ -220,13 +210,12 @@ export default function CommunityPage() {
                             color={Colors[colorScheme].text}
                         />
                     </View>
-                    <View style={{ flex: 1 }}>
+                    <View>
                         <FlashList
-                            scrollEnabled={false}
+                            nestedScrollEnabled={false}
                             data={news}
-                            renderItem={({ item, index }) => (
+                            renderItem={({ item }) => (
                                 <View
-                                    key={index}
                                     style={[
                                         styles.card,
                                         {
@@ -292,10 +281,7 @@ export default function CommunityPage() {
                                                 fontSize: 14,
                                             }}
                                         >
-                                            {item.content?.replace(
-                                                /\s*\[\+\d+ chars\]$/,
-                                                "",
-                                            )}
+                                            {item.content}
                                             <Link href="/(tabs)/create-post">
                                                 <ThemedText
                                                     type="link"
@@ -505,7 +491,11 @@ const styles = StyleSheet.create({
         paddingVertical: 12,
         alignItems: "center",
     },
-
+    flexRowContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
     card: {
         flex: 1,
         gap: 8,
@@ -567,6 +557,16 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
+    },
+    sortButtonContainer: {
+        alignSelf: "flex-start",
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 4,
+        borderWidth: 1,
+        marginVertical: 12,
     },
     button: {
         flex: 1,
