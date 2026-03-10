@@ -52,7 +52,7 @@ export default function Profile() {
                 </Pressable>
             </View>
             {/* Content */}
-            <ScrollView style={{ flex: 1 }}>
+            <ScrollView>
                 {/* User Profile Card */}
                 <View
                     style={[
