@@ -6,14 +6,13 @@ import {
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { Roboto_400Regular, useFonts } from "@expo-google-fonts/roboto";
+import { useFonts } from "@expo-google-fonts/roboto";
 import { TextInput, StyleSheet } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
-import { Colors } from "@/constants/theme";
 import { useEffect } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 export const unstable_settings = {
     anchor: "(tabs)",
@@ -25,6 +24,8 @@ export default function RootLayout() {
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
         // Poppins: require("@/assets/fonts/Poppins-Regular.ttf"),
     });
+    // Create a client
+    const queryClient = new QueryClient();
 
     useEffect(() => {
         if (loaded || error) {
@@ -37,33 +38,35 @@ export default function RootLayout() {
     }
 
     return (
-        <SafeAreaProvider>
-            <ThemeProvider
-                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-            >
-                <Stack
-                    initialRouteName="(tabs)"
-                    screenOptions={{
-                        headerShown: false,
-                    }}
+        <QueryClientProvider client={queryClient}>
+            <SafeAreaProvider>
+                <ThemeProvider
+                    value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
                 >
-                    <Stack.Screen
-                        name="(tabs)"
-                        options={{
+                    <Stack
+                        initialRouteName="(tabs)"
+                        screenOptions={{
                             headerShown: false,
                         }}
-                    />
-                    <Stack.Screen
-                        name="search"
-                        options={{
-                            headerShown: false,
-                        }}
-                    />
-                </Stack>
+                    >
+                        <Stack.Screen
+                            name="(tabs)"
+                            options={{
+                                headerShown: false,
+                            }}
+                        />
+                        <Stack.Screen
+                            name="search"
+                            options={{
+                                headerShown: false,
+                            }}
+                        />
+                    </Stack>
 
-                <StatusBar style="auto" />
-            </ThemeProvider>
-        </SafeAreaProvider>
+                    <StatusBar style="auto" />
+                </ThemeProvider>
+            </SafeAreaProvider>
+        </QueryClientProvider>
     );
 }
 

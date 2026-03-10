@@ -7,7 +7,8 @@ from app.core.config import settings
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
-    return f"{route.tags[0]}-{route.name}"
+    tag = route.tags[0] if route.tags else "default"
+    return f"{tag}-{route.name}"
 
 
 app = FastAPI(
@@ -20,10 +21,16 @@ app = FastAPI(
 if settings.all_cors_origins:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.all_cors_origins,
+        # allow_origins=settings.all_cors_origins,
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.get("/ping")
+async def ping():
+    return {"message": "pong"}
