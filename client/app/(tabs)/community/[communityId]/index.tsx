@@ -121,7 +121,7 @@ export default function CommunityPage() {
                 {/* Community Info */}
                 <View
                     style={{
-                        backgroundColor: Colors[colorScheme].bg_dark,
+                        backgroundColor: Colors[colorScheme].bg_light,
                         paddingVertical: 12,
                         paddingHorizontal: 16,
                         gap: 8,

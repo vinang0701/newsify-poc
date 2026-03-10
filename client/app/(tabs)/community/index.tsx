@@ -160,34 +160,24 @@ export default function CommunitiesTab() {
                                 ]}
                             >
                                 <View
-                                // style={[
-                                //     styles.card,
-                                //     {
-                                //         backgroundColor:
-                                //             Colors[colorScheme].bg_light,
-                                //     },
-                                // ]}
+                                    style={[
+                                        {
+                                            width: "100%",
+                                        },
+                                    ]}
                                 >
                                     {/* Top info */}
                                     {/* Avatar | (Name, Member Count) | Join Button */}
                                     <View
                                         style={[
-                                            styles.cardInfoContainer,
-                                            {
-                                                flex: 1,
-                                                flexDirection: "row",
-                                                justifyContent: "space-between",
-                                            },
+                                            styles.flexRowContainer,
+                                            { gap: 8 },
                                         ]}
                                     >
                                         <View
                                             style={[
-                                                {
-                                                    flex: 1,
-                                                    flexDirection: "row",
-                                                    alignItems: "center",
-                                                    gap: 8,
-                                                },
+                                                styles.flexRowContainer,
+                                                { gap: 8 },
                                             ]}
                                         >
                                             <Image
@@ -202,7 +192,7 @@ export default function CommunitiesTab() {
                                                             .border,
                                                 }}
                                             />
-                                            <View>
+                                            <View style={{ flex: 1 }}>
                                                 <ThemedText type="defaultSemiBold">
                                                     {item.name}
                                                 </ThemedText>
@@ -233,8 +223,8 @@ export default function CommunitiesTab() {
                                                 type="caption"
                                                 style={{
                                                     color: Colors[colorScheme]
-                                                        .bg_light,
-                                                    fontWeight: 600,
+                                                        .button_text,
+                                                    fontWeight: "semibold",
                                                 }}
                                             >
                                                 {item.joined
@@ -243,7 +233,12 @@ export default function CommunitiesTab() {
                                             </ThemedText>
                                         </Pressable>
                                     </View>
-                                    <ThemedText type="caption">
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                        }}
+                                    >
                                         {item.desc}
                                     </ThemedText>
                                 </View>
@@ -269,7 +264,6 @@ const styles = StyleSheet.create({
     card: {
         flex: 1,
         gap: 8,
-        alignContent: "flex-start",
         borderRadius: 8,
         paddingVertical: 8,
         paddingHorizontal: 12,
@@ -282,7 +276,11 @@ const styles = StyleSheet.create({
         alignItems: "center",
         flexDirection: "row",
     },
-
+    flexRowContainer: {
+        flex: 1,
+        alignItems: "center",
+        flexDirection: "row",
+    },
     titleContainer: {
         flexDirection: "row",
         alignItems: "center",
