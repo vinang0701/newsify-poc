@@ -8,12 +8,9 @@ import {
 	Button,
 	TextInput,
 	ScrollView,
+	Alert,
 } from "react-native";
-import { EnrichedTextInput } from "react-native-enriched";
-import type {
-	EnrichedTextInputInstance,
-	OnChangeStateEvent,
-} from "react-native-enriched";
+import axios from "axios";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -26,10 +23,30 @@ import { WebView } from "react-native-webview";
 
 export default function CreatePost() {
 	const colorScheme = useColorScheme() ?? "light";
-	const ref = useRef<EnrichedTextInputInstance>(null);
 	const [inputValue, setInputValue] = useState("");
 
-	const [stylesState, setStylesState] = useState<OnChangeStateEvent | null>();
+	async function publishPost() {
+		if (inputValue === "") {
+			Alert.alert("stop it ah");
+			return;
+		}
+
+		try {
+			const results = await axios.post(
+				"http://10.0.2.2:8000/api/v1/users/create",
+				{
+					email: "vanessa@uow.edu.au",
+					content: inputValue,
+				},
+			);
+
+			if (results.status === 200) {
+				console.log("hell yea!");
+			}
+		} catch (error) {
+			throw error;
+		}
+	}
 	return (
 		<ScrollView
 			style={{
@@ -94,6 +111,7 @@ export default function CreatePost() {
 					style={styles.textInput}
 				/>
 				<Pressable
+					onPress={publishPost}
 					style={[
 						styles.button,
 						{
