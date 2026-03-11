@@ -6,6 +6,8 @@ import {
 	useColorScheme,
 	View,
 	Button,
+	TextInput,
+	ScrollView,
 } from "react-native";
 import { EnrichedTextInput } from "react-native-enriched";
 import type {
@@ -13,12 +15,6 @@ import type {
 	OnChangeStateEvent,
 } from "react-native-enriched";
 
-import Animated, {
-	interpolate,
-	useAnimatedRef,
-	useAnimatedStyle,
-	useScrollOffset,
-} from "react-native-reanimated";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,24 +22,35 @@ import { Header } from "@/components/header";
 import { Colors } from "@/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useRef } from "react";
-export default function CreatePost() {
-	const SERVER_URL =
-		(process.env.EXPO_PUBLIC_SERVER_URL as string) ?? undefined;
+import { WebView } from "react-native-webview";
 
+export default function CreatePost() {
 	const colorScheme = useColorScheme() ?? "light";
-	const queryClient = useQueryClient();
 	const ref = useRef<EnrichedTextInputInstance>(null);
+	const [inputValue, setInputValue] = useState("");
 
 	const [stylesState, setStylesState] = useState<OnChangeStateEvent | null>();
 	return (
-		<SafeAreaView>
-			<Animated.ScrollView>
+		<ScrollView
+			style={{
+				backgroundColor: Colors[colorScheme].bg,
+			}}
+		>
+			<SafeAreaView>
 				<Header />
+			</SafeAreaView>
+
+			<View style={{ paddingHorizontal: 16, gap: 24 }}>
 				<ThemedView style={styles.titleContainer}>
 					<ThemedText type="sub_heading">Creating a Post</ThemedText>
 				</ThemedView>
 				{/* Tab navigation */}
-				<ThemedView style={{ flexDirection: "row", gap: 8 }}>
+				<ThemedView
+					style={{
+						flexDirection: "row",
+						gap: 8,
+					}}
+				>
 					<Pressable
 						onPress={() => {}}
 						style={[
@@ -52,7 +59,9 @@ export default function CreatePost() {
 						]}
 					>
 						<ThemedText
-							style={{ color: Colors[colorScheme].button_text }}
+							style={{
+								color: Colors[colorScheme].button_text,
+							}}
 						>
 							New
 						</ThemedText>
@@ -65,27 +74,43 @@ export default function CreatePost() {
 						]}
 					>
 						<ThemedText
-							style={{ color: Colors[colorScheme].button_text }}
+							style={{
+								color: Colors[colorScheme].button_text,
+							}}
 						>
 							Drafts
 						</ThemedText>
 					</Pressable>
 				</ThemedView>
 				{/* Rich Text Editor */}
-				<View style={styles.container}>
-					<EnrichedTextInput
-						ref={ref}
-						onChangeState={(e) => setStylesState(e.nativeEvent)}
-						style={styles.input}
-					/>
-					<Button
-						title={stylesState?.bold.isActive ? "Unbold" : "Bold"}
-						color={stylesState?.bold.isActive ? "green" : "gray"}
-						onPress={() => ref.current?.toggleBold()}
-					/>
-				</View>
-			</Animated.ScrollView>
-		</SafeAreaView>
+				<TextInput
+					editable
+					multiline
+					numberOfLines={4}
+					value={inputValue}
+					onChangeText={(text) => {
+						setInputValue(text);
+					}}
+					style={styles.textInput}
+				/>
+				<Pressable
+					style={[
+						styles.button,
+						{
+							backgroundColor: Colors[colorScheme].tint,
+							alignSelf: "flex-end",
+						},
+					]}
+				>
+					<ThemedText
+						type="defaultSemiBold"
+						style={{ color: Colors[colorScheme].button_text }}
+					>
+						Publish
+					</ThemedText>
+				</Pressable>
+			</View>
+		</ScrollView>
 	);
 }
 
@@ -93,28 +118,23 @@ const styles = StyleSheet.create({
 	titleContainer: {
 		flexDirection: "row",
 		alignItems: "center",
-		gap: 8,
-	},
-	stepContainer: {
-		gap: 8,
-		marginBottom: 8,
 	},
 	button: {
 		alignSelf: "flex-start",
 		paddingVertical: 4,
 		paddingHorizontal: 12,
-		marginTop: 12,
+		borderRadius: 8,
 	},
 	container: {
 		flex: 1,
 		justifyContent: "center",
 		alignItems: "center",
 	},
-	input: {
-		width: "100%",
-		fontSize: 20,
-		padding: 10,
-		maxHeight: 200,
-		backgroundColor: "lightgray",
+	textInput: {
+		padding: 16,
+		textAlignVertical: "top",
+		height: "100%",
+		borderColor: "#000",
+		borderWidth: 1,
 	},
 });
