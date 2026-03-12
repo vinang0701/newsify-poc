@@ -18,6 +18,7 @@ class UserPublishPostBody(BaseModel):
     def print_content(self):
         print(self.content)
 
+
 def moderate_text(text: str):
     # ingest
     # call api
@@ -26,8 +27,10 @@ def moderate_text(text: str):
         model="omni-moderation-latest",
         input=text,
     )
-    print(response)
-    return response
+    print(response.results)
+    print("Checking for flag...")
+    print(response.results[0].flagged)
+    return response.results[0].flagged
 
 
 @router.get("/")
@@ -35,14 +38,12 @@ def test_route():
     print("Hello World!")
     return "Hello"
 
+
 @router.post("/create")
 async def create_post(item: UserPublishPostBody):
     moderation = moderate_text(item.content)
 
     return {
-        "email": item.email,
         "content": item.content,
-        "moderation": moderation.model_dump()
+        "moderation": moderation,
     }
-
-
