@@ -6,7 +6,7 @@ import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import { Image } from "expo-image";
 import { Link } from "expo-router";
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Text,
     Button,
@@ -17,11 +17,20 @@ import {
     TouchableHighlight,
     useColorScheme,
     View,
+    Modal,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { News } from "@/types";
+import { News } from "@/data/types";
 import { Header } from "@/components/header";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import NewsPostCard from "@/components/news_post_card";
+import CommentsModal from "@/components/comments_modal";
+import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useNavigation } from "expo-router";
 const HEADER_HEIGHT = 250;
 
 const DATA = [
@@ -73,6 +82,33 @@ export default function HomeScreen() {
     const colorScheme = useColorScheme() ?? "light";
     const [news, setNews] = useState<News[]>([]);
     const [activeFilter, setActiveFilter] = useState("Recent");
+    const snapPoints = useMemo(() => ["100%"], []);
+    const bottomSheetRef = useRef<BottomSheet>(null);
+    const insets = useSafeAreaInsets();
+    const navigation = useNavigation();
+    const handleExpandSheet = () => {
+        bottomSheetRef.current?.expand();
+    };
+
+    const handleSheetChange = (index: number) => {
+        if (index === -1) {
+            navigation.getParent()?.setOptions({
+                tabBarVisible: false,
+            });
+        }
+    };
+
+    const renderBackdrop = useCallback(
+        (props: any) => (
+            <BottomSheetBackdrop
+                appearsOnIndex={0}
+                disappearsOnIndex={-1}
+                {...props}
+            />
+        ),
+        [],
+    );
+
     useEffect(() => {
         const fetchNews = () => {
             if (!newsArticles?.articles) return;
@@ -90,221 +126,95 @@ export default function HomeScreen() {
         };
         fetchNews();
     }, []);
-    return (
-        <SafeAreaView
-            edges={["top"]}
-            style={[
-                {
-                    backgroundColor: Colors[colorScheme].bg_light,
-                },
-            ]}
-        >
-            <Header />
-            <ScrollView
-                style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    backgroundColor: Colors[colorScheme].bg,
-                }}
-            >
-                <View>
-                    <FlashList
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        style={{ marginBottom: 12, elevation: 10 }}
-                        data={DATA}
-                        renderItem={({ item }) => (
-                            <Pressable
-                                style={{
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 4,
-                                    backgroundColor:
-                                        activeFilter === item.title
-                                            ? Colors[colorScheme].tint
-                                            : Colors[colorScheme].bg,
-                                    borderColor: Colors[colorScheme].border,
-                                    borderWidth: 1,
-                                    marginRight: 8,
-                                    borderRadius: 4,
-                                }}
-                                onPress={() => {
-                                    // Check if active state is pressed
-                                    if (activeFilter === item.title) {
-                                        return;
-                                    } else {
-                                        setActiveFilter(item.title);
-                                    }
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        color:
-                                            activeFilter === item.title
-                                                ? Colors[colorScheme]
-                                                      .button_text
-                                                : Colors[colorScheme].text,
-                                    }}
-                                >
-                                    {item.title}
-                                </Text>
-                            </Pressable>
-                        )}
-                    />
-                </View>
-                {news.map((newsItem, index) => {
-                    return (
-                        <View
-                            key={index}
-                            style={[
-                                styles.card,
-                                {
-                                    backgroundColor:
-                                        Colors[colorScheme].bg_light,
-                                },
-                            ]}
-                        >
-                            <View style={styles.cardInfoContainer}>
-                                <Image
-                                    source={require("@/assets/images/profile.png")}
-                                    style={{ width: 28, height: 28 }}
-                                />
-                                <ThemedText type="defaultSemiBold">
-                                    Author
-                                </ThemedText>
-                                <ThemedText
-                                    type="default"
-                                    style={{
-                                        fontSize: 10,
-                                        color: "hsl(0, 0%, 5%)",
-                                    }}
-                                >
-                                    1d
-                                </ThemedText>
-                                <TouchableHighlight
-                                    style={{ marginLeft: "auto" }}
-                                >
-                                    <Feather
-                                        name="more-vertical"
-                                        size={20}
-                                        color={Colors[colorScheme].icon}
-                                    />
-                                </TouchableHighlight>
-                            </View>
-                            <View>
-                                {/* Content */}
-                                <Image
-                                    alt="image"
-                                    source={{
-                                        uri: newsItem.urlToImage,
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        height: 200,
-                                        objectFit: "contain",
-                                    }}
-                                />
-                                <ThemedText
-                                    type="sub_heading"
-                                    style={{
-                                        paddingTop: 12,
-                                        paddingHorizontal: 12,
-                                        fontSize: 20,
-                                    }}
-                                >
-                                    {newsItem.title}
-                                </ThemedText>
-                                <ThemedText
-                                    style={{
-                                        paddingVertical: 4,
-                                        paddingHorizontal: 12,
-                                        fontSize: 14,
-                                    }}
-                                >
-                                    {newsItem.content?.replace(
-                                        /\s*\[\+\d+ chars\]$/,
-                                        "",
-                                    )}
-                                    <Link href="/(tabs)/create-post">
-                                        <ThemedText
-                                            type="link"
-                                            style={{ fontSize: 14 }}
-                                        >
-                                            Read More
-                                        </ThemedText>
-                                    </Link>
-                                </ThemedText>
-                            </View>
 
-                            <View style={styles.iconsContainer}>
-                                {/* Interaction */}
-                                <View
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaView
+                edges={["top"]}
+                style={[
+                    {
+                        flex: 1,
+                        backgroundColor: Colors[colorScheme].bg_light,
+                    },
+                ]}
+            >
+                <Header />
+                <ScrollView
+                    style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        backgroundColor: Colors[colorScheme].bg,
+                    }}
+                >
+                    <View>
+                        <FlashList
+                            keyExtractor={(item) => item.id}
+                            horizontal
+                            style={{ marginBottom: 12, elevation: 10 }}
+                            data={DATA}
+                            renderItem={({ item }) => (
+                                <Pressable
                                     style={{
-                                        flex: 1,
-                                        flexDirection: "row",
-                                        justifyContent: "flex-start",
-                                        gap: 24,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 4,
+                                        backgroundColor:
+                                            activeFilter === item.title
+                                                ? Colors[colorScheme].tint
+                                                : Colors[colorScheme].bg_light,
+                                        borderColor: Colors[colorScheme].border,
+                                        borderWidth: 1,
+                                        marginRight: 8,
+                                        borderRadius: 4,
+                                    }}
+                                    onPress={() => {
+                                        // Check if active state is pressed
+                                        if (activeFilter === item.title) {
+                                            return;
+                                        } else {
+                                            setActiveFilter(item.title);
+                                        }
                                     }}
                                 >
-                                    <Pressable
+                                    <ThemedText
+                                        type="body_small"
+                                        emphasized={true}
                                         style={{
-                                            flex: 0,
-                                            flexDirection: "row",
-                                            gap: 4,
-                                            alignItems: "center",
-                                            justifyContent: "flex-start",
+                                            color:
+                                                activeFilter === item.title
+                                                    ? Colors[colorScheme]
+                                                          .button_text
+                                                    : Colors[colorScheme].tint,
                                         }}
                                     >
-                                        <Feather
-                                            name="heart"
-                                            size={24}
-                                            color="black"
-                                        />
-                                        <Text>100</Text>
-                                    </Pressable>
-                                    <Pressable
-                                        style={{
-                                            flex: 0,
-                                            flexDirection: "row",
-                                            gap: 4,
-                                            justifyContent: "flex-start",
-                                            alignItems: "center",
-                                        }}
-                                    >
-                                        <Feather
-                                            name="message-square"
-                                            size={24}
-                                            color="black"
-                                        />
-                                        <Text>100</Text>
-                                    </Pressable>
-                                    <Pressable
-                                        style={{
-                                            flex: 0,
-                                            flexDirection: "row",
-                                            justifyContent: "flex-start",
-                                            gap: 4,
-                                            alignItems: "center",
-                                        }}
-                                    >
-                                        <Feather
-                                            name="repeat"
-                                            size={24}
-                                            color="black"
-                                        />
-                                        <Text>100</Text>
-                                    </Pressable>
-                                </View>
-                                <Feather
-                                    name="bookmark"
-                                    size={24}
-                                    color="black"
-                                />
-                            </View>
-                        </View>
-                    );
-                })}
-            </ScrollView>
-        </SafeAreaView>
+                                        {item.title}
+                                    </ThemedText>
+                                </Pressable>
+                            )}
+                        />
+                    </View>
+                    {news.map((newsItem, index) => {
+                        return (
+                            <NewsPostCard
+                                news={newsItem}
+                                key={index}
+                                onCommentPress={handleExpandSheet}
+                            />
+                        );
+                    })}
+                </ScrollView>
+                <BottomSheet
+                    ref={bottomSheetRef}
+                    index={-1}
+                    backdropComponent={renderBackdrop}
+                    snapPoints={snapPoints}
+                    enablePanDownToClose
+                    topInset={insets.top}
+                    onChange={handleSheetChange}
+                >
+                    <CommentsModal />
+                </BottomSheet>
+            </SafeAreaView>
+        </GestureHandlerRootView>
     );
 }
 

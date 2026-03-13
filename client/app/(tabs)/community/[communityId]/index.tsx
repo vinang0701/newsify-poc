@@ -26,7 +26,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemedText } from "@/components/themed-text";
-import { News } from "@/types";
+import { News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
 import newsArticles from "@/data/news.json";
 
@@ -282,7 +282,7 @@ export default function CommunityPage() {
                                             }}
                                         >
                                             {item.content}
-                                            <Link href="/(tabs)/create-post">
+                                            <Link href="/(tabs)/create">
                                                 <ThemedText
                                                     type="link"
                                                     style={{ fontSize: 14 }}
@@ -332,23 +332,6 @@ export default function CommunityPage() {
                                             >
                                                 <Feather
                                                     name="message-square"
-                                                    size={24}
-                                                    color="black"
-                                                />
-                                                <Text>100</Text>
-                                            </Pressable>
-                                            <Pressable
-                                                style={{
-                                                    flex: 0,
-                                                    flexDirection: "row",
-                                                    justifyContent:
-                                                        "flex-start",
-                                                    gap: 4,
-                                                    alignItems: "center",
-                                                }}
-                                            >
-                                                <Feather
-                                                    name="repeat"
                                                     size={24}
                                                     color="black"
                                                 />
