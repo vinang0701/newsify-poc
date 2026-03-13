@@ -20,3 +20,11 @@ export interface Community {
 export interface ModalProps {
     onModalPress: () => void;
 }
+
+export interface LiveStream {
+    id: string;
+    title: string;
+    community: string;
+    desc: string;
+    view_count: number;
+}

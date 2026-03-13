@@ -2,7 +2,7 @@ import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const stream = () => {
+const modalTest = () => {
     const [modalVisible, setModalVisible] = useState(false);
     return (
         <SafeAreaView style={styles.centeredView}>
@@ -79,4 +79,4 @@ const styles = StyleSheet.create({
         textAlign: "center",
     },
 });
-export default stream;
+export default modalTest;

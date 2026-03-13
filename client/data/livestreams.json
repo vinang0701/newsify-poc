@@ -1,0 +1,34 @@
+{
+    "status": "ok",
+    "totalResults": 3,
+    "livestreams": [
+        {
+            "id": "1",
+            "community": "NSC",
+            "title": "NSC VS NWS",
+            "desc": "Join us for an exciting match agaisnt NWS",
+            "viewer_count": 100
+        },
+        {
+            "id": "2",
+            "community": "NSC",
+            "title": "NSC VS NWS",
+            "desc": "Join us for an exciting match agaisnt NWS",
+            "viewer_count": 100
+        },
+        {
+            "id": "3",
+            "community": "NSC",
+            "title": "NSC VS NWS",
+            "desc": "Join us for an exciting match agaisnt NWS",
+            "viewer_count": 100
+        },
+        {
+            "id": "4",
+            "community": "NSC",
+            "title": "NSC VS NWS",
+            "desc": "Join us for an exciting match agaisnt NWS",
+            "viewer_count": 100
+        }
+    ]
+}

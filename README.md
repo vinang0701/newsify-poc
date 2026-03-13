@@ -111,5 +111,5 @@ pip install -r requirements.txt
 In the server/ directory, paste this in the command line:
 
 ```
-fastapi dev main.py
+fastapi dev
 ```

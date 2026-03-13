@@ -29,6 +29,7 @@ import { ThemedText } from "@/components/themed-text";
 import { News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
 import newsArticles from "@/data/news.json";
+import NewsPostCard from "@/components/news_post_card";
 
 const HEADER_HEIGHT = 250;
 
@@ -215,136 +216,7 @@ export default function CommunityPage() {
                             nestedScrollEnabled={false}
                             data={news}
                             renderItem={({ item }) => (
-                                <View
-                                    style={[
-                                        styles.card,
-                                        {
-                                            backgroundColor:
-                                                Colors[colorScheme].bg_light,
-                                        },
-                                    ]}
-                                >
-                                    <View style={styles.cardInfoContainer}>
-                                        <Image
-                                            source={require("@/assets/images/profile.png")}
-                                            style={{ width: 28, height: 28 }}
-                                        />
-                                        <ThemedText type="defaultSemiBold">
-                                            Author
-                                        </ThemedText>
-                                        <ThemedText
-                                            type="default"
-                                            style={{
-                                                fontSize: 10,
-                                                color: "hsl(0, 0%, 5%)",
-                                            }}
-                                        >
-                                            1d
-                                        </ThemedText>
-                                        <Pressable
-                                            style={{ marginLeft: "auto" }}
-                                        >
-                                            <Feather
-                                                name="more-vertical"
-                                                size={20}
-                                                color={Colors[colorScheme].icon}
-                                            />
-                                        </Pressable>
-                                    </View>
-                                    <View>
-                                        {/* Content */}
-                                        <Image
-                                            alt="image"
-                                            source={{
-                                                uri: item.urlToImage,
-                                            }}
-                                            style={{
-                                                width: "100%",
-                                                height: 200,
-                                                objectFit: "contain",
-                                            }}
-                                        />
-                                        <ThemedText
-                                            type="sub_heading"
-                                            style={{
-                                                paddingTop: 12,
-                                                paddingHorizontal: 12,
-                                                fontSize: 20,
-                                            }}
-                                        >
-                                            {item.title}
-                                        </ThemedText>
-                                        <ThemedText
-                                            style={{
-                                                paddingVertical: 4,
-                                                paddingHorizontal: 12,
-                                                fontSize: 14,
-                                            }}
-                                        >
-                                            {item.content}
-                                            <Link href="/(tabs)/create">
-                                                <ThemedText
-                                                    type="link"
-                                                    style={{ fontSize: 14 }}
-                                                >
-                                                    Read More
-                                                </ThemedText>
-                                            </Link>
-                                        </ThemedText>
-                                    </View>
-
-                                    <View style={styles.iconsContainer}>
-                                        {/* Interaction */}
-                                        <View
-                                            style={{
-                                                flex: 1,
-                                                flexDirection: "row",
-                                                justifyContent: "flex-start",
-                                                gap: 24,
-                                            }}
-                                        >
-                                            <Pressable
-                                                style={{
-                                                    flex: 0,
-                                                    flexDirection: "row",
-                                                    gap: 4,
-                                                    alignItems: "center",
-                                                    justifyContent:
-                                                        "flex-start",
-                                                }}
-                                            >
-                                                <Feather
-                                                    name="heart"
-                                                    size={24}
-                                                    color="black"
-                                                />
-                                                <Text>100</Text>
-                                            </Pressable>
-                                            <Pressable
-                                                style={{
-                                                    flex: 0,
-                                                    flexDirection: "row",
-                                                    gap: 4,
-                                                    justifyContent:
-                                                        "flex-start",
-                                                    alignItems: "center",
-                                                }}
-                                            >
-                                                <Feather
-                                                    name="message-square"
-                                                    size={24}
-                                                    color="black"
-                                                />
-                                                <Text>100</Text>
-                                            </Pressable>
-                                        </View>
-                                        <Feather
-                                            name="bookmark"
-                                            size={24}
-                                            color="black"
-                                        />
-                                    </View>
-                                </View>
+                                <NewsPostCard news={item} />
                             )}
                         />
                     </View>

@@ -193,13 +193,7 @@ export default function HomeScreen() {
                         />
                     </View>
                     {news.map((newsItem, index) => {
-                        return (
-                            <NewsPostCard
-                                news={newsItem}
-                                key={index}
-                                onCommentPress={handleExpandSheet}
-                            />
-                        );
+                        return <NewsPostCard news={newsItem} key={index} />;
                     })}
                 </ScrollView>
                 <BottomSheet

@@ -15,10 +15,9 @@ import { ModalProps, News } from "@/data/types";
 
 type NewsPostCardProps = {
     news: News;
-    onCommentPress: () => void;
 };
 
-function NewsPostCard({ news, onCommentPress }: NewsPostCardProps) {
+function NewsPostCard({ news }: NewsPostCardProps) {
     const colorScheme = useColorScheme() ?? "light";
 
     return (
@@ -114,23 +113,24 @@ function NewsPostCard({ news, onCommentPress }: NewsPostCardProps) {
                         <Feather name="heart" size={24} color="black" />
                         <Text>100</Text>
                     </Pressable>
-                    <Pressable
-                        onPress={onCommentPress}
-                        style={{
-                            flex: 0,
-                            flexDirection: "row",
-                            gap: 4,
-                            justifyContent: "flex-start",
-                            alignItems: "center",
-                        }}
-                    >
-                        <Feather
-                            name="message-square"
-                            size={24}
-                            color="black"
-                        />
-                        <Text>100</Text>
-                    </Pressable>
+                    <Link href="/comment" push asChild>
+                        <Pressable
+                            style={{
+                                flex: 0,
+                                flexDirection: "row",
+                                gap: 4,
+                                justifyContent: "flex-start",
+                                alignItems: "center",
+                            }}
+                        >
+                            <Feather
+                                name="message-square"
+                                size={24}
+                                color="black"
+                            />
+                            <Text>100</Text>
+                        </Pressable>
+                    </Link>
                 </View>
                 <Feather name="bookmark" size={24} color="black" />
             </View>

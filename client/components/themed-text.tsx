@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     },
     sub_heading: {
         fontSize: 22,
-        fontWeight: "700",
+        fontWeight: 800,
         lineHeight: 28,
     },
     caption: {

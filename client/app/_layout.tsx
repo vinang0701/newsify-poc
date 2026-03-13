@@ -61,8 +61,15 @@ export default function RootLayout() {
                                 headerShown: false,
                             }}
                         />
+                        <Stack.Screen
+                            name="comment"
+                            options={{
+                                headerShown: false,
+                                presentation: "transparentModal",
+                                animation: "none",
+                            }}
+                        />
                     </Stack>
-
                     <StatusBar style="auto" />
                 </ThemeProvider>
             </SafeAreaProvider>
