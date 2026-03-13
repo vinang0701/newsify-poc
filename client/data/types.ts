@@ -16,3 +16,7 @@ export interface Community {
     public: boolean;
     joined: boolean;
 };
+
+export interface ModalProps {
+    onModalPress: () => void;
+}

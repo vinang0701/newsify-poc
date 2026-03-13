@@ -279,22 +279,6 @@ export default function Profile() {
                                     />
                                     <Text>100</Text>
                                 </Pressable>
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        justifyContent: "flex-start",
-                                        gap: 4,
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Feather
-                                        name="repeat"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
                             </View>
                             <Feather name="bookmark" size={24} color="black" />
                         </View>
@@ -395,22 +379,6 @@ export default function Profile() {
                                     />
                                     <Text>100</Text>
                                 </Pressable>
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        justifyContent: "flex-start",
-                                        gap: 4,
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Feather
-                                        name="repeat"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
                             </View>
                             <Feather name="bookmark" size={24} color="black" />
                         </View>
@@ -506,22 +474,6 @@ export default function Profile() {
                                 >
                                     <Feather
                                         name="message-square"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        justifyContent: "flex-start",
-                                        gap: 4,
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Feather
-                                        name="repeat"
                                         size={24}
                                         color="black"
                                     />

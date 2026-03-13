@@ -17,7 +17,7 @@ import {
     View,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
-import { Community } from "@/types";
+import { Community } from "@/data/types";
 import { Header } from "@/components/header";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -214,22 +214,30 @@ export default function CommunitiesTab() {
                                                 paddingHorizontal: 12,
                                                 backgroundColor: item.joined
                                                     ? Colors[colorScheme]
-                                                          .secondary_dark
-                                                    : Colors[colorScheme].tint,
+                                                          .alert_red
+                                                    : Colors[colorScheme]
+                                                          .bg_light,
                                                 borderRadius: 20,
+                                                borderWidth: 2,
+                                                borderColor: item.joined
+                                                    ? "transparent"
+                                                    : Colors[colorScheme].tint,
                                             }}
                                         >
                                             <ThemedText
                                                 type="caption"
+                                                emphasized
                                                 style={{
-                                                    color: Colors[colorScheme]
-                                                        .button_text,
+                                                    color: item.joined
+                                                        ? Colors[colorScheme]
+                                                              .button_text
+                                                        : Colors[colorScheme]
+                                                              .tint,
+
                                                     fontWeight: "semibold",
                                                 }}
                                             >
-                                                {item.joined
-                                                    ? "Joined"
-                                                    : "Join"}
+                                                {item.joined ? "Leave" : "Join"}
                                             </ThemedText>
                                         </Pressable>
                                     </View>

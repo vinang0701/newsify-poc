@@ -10,10 +10,12 @@ export type ThemedTextProps = TextProps & {
         | "default"
         | "defaultSemiBold"
         | "body_medium"
+        | "body_small"
         | "heading"
         | "sub_heading"
         | "link"
         | "caption";
+    emphasized?: false | true;
 };
 
 export function ThemedText({
@@ -21,6 +23,7 @@ export function ThemedText({
     lightColor,
     darkColor,
     type = "default",
+    emphasized = false,
     ...rest
 }: ThemedTextProps) {
     const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
@@ -33,10 +36,12 @@ export function ThemedText({
                 type === "heading" ? styles.heading : undefined,
                 type === "defaultSemiBold" ? styles.defaultSemiBold : undefined,
                 type === "body_medium" ? styles.body_medium : undefined,
+                type === "body_small" ? styles.body_small : undefined,
                 type === "sub_heading" ? styles.sub_heading : undefined,
                 type === "link" ? styles.link : undefined,
                 type === "caption" ? styles.caption : undefined,
                 style,
+                emphasized === true ? styles.emphasized : undefined,
             ]}
             {...rest}
         />
@@ -57,6 +62,11 @@ const styles = StyleSheet.create({
         fontSize: 14,
         lineHeight: 20,
     },
+    body_small: {
+        fontSize: 12,
+        lineHeight: 16,
+    },
+
     heading: {
         fontSize: 32,
         fontWeight: "bold",
@@ -75,5 +85,8 @@ const styles = StyleSheet.create({
         lineHeight: 30,
         fontSize: 16,
         color: "#0a7ea4",
+    },
+    emphasized: {
+        fontWeight: 600,
     },
 });
