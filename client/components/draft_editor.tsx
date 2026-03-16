@@ -75,7 +75,10 @@ const DraftEditor = () => {
         <View
             style={[
                 styles.cardContainer,
-                { backgroundColor: Colors[colorScheme].bg_light },
+                {
+                    backgroundColor: Colors[colorScheme].bg_light,
+                    borderColor: Colors[colorScheme].border,
+                },
             ]}
         >
             <KeyboardAvoidingView>
@@ -165,12 +168,14 @@ const styles = StyleSheet.create({
         flex: 1,
         height: "100%",
         borderRadius: 8,
+        borderWidth: 1,
         gap: 16,
         alignItems: "flex-start",
         justifyContent: "space-between",
         paddingHorizontal: 16,
         paddingVertical: 16,
         minHeight: 600,
+        elevation: 2,
     },
     input: {
         flex: 1,
