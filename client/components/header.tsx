@@ -10,7 +10,7 @@ import {
     TouchableOpacity,
     useColorScheme,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Image } from "expo-image";
 import { Link, usePathname, useRouter } from "expo-router";
 import Feather from "@expo/vector-icons/Feather";
 
@@ -39,7 +39,7 @@ export function Header() {
             style={[
                 styles.headerContainer,
                 {
-                    backgroundColor: Colors[colorScheme].bg_light,
+                    backgroundColor: Colors[colorScheme].tint,
                 },
             ]}
         >
@@ -47,24 +47,24 @@ export function Header() {
                 <Feather
                     name="bell"
                     size={24}
-                    color={Colors[colorScheme].text}
+                    color={Colors[colorScheme].button_text}
                     weight="bold"
                 />
             </TouchableOpacity>
 
-            <Text
-                style={{
-                    fontSize: 24,
-                    color: Colors[colorScheme].tint,
-                }}
-            >
-                N
-            </Text>
+            <Image
+                source={require("@/assets/images/icon_light.png")}
+                style={{ width: 42, height: 20, resizeMode: "contain" }}
+            />
 
             <Link href="/search" push asChild>
                 <Pressable onPress={() => console.log("hello")}>
                     <Animated.View>
-                        <Feather name="search" size={24} />
+                        <Feather
+                            name="search"
+                            size={24}
+                            color={Colors[colorScheme].button_text}
+                        />
                     </Animated.View>
                 </Pressable>
             </Link>

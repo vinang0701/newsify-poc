@@ -140,6 +140,7 @@ export default function HomeScreen() {
             >
                 <Header />
                 <ScrollView
+                    showsVerticalScrollIndicator={false}
                     style={{
                         paddingHorizontal: 16,
                         paddingVertical: 12,
@@ -155,12 +156,12 @@ export default function HomeScreen() {
                             renderItem={({ item }) => (
                                 <Pressable
                                     style={{
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 4,
                                         backgroundColor:
                                             activeFilter === item.title
                                                 ? Colors[colorScheme].tint
                                                 : Colors[colorScheme].bg_light,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 4,
                                         borderColor: Colors[colorScheme].border,
                                         borderWidth: 1,
                                         marginRight: 8,

@@ -5,8 +5,6 @@ import {
     Text,
     useColorScheme,
     View,
-    Button,
-    KeyboardAvoidingView,
     Platform,
     TextInput,
     ScrollView,
@@ -24,6 +22,8 @@ import { Colors } from "@/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useRef } from "react";
 import { useRouter } from "expo-router";
+import DraftEditor from "@/components/draft_editor";
+import DraftsTab from "@/components/drafts";
 
 type ModerationResponse = {
     content: string;
@@ -35,6 +35,7 @@ export default function CreatePost() {
     const [inputValue, setInputValue] = useState("");
     const [moderationResponse, setModerationResponse] =
         useState<ModerationResponse>();
+    const [activeFilter, setActiveFilter] = useState("New");
     const queryClient = useQueryClient();
     const [modalVisible, setModalVisible] = useState(false);
     const router = useRouter();
@@ -77,7 +78,16 @@ export default function CreatePost() {
     }
 
     return (
-        <SafeAreaView>
+        <ScrollView
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={false}
+            style={{
+                backgroundColor: Colors[colorScheme].bg,
+            }}
+        >
+            <SafeAreaView edges={["top"]}>
+                <Header />
+            </SafeAreaView>
             {isPending && (
                 <Modal
                     animationType="slide"
@@ -92,6 +102,95 @@ export default function CreatePost() {
                     </View>
                 </Modal>
             )}
+
+            <View
+                style={{
+                    flex: 1,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    gap: 12,
+                }}
+            >
+                <ThemedView style={styles.titleContainer}>
+                    <ThemedText type="sub_heading">Creating a Post</ThemedText>
+                </ThemedView>
+                {/* Tab navigation */}
+                <ThemedView
+                    style={{
+                        flexDirection: "row",
+                        gap: 8,
+                    }}
+                >
+                    <Pressable
+                        onPress={() => {
+                            setActiveFilter("new");
+                        }}
+                        style={[
+                            {
+                                backgroundColor:
+                                    activeFilter.toLowerCase() === "new"
+                                        ? Colors[colorScheme].tint
+                                        : Colors[colorScheme].bg_light,
+                                paddingHorizontal: 12,
+                                paddingVertical: 4,
+                                borderColor: Colors[colorScheme].border,
+                                borderWidth: 1,
+
+                                borderRadius: 4,
+                            },
+                        ]}
+                    >
+                        <ThemedText
+                            type="caption"
+                            emphasized
+                            style={{
+                                color:
+                                    activeFilter.toLowerCase() === "new"
+                                        ? Colors[colorScheme].button_text
+                                        : Colors[colorScheme].tint,
+                            }}
+                        >
+                            New
+                        </ThemedText>
+                    </Pressable>
+                    <Pressable
+                        onPress={() => {
+                            setActiveFilter("drafts");
+                        }}
+                        style={[
+                            {
+                                backgroundColor:
+                                    activeFilter.toLowerCase() === "drafts"
+                                        ? Colors[colorScheme].tint
+                                        : Colors[colorScheme].bg_light,
+                                paddingHorizontal: 12,
+                                paddingVertical: 4,
+                                borderColor: Colors[colorScheme].border,
+                                borderWidth: 1,
+                                borderRadius: 4,
+                            },
+                        ]}
+                    >
+                        <ThemedText
+                            type="caption"
+                            emphasized
+                            style={{
+                                color:
+                                    activeFilter.toLowerCase() === "drafts"
+                                        ? Colors[colorScheme].button_text
+                                        : Colors[colorScheme].tint,
+                            }}
+                        >
+                            Drafts
+                        </ThemedText>
+                    </Pressable>
+                </ThemedView>
+                {activeFilter.toLowerCase() === "new" ? (
+                    <DraftEditor />
+                ) : (
+                    <DraftsTab />
+                )}
+            </View>
             {data && (
                 <Modal
                     animationType="slide"
@@ -218,90 +317,7 @@ export default function CreatePost() {
                     </View>
                 </Modal>
             )}
-
-            <ScrollView
-                style={{
-                    backgroundColor: Colors[colorScheme].bg,
-                }}
-            >
-                <Header />
-
-                <View style={{ paddingHorizontal: 16, gap: 24 }}>
-                    <ThemedView style={styles.titleContainer}>
-                        <ThemedText type="sub_heading">
-                            Creating a Post
-                        </ThemedText>
-                    </ThemedView>
-                    {/* Tab navigation */}
-                    <ThemedView
-                        style={{
-                            flexDirection: "row",
-                            gap: 8,
-                        }}
-                    >
-                        <Pressable
-                            onPress={() => {}}
-                            style={[
-                                styles.button,
-                                { backgroundColor: Colors[colorScheme].tint },
-                            ]}
-                        >
-                            <ThemedText
-                                style={{
-                                    color: Colors[colorScheme].button_text,
-                                }}
-                            >
-                                New
-                            </ThemedText>
-                        </Pressable>
-                        <Pressable
-                            onPress={() => {}}
-                            style={[
-                                styles.button,
-                                { backgroundColor: Colors[colorScheme].tint },
-                            ]}
-                        >
-                            <ThemedText
-                                style={{
-                                    color: Colors[colorScheme].button_text,
-                                }}
-                            >
-                                Drafts
-                            </ThemedText>
-                        </Pressable>
-                    </ThemedView>
-                    {/* Rich Text Editor */}
-                    <TextInput
-                        editable
-                        multiline
-                        numberOfLines={4}
-                        value={inputValue}
-                        onChangeText={(text) => {
-                            setInputValue(text);
-                        }}
-                        style={styles.textInput}
-                    />
-                    <Pressable
-                        onPress={handlePublish}
-                        disabled={isPending}
-                        style={[
-                            styles.button,
-                            {
-                                backgroundColor: Colors[colorScheme].tint,
-                                alignSelf: "flex-end",
-                            },
-                        ]}
-                    >
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].button_text }}
-                        >
-                            Publish
-                        </ThemedText>
-                    </Pressable>
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+        </ScrollView>
     );
 }
 
@@ -321,13 +337,7 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    textInput: {
-        padding: 16,
-        textAlignVertical: "top",
-        height: 100,
-        borderColor: "#000",
-        borderWidth: 1,
-    },
+
     overlay: {
         position: "absolute",
         top: 0,

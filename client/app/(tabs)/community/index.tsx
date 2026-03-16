@@ -84,6 +84,7 @@ export default function CommunitiesTab() {
         <SafeAreaView>
             <Header />
             <ScrollView
+                showsVerticalScrollIndicator={false}
                 style={{
                     paddingHorizontal: 16,
                     paddingVertical: 12,
@@ -225,7 +226,7 @@ export default function CommunitiesTab() {
                                             }}
                                         >
                                             <ThemedText
-                                                type="caption"
+                                                type="body_small"
                                                 emphasized
                                                 style={{
                                                     color: item.joined
@@ -277,6 +278,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         marginBottom: 12,
         borderWidth: 1,
+        elevation: 2,
     },
     cardInfoContainer: {
         flex: 1,

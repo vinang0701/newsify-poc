@@ -25,34 +25,34 @@ export default function Profile() {
                 style={[
                     styles.headerContainer,
                     {
-                        backgroundColor: Colors[colorScheme].bg_light,
+                        backgroundColor: Colors[colorScheme].tint,
                     },
                 ]}
             >
                 <Pressable onPress={() => router.back()}>
-                    <MaterialCommunityIcons
-                        name="bell-outline"
+                    <Feather
+                        name="bell"
                         size={24}
-                        color={Colors[colorScheme].text}
+                        color={Colors[colorScheme].button_text}
                         weight="bold"
                     />
                 </Pressable>
 
                 <Image
-                    source={require("@/assets/images/icon.png")}
+                    source={require("@/assets/images/icon_light.png")}
                     style={{ width: 42, height: 20, resizeMode: "contain" }}
                 />
 
                 <Pressable onPress={() => {}}>
-                    <MaterialCommunityIcons
-                        name="magnify"
+                    <Feather
+                        name="search"
                         size={24}
-                        color={Colors[colorScheme].text}
+                        color={Colors[colorScheme].button_text}
                     />
                 </Pressable>
             </View>
             {/* Content */}
-            <ScrollView>
+            <ScrollView showsVerticalScrollIndicator={false}>
                 {/* User Profile Card */}
                 <View
                     style={[

@@ -118,7 +118,10 @@ export default function CommunityPage() {
                 </View>
             </SafeAreaView>
             {/* Content Container */}
-            <ScrollView style={{ backgroundColor: Colors[colorScheme].bg }}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{ backgroundColor: Colors[colorScheme].bg }}
+            >
                 {/* Community Info */}
                 <View
                     style={{

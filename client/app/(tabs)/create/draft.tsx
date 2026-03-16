@@ -1,23 +1,8 @@
-import {
-    View,
-    Text,
-    StyleSheet,
-    Pressable,
-    useColorScheme,
-} from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import React from "react";
-import { Colors } from "@/constants/theme";
-import Feather from "@expo/vector-icons/Feather";
-import { Image } from "expo-image";
-import { Link } from "expo-router";
-import { ThemedText } from "./themed-text";
-import { ModalProps, News } from "@/data/types";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-type NewsPostCardProps = {
-    news: News;
-};
-
-function NewsPostCard({ news }: NewsPostCardProps) {
+const draft = () => {
     const colorScheme = useColorScheme() ?? "light";
 
     return (
@@ -26,7 +11,6 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                 styles.card,
                 {
                     backgroundColor: Colors[colorScheme].bg_light,
-                    borderColor: Colors[colorScheme].border,
                 },
             ]}
         >
@@ -137,7 +121,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
             </View>
         </View>
     );
-}
+};
 
 const styles = StyleSheet.create({
     card: {
@@ -145,8 +129,6 @@ const styles = StyleSheet.create({
         gap: 8,
         alignContent: "flex-start",
         borderRadius: 8,
-        borderWidth: 1,
-        elevation: 2,
         paddingVertical: 12,
         marginBottom: 4,
         minHeight: 200,
@@ -167,5 +149,3 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
     },
 });
-
-export default NewsPostCard;
