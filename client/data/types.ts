@@ -4,7 +4,7 @@ export interface News {
     desc: string;
     url: string;
     urlToImage: string;
-    content: string;
+    content: any; // needs changing
 };
 
 export interface Community {

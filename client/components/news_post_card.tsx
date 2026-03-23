@@ -83,7 +83,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                         fontSize: 14,
                     }}
                 >
-                    {news.content?.replace(/\s*\[\+\d+ chars\]$/, "")}
+                    {news.content["text"].replace(/\s*\[\+\d+ chars\]$/, "")}
                     <Link href="/(tabs)/create">
                         <ThemedText type="link" style={{ fontSize: 14 }}>
                             Read More

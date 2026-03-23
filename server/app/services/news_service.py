@@ -1,0 +1,30 @@
+from supabase import Client
+from typing import List
+from app.models.news_post import NewsPost
+from app.core.db import supabase
+
+
+async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
+    # Logic: Fetch all news where the tenant matches
+    response = (
+        supabase.table("news_posts")
+        .select("*")
+        .eq("inst_id", inst_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    # Map the list of dicts to a list of NewsPost objects
+    return [
+        NewsPost(
+            id=post["id"],
+            author=post["author"],  # Map snake_case to camelCase
+            title=post["title"],
+            description=post["description"],
+            image_url=post["image_url"],
+            content=post[
+                "content"
+            ],  # Pydantic handles JSONB to Dict[str, Any] automatically
+        )
+        for post in response.data
+    ]
