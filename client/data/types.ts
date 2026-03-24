@@ -3,8 +3,8 @@ export interface News {
     author: string;
     desc: string;
     url: string;
-    urlToImage: string;
-    content: any; // needs changing
+    image_url: string;
+    content: string | any; // needs changing
 };
 
 export interface Community {

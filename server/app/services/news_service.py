@@ -20,11 +20,10 @@ async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
             id=post["id"],
             author=post["author"],  # Map snake_case to camelCase
             title=post["title"],
-            description=post["description"],
-            image_url=post["image_url"],
-            content=post[
-                "content"
-            ],  # Pydantic handles JSONB to Dict[str, Any] automatically
+            description=post["description"] or "",
+            image_url=post["image_url"] or "",
+            content=post["content"]
+            or {},  # Pydantic handles JSONB to Dict[str, Any] automatically
         )
         for post in response.data
     ]

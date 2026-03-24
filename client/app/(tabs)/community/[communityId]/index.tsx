@@ -28,8 +28,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemedText } from "@/components/themed-text";
 import { News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
-import newsArticles from "@/data/news.json";
+import { useQuery } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
+import axios, { AxiosError } from "axios";
+import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;
 
@@ -40,6 +42,8 @@ export default function CommunityPage() {
     const [news, setNews] = useState<News[]>([]);
     const snapPoints = useMemo(() => ["20%"], []);
     const [modalVisible, setModalVisible] = useState(false);
+
+    const tenantId = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
     // ref
     const bottomSheetRef = useRef<BottomSheet>(null);
 
@@ -56,27 +60,34 @@ export default function CommunityPage() {
         [],
     );
 
-    useEffect(() => {
-        const fetchNews = () => {
-            if (!newsArticles?.articles) return;
+    async function fetchCommunityNews(tenantId: string): Promise<News[]> {
+        console.log("fetching in community");
+        try {
+            const response = await axios.get<News[]>(
+                `http://10.0.2.2:8000/api/v1/${tenantId}/news/feed`,
+            );
+            // Axios throws on non-2xx status codes by default,
+            // so a simple return is usually enough.
+            return response.data;
+        } catch (error) {
+            // Re-throwing the error allows TanStack Query to "see" the failure
+            if (axios.isAxiosError(error)) {
+                console.log(error);
+                throw error;
+            }
+            throw new Error("An unexpected error occurred");
+        }
+    }
 
-            const formattedNews = newsArticles.articles.map((newsItem) => ({
-                title: newsItem.title,
-                author: newsItem.author ?? "",
-                desc: newsItem.description ?? "",
-                url: newsItem.url ?? "",
-                urlToImage:
-                    newsItem.urlToImage != null
-                        ? newsItem.urlToImage
-                        : "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==",
-                content:
-                    newsItem.content?.replace(/\s*\[\+\d+ chars\]$/, "") ?? "",
-            }));
+    // Fetch data from server
+    const { isFetching, status, data, error } = useQuery({
+        queryKey: ["community_news", tenantId],
+        queryFn: () => fetchCommunityNews(tenantId),
+    });
 
-            setNews(formattedNews);
-        };
-        fetchNews();
-    }, []);
+    if (isFetching) {
+        return <Loading />;
+    }
 
     return (
         <GestureHandlerRootView>
@@ -217,9 +228,9 @@ export default function CommunityPage() {
                     <View>
                         <FlashList
                             nestedScrollEnabled={false}
-                            data={news}
-                            renderItem={({ item }) => (
-                                <NewsPostCard news={item} />
+                            data={data}
+                            renderItem={({ item, index }) => (
+                                <NewsPostCard news={item} key={index} />
                             )}
                         />
                     </View>

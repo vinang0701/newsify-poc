@@ -84,9 +84,9 @@ export default function HomeScreen() {
     };
 
     // Testing
-    const { status, data, error, isFetching } = useQuery({
+    const { status, data, error, isFetching } = useQuery<News[]>({
         queryKey: ["news"],
-        queryFn: async (): Promise<any> => {
+        queryFn: async (): Promise<News[]> => {
             const response = await fetch(
                 "http://10.0.2.2:8000/api/v1/391848ae-e6c6-43ec-a34c-e6ce06f0d842/news/feed",
             );
@@ -125,7 +125,7 @@ export default function HomeScreen() {
                 author: newsItem.author ?? "",
                 desc: newsItem.description ?? "",
                 url: newsItem.url ?? "",
-                urlToImage: newsItem.urlToImage ?? "",
+                image_url: newsItem.image_url ?? "",
                 content: newsItem.content ?? "",
             }));
 
@@ -204,7 +204,7 @@ export default function HomeScreen() {
                         return <NewsPostCard news={newsItem} key={index} />;
                     })} */}
                     {data &&
-                        data.map((newsItem, index) => {
+                        data.map((newsItem: News, index: number) => {
                             return <NewsPostCard news={newsItem} key={index} />;
                         })}
                 </ScrollView>
