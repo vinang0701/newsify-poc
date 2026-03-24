@@ -1,23 +1,15 @@
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import newsArticles from "@/data/news.json";
-import Feather from "@expo/vector-icons/Feather";
-import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import { Image } from "expo-image";
-import { Link } from "expo-router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Text,
-    Button,
-    FlatList,
     Pressable,
     ScrollView,
     StyleSheet,
-    TouchableHighlight,
     useColorScheme,
     View,
-    Modal,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { News } from "@/data/types";
@@ -31,6 +23,7 @@ import CommentsModal from "@/components/comments_modal";
 import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation } from "expo-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 const HEADER_HEIGHT = 250;
 
 const DATA = [
@@ -90,6 +83,20 @@ export default function HomeScreen() {
         bottomSheetRef.current?.expand();
     };
 
+    // Testing
+    const { status, data, error, isFetching } = useQuery<News[]>({
+        queryKey: ["news"],
+        queryFn: async (): Promise<News[]> => {
+            const response = await fetch(
+                "http://10.0.2.2:8000/api/v1/391848ae-e6c6-43ec-a34c-e6ce06f0d842/news/feed",
+            );
+            if (!response.ok) {
+                throw new Error("Network response was not ok");
+            }
+            return await response.json();
+        },
+    });
+
     const handleSheetChange = (index: number) => {
         if (index === -1) {
             navigation.getParent()?.setOptions({
@@ -118,7 +125,7 @@ export default function HomeScreen() {
                 author: newsItem.author ?? "",
                 desc: newsItem.description ?? "",
                 url: newsItem.url ?? "",
-                urlToImage: newsItem.urlToImage ?? "",
+                image_url: newsItem.image_url ?? "",
                 content: newsItem.content ?? "",
             }));
 
@@ -193,9 +200,13 @@ export default function HomeScreen() {
                             )}
                         />
                     </View>
-                    {news.map((newsItem, index) => {
+                    {/* {news.map((newsItem, index) => {
                         return <NewsPostCard news={newsItem} key={index} />;
-                    })}
+                    })} */}
+                    {data &&
+                        data.map((newsItem: News, index: number) => {
+                            return <NewsPostCard news={newsItem} key={index} />;
+                        })}
                 </ScrollView>
                 <BottomSheet
                     ref={bottomSheetRef}

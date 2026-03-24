@@ -35,7 +35,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                     source={require("@/assets/images/profile.png")}
                     style={{ width: 28, height: 28 }}
                 />
-                <ThemedText type="defaultSemiBold">Author</ThemedText>
+                <ThemedText type="defaultSemiBold">{news.author}</ThemedText>
                 <ThemedText
                     type="default"
                     style={{
@@ -58,12 +58,12 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                 <Image
                     alt="image"
                     source={{
-                        uri: news.urlToImage,
+                        uri: news.image_url,
                     }}
                     style={{
                         width: "100%",
                         height: 200,
-                        objectFit: "contain",
+                        resizeMode: "contain",
                     }}
                 />
                 <ThemedText
@@ -83,7 +83,8 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                         fontSize: 14,
                     }}
                 >
-                    {news.content?.replace(/\s*\[\+\d+ chars\]$/, "")}
+                    {news.content["text"]?.replace(/\s*\[\+\d+ chars\]$/, "") ||
+                        ""}
                     <Link href="/(tabs)/create">
                         <ThemedText type="link" style={{ fontSize: 14 }}>
                             Read More

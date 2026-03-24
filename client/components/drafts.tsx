@@ -26,7 +26,7 @@ const DraftsTab = () => {
                 author: newsItem.author ?? "",
                 desc: newsItem.description ?? "",
                 url: newsItem.url ?? "",
-                urlToImage: newsItem.urlToImage ?? "",
+                image_url: newsItem.image_url ?? "",
                 content: newsItem.content ?? "",
             }));
 
