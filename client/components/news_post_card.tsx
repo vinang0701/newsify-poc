@@ -35,7 +35,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                     source={require("@/assets/images/profile.png")}
                     style={{ width: 28, height: 28 }}
                 />
-                <ThemedText type="defaultSemiBold">Author</ThemedText>
+                <ThemedText type="defaultSemiBold">{news.author}</ThemedText>
                 <ThemedText
                     type="default"
                     style={{

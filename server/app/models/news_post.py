@@ -5,7 +5,7 @@ from pydantic import EmailStr, BaseModel
 
 class NewsPost(BaseModel):
     id: uuid.UUID
-    author: uuid.UUID
+    author: str
     title: str
     description: str
     image_url: str
