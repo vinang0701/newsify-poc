@@ -15,7 +15,7 @@ async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
             description, 
             image_url,
             content,
-            users!inner(name, image_url)
+            users!news_posts_author_fkey!inner(name, image_url)
         """
         )
         .eq("inst_id", inst_id)
