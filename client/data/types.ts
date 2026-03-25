@@ -1,4 +1,5 @@
 export interface News {
+    id: string;
     title: string;
     author: string;
     desc: string;
@@ -10,8 +11,7 @@ export interface News {
 export interface Community {
     id: string;
     name: string;
-    desc: string;
-    member_count: number;
+    description: string;
     category: string;
     public: boolean;
     joined: boolean;

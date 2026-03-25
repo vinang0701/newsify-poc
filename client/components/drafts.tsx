@@ -17,24 +17,6 @@ const DraftsTab = () => {
     const colorScheme = useColorScheme() ?? "light";
     const [news, setNews] = useState<News[]>([]);
 
-    useEffect(() => {
-        const fetchNews = () => {
-            if (!newsArticles?.articles) return;
-
-            const formattedNews = newsArticles.articles.map((newsItem) => ({
-                title: newsItem.title,
-                author: newsItem.author ?? "",
-                desc: newsItem.description ?? "",
-                url: newsItem.url ?? "",
-                image_url: newsItem.image_url ?? "",
-                content: newsItem.content ?? "",
-            }));
-
-            setNews(formattedNews);
-        };
-        fetchNews();
-    }, []);
-
     return (
         <View style={{ flex: 1 }}>
             <FlashList

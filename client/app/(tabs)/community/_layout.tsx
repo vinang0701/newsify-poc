@@ -17,6 +17,10 @@ export default function CommunitiesTabLayout() {
                     name="[communityId]"
                     options={{ headerShown: false }}
                 />
+                <Stack.Screen
+                    name="request_form"
+                    options={{ headerShown: false }}
+                />
             </Stack>
         </SafeAreaProvider>
     );

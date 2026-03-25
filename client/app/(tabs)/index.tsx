@@ -4,6 +4,7 @@ import newsArticles from "@/data/news.json";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+    RefreshControl,
     Text,
     Pressable,
     ScrollView,
@@ -73,18 +74,25 @@ const FilterItem = ({ title }: ItemProps) => {
 
 export default function HomeScreen() {
     const colorScheme = useColorScheme() ?? "light";
-    const [news, setNews] = useState<News[]>([]);
     const [activeFilter, setActiveFilter] = useState("Recent");
     const snapPoints = useMemo(() => ["100%"], []);
     const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
-    const handleExpandSheet = () => {
-        bottomSheetRef.current?.expand();
-    };
+
+    const [refreshing, setRefreshing] = React.useState(false);
+
+    const onRefresh = React.useCallback(() => {
+        setRefreshing(true);
+        console.log("refetching");
+        refetch();
+        setTimeout(() => {
+            setRefreshing(false);
+        }, 2000);
+    }, []);
 
     // Testing
-    const { status, data, error, isFetching } = useQuery<News[]>({
+    const { status, data, error, isFetching, refetch } = useQuery<News[]>({
         queryKey: ["news"],
         queryFn: async (): Promise<News[]> => {
             const response = await fetch(
@@ -116,24 +124,6 @@ export default function HomeScreen() {
         [],
     );
 
-    useEffect(() => {
-        const fetchNews = () => {
-            if (!newsArticles?.articles) return;
-
-            const formattedNews = newsArticles.articles.map((newsItem) => ({
-                title: newsItem.title,
-                author: newsItem.author ?? "",
-                desc: newsItem.description ?? "",
-                url: newsItem.url ?? "",
-                image_url: newsItem.image_url ?? "",
-                content: newsItem.content ?? "",
-            }));
-
-            setNews(formattedNews);
-        };
-        fetchNews();
-    }, []);
-
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaView
@@ -151,8 +141,15 @@ export default function HomeScreen() {
                     style={{
                         paddingHorizontal: 16,
                         paddingVertical: 12,
+
                         backgroundColor: Colors[colorScheme].bg,
                     }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
                 >
                     <View>
                         <FlashList
@@ -200,13 +197,13 @@ export default function HomeScreen() {
                             )}
                         />
                     </View>
-                    {/* {news.map((newsItem, index) => {
-                        return <NewsPostCard news={newsItem} key={index} />;
-                    })} */}
-                    {data &&
-                        data.map((newsItem: News, index: number) => {
-                            return <NewsPostCard news={newsItem} key={index} />;
-                        })}
+                    <FlashList
+                        style={{ marginBottom: 16 }}
+                        data={data}
+                        renderItem={({ item }) => (
+                            <NewsPostCard news={item} key={item.id} />
+                        )}
+                    />
                 </ScrollView>
                 <BottomSheet
                     ref={bottomSheetRef}

@@ -26,7 +26,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemedText } from "@/components/themed-text";
-import { News } from "@/data/types";
+import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
@@ -39,7 +39,6 @@ export default function CommunityPage() {
     const colorScheme = useColorScheme() ?? "light";
     const { communityId } = useLocalSearchParams();
     const router = useRouter();
-    const [news, setNews] = useState<News[]>([]);
     const snapPoints = useMemo(() => ["20%"], []);
     const [modalVisible, setModalVisible] = useState(false);
 
@@ -59,6 +58,38 @@ export default function CommunityPage() {
         ),
         [],
     );
+
+    function nameToAvatar(name: string) {
+        // 1. Split by whitespace and filter out any empty strings from extra spaces
+        // 2. Map to the first character and uppercase it
+        const initials = name
+            .trim()
+            .split(/\s+/)
+            .map((word) => word.charAt(0).toUpperCase())
+            .filter((char) => /^[A-Z0-9]$/.test(char)); // Ensure it's alphanumeric
+
+        // Grab the first two initials
+        const first = initials[0] || "";
+        const second = initials[1] || "";
+
+        return [first, second];
+    }
+
+    async function fetchCommunity(): Promise<Community[]> {
+        try {
+            const response = await axios.get<Community[]>(
+                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}`,
+            );
+            console.log(response.data);
+            return response.data;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                console.log(error);
+                throw error;
+            }
+            throw new Error("An unexpected error occurred");
+        }
+    }
 
     async function fetchCommunityNews(tenantId: string): Promise<News[]> {
         console.log("fetching in community");
@@ -85,8 +116,26 @@ export default function CommunityPage() {
         queryFn: () => fetchCommunityNews(tenantId),
     });
 
+    const {
+        isFetching: commFetching,
+        status: commStatus,
+        data: commData,
+        error: commError,
+    } = useQuery({
+        queryKey: ["community", communityId],
+        queryFn: () => fetchCommunity(),
+    });
+
     if (isFetching) {
         return <Loading />;
+    }
+
+    if (commData === undefined || commError) {
+        return (
+            <View>
+                <Text>Error</Text>
+            </View>
+        );
     }
 
     return (
@@ -97,7 +146,7 @@ export default function CommunityPage() {
                     style={[
                         styles.headerContainer,
                         {
-                            backgroundColor: Colors[colorScheme].bg_light,
+                            backgroundColor: Colors[colorScheme].tint,
                         },
                     ]}
                 >
@@ -105,25 +154,21 @@ export default function CommunityPage() {
                         <MaterialCommunityIcons
                             name="arrow-left"
                             size={24}
-                            color={Colors[colorScheme].text}
+                            color={Colors[colorScheme].button_text}
                             weight="bold"
                         />
                     </Pressable>
 
-                    <Text
-                        style={{
-                            fontSize: 24,
-                            color: Colors[colorScheme].tint,
-                        }}
-                    >
-                        N
-                    </Text>
+                    <Image
+                        source={require("@/assets/images/icon_light.png")}
+                        style={{ width: 42, height: 20, resizeMode: "contain" }}
+                    />
 
                     <Pressable onPress={handleExpandSheet}>
                         <MaterialCommunityIcons
                             name="dots-vertical"
                             size={24}
-                            color={Colors[colorScheme].text}
+                            color={Colors[colorScheme].button_text}
                         />
                     </Pressable>
                 </View>
@@ -151,7 +196,7 @@ export default function CommunityPage() {
                         ]}
                     >
                         <View style={styles.flexRowContainer}>
-                            <Image
+                            {/* <Image
                                 source={require("@/assets/images/icon.png")}
                                 style={{
                                     width: 36,
@@ -160,11 +205,35 @@ export default function CommunityPage() {
                                     borderColor: Colors[colorScheme].border,
                                     borderRadius: 100,
                                 }}
-                            />
+                            /> */}
+                            <View
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 20,
+                                    backgroundColor: "hsl(54, 81%, 43%)",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    borderWidth: 1,
+                                    borderColor: "rgba(0,0,0,0.1)", // Subtle border
+                                }}
+                            >
+                                <ThemedText
+                                    type="body_medium"
+                                    emphasized
+                                    style={{
+                                        color: Colors[colorScheme].button_text, // White text usually pops best on colors
+                                    }}
+                                >
+                                    {nameToAvatar(commData[0].name)[0]}
+                                    {nameToAvatar(commData[0].name)[1]}
+                                </ThemedText>
+                            </View>
                             {/* Community name and Member Count */}
                             <View>
                                 <ThemedText type="defaultSemiBold">
-                                    Chess Club
+                                    {/* Chess Club */}
+                                    {commData[0]?.name}
                                 </ThemedText>
                                 <ThemedText
                                     type="caption"
@@ -198,8 +267,7 @@ export default function CommunityPage() {
                             color: Colors[colorScheme].caption,
                         }}
                     >
-                        All about the game of chess, including discussions on
-                        professional tournaments, game analysis and theory.
+                        {commData[0]?.description}
                     </ThemedText>
                 </View>
 

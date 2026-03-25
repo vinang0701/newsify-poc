@@ -21,6 +21,7 @@ import { Colors } from "@/constants/theme";
 import * as ImagePicker from "expo-image-picker";
 import EditorToolbar from "@/components/editor_toolbar";
 import { ThemedText } from "@/components/themed-text";
+import { useRouter } from "expo-router";
 
 type SelectedText = {
     start: number;
@@ -32,6 +33,7 @@ const DraftEditor = () => {
     const ref = useRef<EnrichedTextInputInstance>(null);
     const [image, setImage] = useState<string | null>(null);
     const colorScheme = useColorScheme() ?? "light";
+    const router = useRouter();
     const [selectedText, setSelectedText] = useState<SelectedText>();
 
     function handleSelectedText(start: number, end: number, text: string) {
@@ -148,6 +150,9 @@ const DraftEditor = () => {
                         styles.actionButton,
                         { backgroundColor: Colors[colorScheme].tint },
                     ]}
+                    onPress={() =>
+                        router.navigate("/(tabs)/create/post_target")
+                    }
                 >
                     <ThemedText
                         type="defaultSemiBold"
