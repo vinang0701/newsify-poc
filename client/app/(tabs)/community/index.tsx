@@ -26,6 +26,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import axios from "axios";
 
 const HEADER_HEIGHT = 250;
 
@@ -48,10 +49,22 @@ const DATA = [
     },
 ];
 
+interface UserCommunities {
+    community_id: string;
+    community_name: string;
+    role: string;
+}
+
+const BASE_URL = "http://10.0.2.2:8000/api/v1";
+const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+
 export default function CommunitiesTab() {
     const colorScheme = useColorScheme() ?? "light";
     const [comm, setComm] = useState<Community[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
     const [activeFilter, setActiveFilter] = useState("All");
+    const [refreshing, setRefreshing] = React.useState(false);
     const insets = useSafeAreaInsets();
     const router = useRouter();
 
@@ -95,9 +108,7 @@ export default function CommunitiesTab() {
     const { status, data, error, isFetching, refetch } = useQuery<Community[]>({
         queryKey: ["communities"],
         queryFn: async (): Promise<Community[]> => {
-            const response = await fetch(
-                "http://10.0.2.2:8000/api/v1/391848ae-e6c6-43ec-a34c-e6ce06f0d842/communities",
-            );
+            const response = await fetch(`${BASE_URL}/${inst_id}/communities`);
             if (!response.ok) {
                 throw new Error("Network response was not ok");
             }
@@ -105,12 +116,37 @@ export default function CommunitiesTab() {
         },
     });
 
-    const [refreshing, setRefreshing] = React.useState(false);
+    const {
+        data: comm_mem_data,
+        error: comm_mem_error,
+        refetch: comm_mem_refetch,
+    } = useQuery<UserCommunities[]>({
+        queryKey: ["user_communities", user_id],
+        queryFn: async () => {
+            // axios try catch
+            const response = await axios.get(
+                `${BASE_URL}/${inst_id}/users/me/communities`,
+            );
+
+            return response.data;
+        },
+    });
+
+    const joinedCommunityIds = React.useMemo(() => {
+        return new Set(comm_mem_data?.map((c) => c.community_id) || []);
+    }, [comm_mem_data]);
+
+    // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
+    const filteredCommunities =
+        data?.filter((community) =>
+            community.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        ) ?? [];
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         console.log("refetching");
         refetch();
+        comm_mem_refetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -192,6 +228,8 @@ export default function CommunitiesTab() {
                         editable
                         numberOfLines={1}
                         placeholder="Search"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
                         style={[
                             styles.searchInput,
                             { borderColor: "transparent" },
@@ -245,7 +283,7 @@ export default function CommunitiesTab() {
 
                 <FlashList
                     style={{ paddingBottom: 16 }}
-                    data={data}
+                    data={filteredCommunities}
                     renderItem={({ item }) => (
                         <Link
                             href={{
@@ -341,12 +379,17 @@ export default function CommunitiesTab() {
                                         style={{
                                             paddingVertical: 8,
                                             paddingHorizontal: 12,
-                                            backgroundColor: item.joined
-                                                ? Colors[colorScheme].alert_red
-                                                : Colors[colorScheme].bg_light,
+                                            backgroundColor:
+                                                joinedCommunityIds.has(item.id)
+                                                    ? Colors[colorScheme]
+                                                          .alert_red
+                                                    : Colors[colorScheme]
+                                                          .bg_light,
                                             borderRadius: 20,
                                             borderWidth: 2,
-                                            borderColor: item.joined
+                                            borderColor: joinedCommunityIds.has(
+                                                item.id,
+                                            )
                                                 ? "transparent"
                                                 : Colors[colorScheme].tint,
                                         }}
@@ -355,7 +398,9 @@ export default function CommunitiesTab() {
                                             type="body_small"
                                             emphasized
                                             style={{
-                                                color: item.joined
+                                                color: joinedCommunityIds.has(
+                                                    item.id,
+                                                )
                                                     ? Colors[colorScheme]
                                                           .button_text
                                                     : Colors[colorScheme].tint,
@@ -363,7 +408,9 @@ export default function CommunitiesTab() {
                                                 fontWeight: "semibold",
                                             }}
                                         >
-                                            {item.joined ? "Leave" : "Join"}
+                                            {joinedCommunityIds.has(item.id)
+                                                ? "Leave"
+                                                : "Join"}
                                         </ThemedText>
                                     </Pressable>
                                 </View>

@@ -12,7 +12,7 @@ import {
     ActivityIndicator,
     Modal,
 } from "react-native";
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -21,12 +21,13 @@ import { Header } from "@/components/header";
 import { Colors } from "@/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useState, useRef } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import DraftsTab from "@/components/drafts";
 import { Checkbox } from "expo-checkbox";
 import SearchBar from "@/components/search_bar";
 import Feather from "@expo/vector-icons/Feather";
 import { FlashList } from "@shopify/flash-list";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 type ModerationResponse = {
     content: string;
@@ -39,10 +40,20 @@ interface UserCommunities {
     role: string;
 }
 
+type PostTargetParams = {
+    imageUri: string;
+    title: string;
+    content: string;
+};
+
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+
 export default function PostTargetForm() {
+    const { imageUri, title, content } =
+        useLocalSearchParams<PostTargetParams>();
+    console.log(imageUri);
     const colorScheme = useColorScheme() ?? "light";
     const [inputValue, setInputValue] = useState("");
     const [moderationResponse, setModerationResponse] =
@@ -80,16 +91,49 @@ export default function PostTargetForm() {
         },
     });
 
-    const publishPost = async (content: string) => {
-        const { data } = await axios.post(
-            "http://10.0.2.2:8000/api/v1/users/create",
+    // temp publish post
+    const uploadPost = async () => {
+        const formData = new FormData();
+        formData.append("user_id", user_id);
+        // 1. Add the text fields
+        formData.append("title", title);
+        formData.append("content", content);
+
+        // Is school checked?
+        formData.append("school", isSchoolChecked ? "true" : "false");
+
+        // need to add selected community id
+        selectedIds.forEach((id) => formData.append("communities", id));
+
+        // 2. Add the image file
+        // Note: In React Native, the 'uri' is the local path,
+        // and 'name'/'type' are required for the server to recognize it as a file.
+        if (imageUri) {
+            const filename = imageUri.split("/").pop() || "upload.jpg";
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+            formData.append("image", {
+                uri: imageUri,
+                name: filename,
+                type: type,
+            } as any); // 'as any' is a common TS workaround for RN FormData files
+        }
+
+        console.log(formData);
+
+        const response = await axios.post(
+            `${BASE_URL}/${inst_id}/users/me/news`,
+            formData,
             {
-                email: "vanessa@uow.edu.au",
-                content,
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                    // "Authorization": `Bearer ${token}` // If your FastAPI uses Supabase Auth
+                },
             },
         );
 
-        return data;
+        return response.data;
     };
 
     const toggleSelection = (id: string) => {
@@ -103,7 +147,7 @@ export default function PostTargetForm() {
 
     const { mutate, isPending, data, error } = useMutation({
         mutationKey: ["moderation"],
-        mutationFn: publishPost,
+        mutationFn: uploadPost,
 
         onSuccess: () => {
             setInputValue("");
@@ -116,15 +160,6 @@ export default function PostTargetForm() {
             Alert.alert("Failed to publish post");
         },
     });
-
-    function handlePublish() {
-        if (!inputValue.trim()) {
-            Alert.alert("Stop it ah");
-            return;
-        }
-
-        mutate(inputValue);
-    }
 
     return (
         <ScrollView
@@ -310,6 +345,7 @@ export default function PostTargetForm() {
                                 styles.button,
                                 { backgroundColor: Colors[colorScheme].tint },
                             ]}
+                            onPress={() => mutate()}
                         >
                             <ThemedText
                                 type="defaultSemiBold"

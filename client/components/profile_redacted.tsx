@@ -9,14 +9,23 @@ import {
 import React, { Component } from "react";
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Link, router } from "expo-router";
+import { Link, router, useLocalSearchParams } from "expo-router";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import Feather from "@expo/vector-icons/Feather";
-
-export default function Profile() {
+import { useQuery } from "@tanstack/react-query";
+import { News } from "@/data/types";
+import axios from "axios";
+const BASE_URL = "http://10.0.2.2:8000/api/v1";
+const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+export default function Profile_Redacted() {
     const colorScheme = useColorScheme() ?? "light";
+
+    const { status, data, error, isFetching, refetch } = useQuery<News[]>({
+        queryKey: ["news"],
+        queryFn: fetchUserNews,
+    });
 
     return (
         <SafeAreaView>

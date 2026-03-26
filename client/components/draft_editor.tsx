@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, forwardRef } from "react";
 import {
     Alert,
     KeyboardAvoidingView,
@@ -11,7 +11,6 @@ import {
     TextInput,
     Pressable,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { EnrichedTextInput } from "react-native-enriched";
 import type {
     EnrichedTextInputInstance,
@@ -29,144 +28,159 @@ type SelectedText = {
     text: string;
 };
 
-const DraftEditor = () => {
-    const ref = useRef<EnrichedTextInputInstance>(null);
-    const [image, setImage] = useState<string | null>(null);
-    const colorScheme = useColorScheme() ?? "light";
-    const router = useRouter();
-    const [selectedText, setSelectedText] = useState<SelectedText>();
+interface DraftEditorProps {
+    image: string | null;
+    setImage: (image: string) => void;
+}
 
-    function handleSelectedText(start: number, end: number, text: string) {
-        setSelectedText({ start, end, text });
-    }
+const DraftEditor = forwardRef<EnrichedTextInputInstance, DraftEditorProps>(
+    ({ image, setImage }, ref) => {
+        // const ref = useRef<EnrichedTextInputInstance>(null);
+        // const [image, setImage] = useState<string | null>(null);
 
-    const [stylesState, setStylesState] = useState<OnChangeStateEvent | null>();
-    const pickImage = async () => {
-        // No permissions request is necessary for launching the image library.
-        // Manually request permissions for videos on iOS when `allowsEditing` is set to `false`
-        // and `videoExportPreset` is `'Passthrough'` (the default), ideally before launching the picker
-        // so the app users aren't surprised by a system dialog after picking a video.
-        // See "Invoke permissions for videos" sub section for more details.
-        const permissionResult =
-            await ImagePicker.requestMediaLibraryPermissionsAsync();
+        const colorScheme = useColorScheme() ?? "light";
+        const router = useRouter();
+        const [selectedText, setSelectedText] = useState<SelectedText>();
 
-        if (!permissionResult.granted) {
-            Alert.alert(
-                "Permission required",
-                "Permission to access the media library is required.",
-            );
-            return;
+        function handleSelectedText(start: number, end: number, text: string) {
+            setSelectedText({ start, end, text });
         }
 
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images", "videos"],
-            allowsEditing: false,
-            aspect: [4, 3],
-            quality: 1,
-        });
+        const [stylesState, setStylesState] =
+            useState<OnChangeStateEvent | null>();
+        const pickImage = async () => {
+            // No permissions request is necessary for launching the image library.
+            // Manually request permissions for videos on iOS when `allowsEditing` is set to `false`
+            // and `videoExportPreset` is `'Passthrough'` (the default), ideally before launching the picker
+            // so the app users aren't surprised by a system dialog after picking a video.
+            // See "Invoke permissions for videos" sub section for more details.
+            const permissionResult =
+                await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-        console.log(result);
+            if (!permissionResult.granted) {
+                Alert.alert(
+                    "Permission required",
+                    "Permission to access the media library is required.",
+                );
+                return;
+            }
 
-        if (!result.canceled) {
-            setImage(result.assets[0].uri);
-            ref.current?.setImage(result.assets[0].uri, 200, 200);
-        }
-    };
+            let result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ["images"],
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 1,
+            });
 
-    return (
-        <View
-            style={[
-                styles.cardContainer,
-                {
-                    backgroundColor: Colors[colorScheme].bg_light,
-                    borderColor: Colors[colorScheme].border,
-                },
-            ]}
-        >
-            <KeyboardAvoidingView>
-                <EditorToolbar
-                    style={styles.toolbar}
-                    actions={{
-                        onBold: () => ref.current?.toggleBold(),
-                        onItalic: () => ref.current?.toggleItalic(),
-                        onUnderline: () => ref.current?.toggleUnderline(),
-                        onImage: pickImage,
-                        onLink: () => ref.current?.setLink, // if supported
-                        onBulletList: () => ref.current?.toggleUnorderedList(), // if supported
-                        onOrderedList: () => ref.current?.toggleOrderedList(), // if supported
-                    }}
-                    activeStyles={{
-                        bold: stylesState?.bold.isActive,
-                        italic: stylesState?.italic.isActive,
-                        underline: stylesState?.underline.isActive,
+            console.log(result);
+
+            if (!result.canceled) {
+                setImage(result.assets[0].uri);
+                ref.current?.setImage(result.assets[0].uri, 200, 200);
+            }
+        };
+
+        return (
+            <View
+                style={[
+                    styles.cardContainer,
+                    {
+                        backgroundColor: Colors[colorScheme].bg_light,
+                        borderColor: Colors[colorScheme].border,
+                    },
+                ]}
+            >
+                <KeyboardAvoidingView>
+                    <EditorToolbar
+                        style={styles.toolbar}
+                        actions={{
+                            onBold: () => ref?.current?.toggleBold(),
+                            onItalic: () => ref.current?.toggleItalic(),
+                            onUnderline: () => ref.current?.toggleUnderline(),
+                            onImage: pickImage,
+                            onLink: () => ref.current?.setLink, // if supported
+                            onBulletList: () =>
+                                ref.current?.toggleUnorderedList(), // if supported
+                            onOrderedList: () =>
+                                ref.current?.toggleOrderedList(), // if supported
+                        }}
+                        activeStyles={{
+                            bold: stylesState?.bold.isActive,
+                            italic: stylesState?.italic.isActive,
+                            underline: stylesState?.underline.isActive,
+                        }}
+                    />
+                </KeyboardAvoidingView>
+                <TextInput
+                    placeholder="Title"
+                    editable
+                    multiline
+                    numberOfLines={4}
+                    style={{
+                        width: "100%",
+                        borderRadius: 8,
+                        padding: 12,
+                        fontSize: 22,
+                        fontWeight: 600,
+                        backgroundColor: Colors[colorScheme].bg_dark,
                     }}
                 />
-            </KeyboardAvoidingView>
-            <TextInput
-                placeholder="Title"
-                editable
-                multiline
-                numberOfLines={4}
-                style={{
-                    width: "100%",
-                    borderRadius: 8,
-                    padding: 12,
-                    fontSize: 22,
-                    fontWeight: 600,
-                    backgroundColor: Colors[colorScheme].bg_dark,
-                }}
-            />
-            <EnrichedTextInput
-                ref={ref}
-                placeholder="What's on your mind?"
-                onChangeState={(e) => setStylesState(e.nativeEvent)}
-                style={styles.input}
-                onChangeSelection={(e) => setSelectedText(e.nativeEvent)}
-                onBlur={ref.current?.blur}
-                onPasteImages={(e) =>
-                    ref.current?.setImage(e.nativeEvent.images[0].uri, 200, 200)
-                }
-            />
-            <View style={styles.actionButtonsContainer}>
-                <Pressable
-                    style={[
-                        styles.actionButton,
-                        {
-                            backgroundColor: Colors[colorScheme].bg_dark,
-                        },
-                    ]}
-                >
-                    <ThemedText
-                        type="defaultSemiBold"
-                        style={{
-                            color: Colors[colorScheme].tint,
-                        }}
-                    >
-                        Save
-                    </ThemedText>
-                </Pressable>
-                <Pressable
-                    style={[
-                        styles.actionButton,
-                        { backgroundColor: Colors[colorScheme].tint },
-                    ]}
-                    onPress={() =>
-                        router.navigate("/(tabs)/create/post_target")
+                <EnrichedTextInput
+                    ref={ref}
+                    placeholder="What's on your mind?"
+                    onChangeState={(e) => setStylesState(e.nativeEvent)}
+                    style={styles.input}
+                    onChangeSelection={(e) => setSelectedText(e.nativeEvent)}
+                    onBlur={ref.current?.blur}
+                    onPasteImages={(e) =>
+                        ref.current?.setImage(
+                            e.nativeEvent.images[0].uri,
+                            200,
+                            200,
+                        )
                     }
-                >
-                    <ThemedText
-                        type="defaultSemiBold"
-                        style={{
-                            color: Colors[colorScheme].button_text,
-                        }}
+                />
+                <View style={styles.actionButtonsContainer}>
+                    <Pressable
+                        style={[
+                            styles.actionButton,
+                            {
+                                backgroundColor: Colors[colorScheme].bg_dark,
+                            },
+                        ]}
                     >
-                        Next
-                    </ThemedText>
-                </Pressable>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{
+                                color: Colors[colorScheme].tint,
+                            }}
+                        >
+                            Save
+                        </ThemedText>
+                    </Pressable>
+                    <Pressable
+                        style={[
+                            styles.actionButton,
+                            { backgroundColor: Colors[colorScheme].tint },
+                        ]}
+                        onPress={() =>
+                            router.navigate("/(tabs)/create/post_target")
+                        }
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{
+                                color: Colors[colorScheme].button_text,
+                            }}
+                        >
+                            Next
+                        </ThemedText>
+                    </Pressable>
+                </View>
             </View>
-        </View>
-    );
-};
+        );
+    },
+);
 
 const styles = StyleSheet.create({
     cardContainer: {

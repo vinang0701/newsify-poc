@@ -4,7 +4,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from app.services import communities_service
+from app.services import communities_service, news_service
 from app.core.config import settings
 from app.core.db import supabase
 from app.models.community import CommunityApplication, CommunityApplicationReq
@@ -34,9 +34,18 @@ async def get_communities(inst_id: str):
 async def get_community(community_id: str):
     community = await communities_service.get_community(supabase, community_id)
     if community is None:
-        raise HTTPException(status_code=404, details="Community cannot be found")
+        raise HTTPException(status_code=404, detail="Community cannot be found")
 
     return community
+
+
+@router.get("/{community_id}/news")
+async def get_community_news(community_id: str):
+    community_news = await news_service.get_community_news(supabase, community_id)
+    if community_news is None or len(community_news) == 0:
+        raise HTTPException(status_code=404, detail="No news found")
+
+    return community_news
 
 
 @router.post("/requests")
@@ -52,7 +61,6 @@ async def create_community_application(
         name=reqData.name,
         description=reqData.description,
     )
-    print(formData)
 
     data, error = await communities_service.create_community_application(
         supabase, formData

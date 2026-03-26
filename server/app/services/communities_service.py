@@ -1,7 +1,8 @@
 from supabase import Client
 from typing import List
-from app.models.community import Community
+from app.models.community import Community, CommunityMembership
 from app.core.db import supabase
+import uuid
 
 
 async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
@@ -124,3 +125,31 @@ async def create_community_application(
     )
 
     return response.data, None
+
+
+async def get_community_membership(supabase, user_id: str):
+    res = (
+        supabase.table("community_members").select("*").eq("user_id", user_id).execute()
+    )
+
+    return [
+        CommunityMembership(
+            community_id=comm["community_id"],
+            user_id=comm["user_id"],
+            role=comm["role"],
+        )
+        for comm in res.data
+    ]
+
+
+async def leave_community(supabase: Client, community_id: str, user_id: str):
+    print(user_id)
+    print(community_id)
+    response = (
+        supabase.table("community_members")
+        .delete()
+        .eq("user_id", uuid.UUID(user_id))
+        .eq("community_id", uuid.UUID(community_id))
+        .execute()
+    )
+    return response.data

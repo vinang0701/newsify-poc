@@ -2,6 +2,7 @@ export interface News {
     id: string;
     title: string;
     author: string;
+    author_id: string;
     desc: string;
     url: string;
     image_url: string;
@@ -27,4 +28,11 @@ export interface LiveStream {
     community: string;
     desc: string;
     view_count: number;
+}
+
+// Temp
+export interface UserProfileDetails {
+    id: string,
+    name: string,
+    description: string,
 }

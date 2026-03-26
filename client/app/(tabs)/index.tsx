@@ -25,6 +25,7 @@ import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Image } from "expo-image";
 const HEADER_HEIGHT = 250;
 
 const DATA = [
@@ -46,31 +47,6 @@ const DATA = [
 // avatar, name, time ago, 3 dots on the right
 // title, image, preview text, read more
 // like, comment, repost, save
-
-type ItemProps = { title: string };
-const FilterItem = ({ title }: ItemProps) => {
-    const colorScheme = useColorScheme() ?? "light";
-
-    return (
-        <Pressable
-            style={{
-                paddingHorizontal: 12,
-                paddingVertical: 4,
-                backgroundColor: Colors[colorScheme].bg_light,
-                borderRadius: 4,
-                marginRight: 8,
-            }}
-        >
-            <Text
-                style={{
-                    color: Colors[colorScheme].tint,
-                }}
-            >
-                {title}
-            </Text>
-        </Pressable>
-    );
-};
 
 export default function HomeScreen() {
     const colorScheme = useColorScheme() ?? "light";
@@ -139,9 +115,10 @@ export default function HomeScreen() {
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     style={{
+                        flex: 1,
                         paddingHorizontal: 16,
                         paddingVertical: 12,
-
+                        paddingBottom: insets.bottom,
                         backgroundColor: Colors[colorScheme].bg,
                     }}
                     refreshControl={
@@ -151,59 +128,230 @@ export default function HomeScreen() {
                         />
                     }
                 >
-                    <View>
-                        <FlashList
-                            keyExtractor={(item) => item.id}
-                            horizontal
-                            style={{ marginBottom: 12, elevation: 10 }}
-                            data={DATA}
-                            renderItem={({ item }) => (
-                                <Pressable
+                    <FlashList
+                        keyExtractor={(item) => item.id}
+                        horizontal
+                        style={{ marginBottom: 12, elevation: 10 }}
+                        data={DATA}
+                        renderItem={({ item }) => (
+                            <Pressable
+                                style={{
+                                    backgroundColor:
+                                        activeFilter === item.title
+                                            ? Colors[colorScheme].tint
+                                            : Colors[colorScheme].bg_light,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 4,
+                                    borderColor: Colors[colorScheme].border,
+                                    borderWidth: 1,
+                                    marginRight: 8,
+                                    borderRadius: 4,
+                                }}
+                                onPress={() => {
+                                    // Check if active state is pressed
+                                    if (activeFilter === item.title) {
+                                        return;
+                                    } else {
+                                        setActiveFilter(item.title);
+                                    }
+                                }}
+                            >
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized={true}
                                     style={{
-                                        backgroundColor:
+                                        color:
                                             activeFilter === item.title
-                                                ? Colors[colorScheme].tint
-                                                : Colors[colorScheme].bg_light,
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 4,
-                                        borderColor: Colors[colorScheme].border,
-                                        borderWidth: 1,
-                                        marginRight: 8,
-                                        borderRadius: 4,
-                                    }}
-                                    onPress={() => {
-                                        // Check if active state is pressed
-                                        if (activeFilter === item.title) {
-                                            return;
-                                        } else {
-                                            setActiveFilter(item.title);
-                                        }
+                                                ? Colors[colorScheme]
+                                                      .button_text
+                                                : Colors[colorScheme].tint,
                                     }}
                                 >
-                                    <ThemedText
-                                        type="body_small"
-                                        emphasized={true}
-                                        style={{
-                                            color:
-                                                activeFilter === item.title
-                                                    ? Colors[colorScheme]
-                                                          .button_text
-                                                    : Colors[colorScheme].tint,
-                                        }}
-                                    >
-                                        {item.title}
-                                    </ThemedText>
-                                </Pressable>
-                            )}
-                        />
-                    </View>
-                    <FlashList
-                        style={{ marginBottom: 16 }}
-                        data={data}
-                        renderItem={({ item }) => (
-                            <NewsPostCard news={item} key={item.id} />
+                                    {item.title}
+                                </ThemedText>
+                            </Pressable>
                         )}
                     />
+                    {activeFilter === "Recent" ? (
+                        <View style={{ paddingBottom: insets.bottom + 20 }}>
+                            <FlashList
+                                style={{ marginBottom: 16 }}
+                                data={data}
+                                renderItem={({ item }) => (
+                                    <NewsPostCard news={item} key={item.id} />
+                                )}
+                            />
+                        </View>
+                    ) : (
+                        <View style={{ paddingBottom: insets.bottom + 20 }}>
+                            <View
+                                style={[
+                                    styles.card,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].bg_light,
+                                        borderColor: Colors[colorScheme].border,
+                                    },
+                                ]}
+                            >
+                                <View style={styles.cardInfoContainer}>
+                                    <Pressable>
+                                        <View
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: 4,
+                                            }}
+                                        >
+                                            <Image
+                                                source={require("@/assets/images/profile.png")}
+                                                style={{
+                                                    width: 28,
+                                                    height: 28,
+                                                }}
+                                            />
+                                            <ThemedText type="defaultSemiBold">
+                                                SIM Office
+                                            </ThemedText>
+                                        </View>
+                                    </Pressable>
+                                    <ThemedText
+                                        type="default"
+                                        style={{
+                                            fontSize: 10,
+                                            color: "hsl(0, 0%, 5%)",
+                                        }}
+                                    >
+                                        1d
+                                    </ThemedText>
+                                </View>
+                                <View>
+                                    {/* Content */}
+                                    <Image
+                                        alt="image"
+                                        source={{
+                                            uri: "https://westfield.dorset.sch.uk/wp-content/uploads/2018/12/School-closed.jpg",
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            height: 200,
+                                            resizeMode: "contain",
+                                        }}
+                                    />
+                                    <ThemedText
+                                        type="sub_heading"
+                                        style={{
+                                            paddingTop: 12,
+                                            paddingHorizontal: 12,
+                                            fontSize: 20,
+                                        }}
+                                    >
+                                        School closure due to haze from 30th
+                                        March 2026.
+                                    </ThemedText>
+                                    <ThemedText
+                                        style={{
+                                            paddingVertical: 4,
+                                            paddingHorizontal: 12,
+                                            fontSize: 14,
+                                        }}
+                                    >
+                                        Please be advised that all physical
+                                        campus operations at [Your Institution
+                                        Name] will be suspended starting Monday,
+                                        30th March 2026, until further notice.
+                                        This decision follows the National
+                                        Environment Agency (NEA) health advisory
+                                        regarding the current PSI levels. Stay
+                                        safe and keep your windows closed. We
+                                        will provide a status update on March
+                                        31st at 6:00 PM.
+                                    </ThemedText>
+                                </View>
+                            </View>
+                            <View
+                                style={[
+                                    styles.card,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].bg_light,
+                                        borderColor: Colors[colorScheme].border,
+                                    },
+                                ]}
+                            >
+                                <View style={styles.cardInfoContainer}>
+                                    <Pressable>
+                                        <View
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: 4,
+                                            }}
+                                        >
+                                            <Image
+                                                source={require("@/assets/images/profile.png")}
+                                                style={{
+                                                    width: 28,
+                                                    height: 28,
+                                                }}
+                                            />
+                                            <ThemedText type="defaultSemiBold">
+                                                SIM IT
+                                            </ThemedText>
+                                        </View>
+                                    </Pressable>
+                                    <ThemedText
+                                        type="default"
+                                        style={{
+                                            fontSize: 10,
+                                            color: "hsl(0, 0%, 5%)",
+                                        }}
+                                    >
+                                        3d
+                                    </ThemedText>
+                                </View>
+                                <View>
+                                    {/* Content */}
+                                    <Image
+                                        alt="image"
+                                        source={{
+                                            uri: "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/scam-alert-poster-design-template-54d411d404bbaff0b9b060eb1c0e0ab9_screen.jpg?ts=1682506517",
+                                        }}
+                                        style={{
+                                            width: "100%",
+                                            height: 200,
+                                            resizeMode: "cover",
+                                        }}
+                                    />
+                                    <ThemedText
+                                        type="sub_heading"
+                                        style={{
+                                            paddingTop: 12,
+                                            paddingHorizontal: 12,
+                                            fontSize: 20,
+                                        }}
+                                    >
+                                        Beware of online scams!
+                                    </ThemedText>
+                                    <ThemedText
+                                        style={{
+                                            paddingVertical: 4,
+                                            paddingHorizontal: 12,
+                                            fontSize: 14,
+                                        }}
+                                    >
+                                        There has been a recent influx of scams
+                                        in Singapore. We have received multiple
+                                        reports of scam emails, in which the
+                                        threat actor attempt to trick students
+                                        by asking them to pay their school fees.
+                                    </ThemedText>
+                                </View>
+                            </View>
+                        </View>
+                    )}
                 </ScrollView>
                 <BottomSheet
                     ref={bottomSheetRef}
@@ -235,6 +383,8 @@ const styles = StyleSheet.create({
         gap: 8,
         alignContent: "flex-start",
         borderRadius: 8,
+        borderWidth: 1,
+        elevation: 2,
         paddingVertical: 12,
         marginBottom: 4,
         minHeight: 200,
@@ -247,7 +397,6 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         paddingHorizontal: 12,
     },
-
     titleContainer: {
         flexDirection: "row",
         alignItems: "center",

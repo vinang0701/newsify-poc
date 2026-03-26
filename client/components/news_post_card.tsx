@@ -5,13 +5,14 @@ import {
     Pressable,
     useColorScheme,
 } from "react-native";
-import React from "react";
+import React, { useState } from "react";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { ThemedText } from "./themed-text";
 import { ModalProps, News } from "@/data/types";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 type NewsPostCardProps = {
     news: News;
@@ -19,6 +20,27 @@ type NewsPostCardProps = {
 
 function NewsPostCard({ news }: NewsPostCardProps) {
     const colorScheme = useColorScheme() ?? "light";
+    const [like, setLike] = useState(false);
+    const [bookmark, setBookmark] = useState(false);
+    const [likeCount, setLikeCount] = useState(100);
+    const router = useRouter();
+
+    function handleNavigate(user_id: string) {
+        console.log(user_id);
+        router.push({
+            pathname: "/(tabs)/profile_page/[user_id]",
+            params: { user_id: user_id },
+        });
+    }
+
+    function handleLike() {
+        setLike(!like);
+        if (!like) {
+            setLikeCount(likeCount + 1);
+        } else {
+            setLikeCount(100);
+        }
+    }
 
     return (
         <View
@@ -31,11 +53,24 @@ function NewsPostCard({ news }: NewsPostCardProps) {
             ]}
         >
             <View style={styles.cardInfoContainer}>
-                <Image
-                    source={require("@/assets/images/profile.png")}
-                    style={{ width: 28, height: 28 }}
-                />
-                <ThemedText type="defaultSemiBold">{news.author}</ThemedText>
+                <Pressable onPress={() => handleNavigate(news.author_id)}>
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                        }}
+                    >
+                        <Image
+                            source={require("@/assets/images/profile.png")}
+                            style={{ width: 28, height: 28 }}
+                        />
+                        <ThemedText type="defaultSemiBold">
+                            {news.author}
+                        </ThemedText>
+                    </View>
+                </Pressable>
                 <ThemedText
                     type="default"
                     style={{
@@ -63,7 +98,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                     style={{
                         width: "100%",
                         height: 200,
-                        resizeMode: "contain",
+                        resizeMode: "cover",
                     }}
                 />
                 <ThemedText
@@ -85,11 +120,6 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                 >
                     {news.content["text"]?.replace(/\s*\[\+\d+ chars\]$/, "") ||
                         ""}
-                    <Link href="/(tabs)/create">
-                        <ThemedText type="link" style={{ fontSize: 14 }}>
-                            Read More
-                        </ThemedText>
-                    </Link>
                 </ThemedText>
             </View>
 
@@ -111,9 +141,23 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                             alignItems: "center",
                             justifyContent: "flex-start",
                         }}
+                        onPress={() => handleLike()}
                     >
-                        <Feather name="heart" size={24} color="black" />
-                        <Text>100</Text>
+                        {like ? (
+                            <MaterialCommunityIcons
+                                name="heart"
+                                size={24}
+                                color="red"
+                            />
+                        ) : (
+                            <MaterialCommunityIcons
+                                name="heart-outline"
+                                size={24}
+                                color="black"
+                            />
+                        )}
+
+                        <ThemedText>{likeCount}</ThemedText>
                     </Pressable>
                     <Link href="/comment" push asChild>
                         <Pressable
@@ -130,11 +174,25 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                                 size={24}
                                 color="black"
                             />
-                            <Text>100</Text>
+                            <ThemedText>100</ThemedText>
                         </Pressable>
                     </Link>
                 </View>
-                <Feather name="bookmark" size={24} color="black" />
+                <Pressable onPress={() => setBookmark(!bookmark)}>
+                    {bookmark ? (
+                        <MaterialCommunityIcons
+                            name="bookmark"
+                            size={24}
+                            color={Colors[colorScheme].tint}
+                        />
+                    ) : (
+                        <MaterialCommunityIcons
+                            name="bookmark-outline"
+                            size={24}
+                            color="black"
+                        />
+                    )}
+                </Pressable>
             </View>
         </View>
     );

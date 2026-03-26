@@ -32,3 +32,9 @@ class CommunityApplication(BaseModel):
     inst_id: uuid.UUID
     name: str
     description: str
+
+
+class CommunityMembership(BaseModel):
+    community_id: uuid.UUID
+    user_id: uuid.UUID
+    role: str

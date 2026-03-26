@@ -7,6 +7,8 @@ import {
     View,
     ScrollView,
     Modal,
+    ActivityIndicator,
+    Alert,
 } from "react-native";
 import BottomSheet, {
     BottomSheetBackdrop,
@@ -28,12 +30,21 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemedText } from "@/components/themed-text";
 import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
 import axios, { AxiosError } from "axios";
 import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;
+const BASE_URL = "http://10.0.2.2:8000/api/v1";
+const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+
+interface UserCommunities {
+    community_id: string;
+    community_name: string;
+    role: string;
+}
 
 export default function CommunityPage() {
     const colorScheme = useColorScheme() ?? "light";
@@ -41,6 +52,7 @@ export default function CommunityPage() {
     const router = useRouter();
     const snapPoints = useMemo(() => ["20%"], []);
     const [modalVisible, setModalVisible] = useState(false);
+    const queryClient = useQueryClient();
 
     const tenantId = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
     // ref
@@ -95,10 +107,9 @@ export default function CommunityPage() {
         console.log("fetching in community");
         try {
             const response = await axios.get<News[]>(
-                `http://10.0.2.2:8000/api/v1/${tenantId}/news/feed`,
+                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}/news`,
             );
-            // Axios throws on non-2xx status codes by default,
-            // so a simple return is usually enough.
+            console.log("news", response.data);
             return response.data;
         } catch (error) {
             // Re-throwing the error allows TanStack Query to "see" the failure
@@ -108,6 +119,34 @@ export default function CommunityPage() {
             }
             throw new Error("An unexpected error occurred");
         }
+    }
+
+    async function leaveCommunity() {
+        console.log("Leaving community");
+        try {
+            const response = await axios.delete(
+                `${BASE_URL}/${inst_id}/users/me/communities/${communityId}`,
+            );
+
+            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+            return response.data;
+        } catch (error) {
+            console.error("Failed to leave:", error);
+        }
+    }
+
+    const { mutate, isPending } = useMutation({
+        mutationKey: ["user_communities"],
+        mutationFn: leaveCommunity,
+        onError: (error) => {
+            Alert.alert("Error", "Something went wrong.");
+            console.error(error);
+        },
+    });
+
+    function handleLeaveComm() {
+        setModalVisible(!modalVisible);
+        mutate();
     }
 
     // Fetch data from server
@@ -126,15 +165,49 @@ export default function CommunityPage() {
         queryFn: () => fetchCommunity(),
     });
 
-    if (isFetching) {
-        return <Loading />;
-    }
+    // Temp workaround
+    const {
+        data: comm_mem_data,
+        error: comm_mem_error,
+        refetch: comm_mem_refetch,
+    } = useQuery<UserCommunities[]>({
+        queryKey: ["user_communities", user_id],
+        queryFn: async () => {
+            // axios try catch
+            const response = await axios.get(
+                `${BASE_URL}/${inst_id}/users/me/communities`,
+            );
+
+            return response.data;
+        },
+    });
+
+    const isMember = comm_mem_data?.some(
+        (item) => item.community_id === communityId,
+    );
 
     if (commData === undefined || commError) {
         return (
             <View>
                 <Text>Error</Text>
             </View>
+        );
+    }
+
+    if (isFetching) {
+        return (
+            <SafeAreaView
+                style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
+                <ActivityIndicator
+                    size="large"
+                    color={Colors[colorScheme].tint}
+                />
+            </SafeAreaView>
         );
     }
 
@@ -246,18 +319,36 @@ export default function CommunityPage() {
                             </View>
                         </View>
                         {/* Join Button */}
-                        <Pressable onPress={() => setModalVisible(true)}>
+
+                        <Pressable
+                            style={{
+                                paddingVertical: 8,
+                                paddingHorizontal: 12,
+                                backgroundColor: isMember
+                                    ? Colors[colorScheme].alert_red
+                                    : Colors[colorScheme].bg_light,
+                                borderRadius: 20,
+                                borderWidth: 2,
+                                borderColor: isMember
+                                    ? "transparent"
+                                    : Colors[colorScheme].tint,
+                            }}
+                            onPress={() => {
+                                isMember && setModalVisible(true);
+                            }}
+                        >
                             <ThemedText
-                                type="caption"
+                                type="body_small"
+                                emphasized
                                 style={{
-                                    color: Colors[colorScheme].button_text,
-                                    backgroundColor: Colors[colorScheme].tint,
-                                    paddingVertical: 4,
-                                    paddingHorizontal: 12,
-                                    borderRadius: 20,
+                                    color: isMember
+                                        ? Colors[colorScheme].button_text
+                                        : Colors[colorScheme].tint,
+
+                                    fontWeight: "semibold",
                                 }}
                             >
-                                Join
+                                {isMember ? "Leave" : "Join"}
                             </ThemedText>
                         </Pressable>
                     </View>
@@ -293,15 +384,31 @@ export default function CommunityPage() {
                             color={Colors[colorScheme].text}
                         />
                     </View>
-                    <View>
-                        <FlashList
-                            nestedScrollEnabled={false}
-                            data={data}
-                            renderItem={({ item, index }) => (
-                                <NewsPostCard news={item} key={index} />
-                            )}
-                        />
-                    </View>
+                    {status === "error" || data?.length === 0 ? (
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: "center",
+                                alignItems: "center",
+                            }}
+                        >
+                            <ThemedText
+                                style={{ color: Colors[colorScheme].caption }}
+                            >
+                                No results found!
+                            </ThemedText>
+                        </View>
+                    ) : (
+                        <View>
+                            <FlashList
+                                nestedScrollEnabled={false}
+                                data={data}
+                                renderItem={({ item, index }) => (
+                                    <NewsPostCard news={item} key={index} />
+                                )}
+                            />
+                        </View>
+                    )}
                 </View>
             </ScrollView>
             <BottomSheet
@@ -392,7 +499,7 @@ export default function CommunityPage() {
                                             Colors[colorScheme].alert_red,
                                     },
                                 ]}
-                                onPress={() => setModalVisible(!modalVisible)}
+                                onPress={() => handleLeaveComm()}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"

@@ -5,6 +5,7 @@ from pydantic import EmailStr, BaseModel
 
 class NewsPost(BaseModel):
     id: uuid.UUID
+    author_id: str
     author: str
     title: str
     description: str
@@ -13,3 +14,10 @@ class NewsPost(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class Draft(BaseModel):
+    draft_id: uuid.UUID
+    title: str | None = None
+    image_url: str | None = None
+    content: str | None = None

@@ -1,5 +1,6 @@
 import uuid
-from pydantic import EmailStr
+from typing import List, Dict, Any
+from pydantic import EmailStr, BaseModel
 
 
 class RegisteredUser:
@@ -8,3 +9,12 @@ class RegisteredUser:
     name: str
     email: EmailStr
     faculty: str
+
+
+class UserProfileDetails(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None = None
+
+    class Config:
+        from_attributes = True

@@ -31,6 +31,13 @@ interface EditorToolbarProps extends ViewProps {
     };
 }
 
+type ToolbarIconItem = {
+    name: string;
+    fn?: () => void;
+    iconSet: "feather" | "mci";
+    styleKey?: "bold" | "italic" | "underline"; // Only include the keys that exist in activeStyles
+};
+
 const EditorToolbar = ({
     style,
     actions,
@@ -39,19 +46,38 @@ const EditorToolbar = ({
     const colorScheme = useColorScheme() ?? "light";
     const color = Colors[colorScheme].text;
     const activeColor = Colors[colorScheme].tint; // or whatever your active color is
-    const toolbarIcons = [
-        { name: "bold", fn: actions?.onBold, iconSet: "feather" },
-        { name: "italic", fn: actions?.onItalic, iconSet: "feather" },
-        { name: "underline", fn: actions?.onUnderline, iconSet: "feather" },
-        { name: "image", fn: actions?.onImage, iconSet: "feather" },
+    const toolbarIcons: ToolbarIconItem[] = [
+        {
+            name: "bold",
+            fn: actions?.onBold,
+            iconSet: "feather",
+            styleKey: "bold",
+        },
+        {
+            name: "italic",
+            fn: actions?.onItalic,
+            iconSet: "feather",
+            styleKey: "italic",
+        },
+        {
+            name: "underline",
+            fn: actions?.onUnderline,
+            iconSet: "feather",
+            styleKey: "underline",
+        },
+        { name: "image", fn: actions?.onImage, iconSet: "feather" }, // styleKey is now validly undefined
         { name: "link", fn: actions?.onLink, iconSet: "feather" },
-        { name: "list", fn: actions?.onBulletList, iconSet: "feather" },
+        {
+            name: "list",
+            fn: actions?.onBulletList,
+            iconSet: "feather",
+        },
         {
             name: "format-list-numbered",
             fn: actions?.onOrderedList,
             iconSet: "mci",
         },
-    ] as const;
+    ];
 
     const ToolbarIcon = ({
         name,
@@ -75,25 +101,64 @@ const EditorToolbar = ({
     };
     return (
         <View style={[styles.container, style]}>
-            <FlashList
-                horizontal
-                keyExtractor={(item) => item.name}
-                contentContainerStyle={styles.toolbar}
-                data={toolbarIcons}
-                renderItem={(item) => (
+            {toolbarIcons.map((item) => {
+                const isActive = item.styleKey
+                    ? activeStyles?.[item.styleKey as keyof typeof activeStyles]
+                    : false;
+                return (
                     <Pressable
-                        key={item.item.name}
-                        onPress={item.item.fn}
-                        style={styles.iconButton}
+                        key={item.name}
+                        onPress={item.fn}
+                        style={[
+                            styles.iconButton,
+                            // Optional: Add a subtle background when active
+                            isActive && {
+                                backgroundColor: "rgba(0,0,0,0.1)",
+                            },
+                        ]}
                     >
                         <ToolbarIcon
-                            name={item.item.name}
-                            iconSet={item.item.iconSet}
-                            color={color}
+                            name={item.name}
+                            iconSet={item.iconSet}
+                            // 2. Apply the active color here
+                            color={isActive ? activeColor : color}
                         />
                     </Pressable>
-                )}
-            />
+                );
+            })}
+            {/* <FlashList
+                keyExtractor={(item) => item.name}
+                horizontal
+                contentContainerStyle={styles.toolbar}
+                data={toolbarIcons}
+                renderItem={({ item }) => {
+                    const isActive = item.styleKey
+                        ? activeStyles?.[
+                              item.styleKey as keyof typeof activeStyles
+                          ]
+                        : false;
+                    return (
+                        <Pressable
+                            key={item.name}
+                            onPress={item.fn}
+                            style={[
+                                styles.iconButton,
+                                // Optional: Add a subtle background when active
+                                isActive && {
+                                    backgroundColor: "rgba(0,0,0,0.1)",
+                                },
+                            ]}
+                        >
+                            <ToolbarIcon
+                                name={item.name}
+                                iconSet={item.iconSet}
+                                // 2. Apply the active color here
+                                color={isActive ? activeColor : color}
+                            />
+                        </Pressable>
+                    );
+                }}
+            /> */}
         </View>
     );
 };
@@ -101,15 +166,20 @@ const EditorToolbar = ({
 export default EditorToolbar;
 const styles = StyleSheet.create({
     container: {
-        alignSelf: "flex-start",
+        flexDirection: "row",
+        justifyContent: "space-between",
         width: "100%",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
     },
-    toolbar: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
+
     iconButton: {
-        marginHorizontal: 12, // controls spacing between icons
+        marginRight: 4, // controls spacing between icons
+        borderRadius: 4,
+        width: 30,
+        height: 30,
+        justifyContent: "center",
+        alignItems: "center",
     },
 });
 {
