@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "client",
-    "slug": "client",
+    "name": "Newsify",
+    "slug": "newsify",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.client",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,8 +25,6 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
@@ -75,6 +77,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6c18fa71-84f8-406d-bcb7-3de6a5939a61"
+      }
+    },
+    "owner": "vinang0701s-organization"
   }
 }
