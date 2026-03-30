@@ -37,10 +37,6 @@ const DATA = [
         id: "2",
         title: "Important",
     },
-    {
-        id: "3",
-        title: "Following",
-    },
 ];
 
 // Substack like news feed

@@ -76,3 +76,16 @@ async def create_community_application(
         "message": "Successfully submitted application!",
         "data": data,
     }
+
+
+@router.get("/{community_id}/members")
+async def get_community_members(inst_id: str, community_id: str):
+    try:
+        # Call the service to fetch joined data
+        members = await communities_service.get_members_by_community(
+            supabase, community_id
+        )
+        return members
+    except Exception as e:
+        print(f"Error fetching members: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch community members")

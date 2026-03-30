@@ -65,7 +65,7 @@ const CommentsModal = () => {
                     <View>
                         <View style={{ flexDirection: "row", gap: 8 }}>
                             <ThemedText type="body_small" emphasized>
-                                Sansa Stark
+                                Priya Doe
                             </ThemedText>
                             <ThemedText type="caption">1d</ThemedText>
                         </View>
@@ -100,7 +100,7 @@ const CommentsModal = () => {
                     <View>
                         <View style={{ flexDirection: "row", gap: 8 }}>
                             <ThemedText type="body_small" emphasized>
-                                Jon Snow
+                                John Lee
                             </ThemedText>
                             <ThemedText type="body_small">30m</ThemedText>
                         </View>
@@ -135,7 +135,7 @@ const CommentsModal = () => {
                     <View>
                         <View style={{ flexDirection: "row", gap: 8 }}>
                             <ThemedText type="body_small" emphasized>
-                                Jamie Lannister
+                                Zach Ng
                             </ThemedText>
                             <ThemedText type="body_small">3m</ThemedText>
                         </View>

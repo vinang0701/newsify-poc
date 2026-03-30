@@ -117,14 +117,15 @@ export default function Profile() {
                     source={require("@/assets/images/icon_light.png")}
                     style={{ width: 42, height: 20, resizeMode: "contain" }}
                 />
-
-                <Pressable onPress={() => {}}>
-                    <Feather
-                        name="search"
-                        size={24}
-                        color={Colors[colorScheme].button_text}
-                    />
-                </Pressable>
+                <Link href="/search" push asChild>
+                    <Pressable onPress={() => {}}>
+                        <Feather
+                            name="search"
+                            size={24}
+                            color={Colors[colorScheme].button_text}
+                        />
+                    </Pressable>
+                </Link>
             </View>
             {/* Content */}
             <ScrollView
@@ -224,7 +225,7 @@ export default function Profile() {
                             </ThemedText>
                         </View>
                         <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">168</ThemedText>
+                            <ThemedText type="defaultSemiBold">20</ThemedText>
                             <ThemedText
                                 type="caption"
                                 style={{
@@ -236,7 +237,7 @@ export default function Profile() {
                             </ThemedText>
                         </View>
                         <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">28</ThemedText>
+                            <ThemedText type="defaultSemiBold">20</ThemedText>
                             <ThemedText
                                 type="caption"
                                 style={{
@@ -254,10 +255,11 @@ export default function Profile() {
                         flex: 1,
                         backgroundColor: Colors[colorScheme].bg,
                         paddingHorizontal: 16,
+                        paddingVertical: 12,
                         marginBottom: 16,
                     }}
                 >
-                    <View
+                    {/* <View
                         style={[
                             styles.sortButtonContainer,
                             {
@@ -272,7 +274,7 @@ export default function Profile() {
                             size={16}
                             color={Colors[colorScheme].text}
                         />
-                    </View>
+                    </View> */}
                     {/* Card */}
                     <FlashList
                         data={data}

@@ -144,6 +144,24 @@ export default function CommunityPage() {
         },
     });
 
+    const joinComm = async (id: string) => {
+        try {
+            await axios.post(`${BASE_URL}/${inst_id}/users/me/communities`, {
+                community_id: id,
+                user_id: user_id,
+            });
+
+            // Refresh the query so the button changes to "Leave"
+            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+        } catch (err) {
+            console.error("Join failed", err);
+        }
+    };
+
+    const { mutate: mu_joinComm } = useMutation({
+        mutationFn: joinComm,
+    });
+
     function handleLeaveComm() {
         setModalVisible(!modalVisible);
         mutate();
@@ -303,20 +321,28 @@ export default function CommunityPage() {
                                 </ThemedText>
                             </View>
                             {/* Community name and Member Count */}
-                            <View>
-                                <ThemedText type="defaultSemiBold">
-                                    {/* Chess Club */}
-                                    {commData[0]?.name}
-                                </ThemedText>
-                                <ThemedText
-                                    type="caption"
-                                    style={{
-                                        color: Colors[colorScheme].caption,
-                                    }}
-                                >
-                                    30k members
-                                </ThemedText>
-                            </View>
+                            <Link
+                                href={{
+                                    pathname:
+                                        "/community/[communityId]/members",
+                                    params: { communityId: commData[0].id },
+                                }}
+                            >
+                                <View>
+                                    <ThemedText type="defaultSemiBold">
+                                        {/* Chess Club */}
+                                        {commData[0]?.name}
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                        }}
+                                    >
+                                        20 members
+                                    </ThemedText>
+                                </View>
+                            </Link>
                         </View>
                         {/* Join Button */}
 
@@ -335,6 +361,7 @@ export default function CommunityPage() {
                             }}
                             onPress={() => {
                                 isMember && setModalVisible(true);
+                                !isMember && mu_joinComm(commData[0].id);
                             }}
                         >
                             <ThemedText
@@ -368,7 +395,7 @@ export default function CommunityPage() {
                         paddingHorizontal: 16,
                     }}
                 >
-                    <View
+                    {/* <View
                         style={[
                             styles.sortButtonContainer,
                             {
@@ -383,11 +410,10 @@ export default function CommunityPage() {
                             size={16}
                             color={Colors[colorScheme].text}
                         />
-                    </View>
+                    </View> */}
                     {status === "error" || data?.length === 0 ? (
                         <View
                             style={{
-                                flex: 1,
                                 justifyContent: "center",
                                 alignItems: "center",
                             }}

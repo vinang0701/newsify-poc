@@ -22,7 +22,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
     const colorScheme = useColorScheme() ?? "light";
     const [like, setLike] = useState(false);
     const [bookmark, setBookmark] = useState(false);
-    const [likeCount, setLikeCount] = useState(100);
+    const [likeCount, setLikeCount] = useState(20);
     const router = useRouter();
 
     function handleNavigate(user_id: string) {
@@ -38,7 +38,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
         if (!like) {
             setLikeCount(likeCount + 1);
         } else {
-            setLikeCount(100);
+            setLikeCount(20);
         }
     }
 
@@ -174,7 +174,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                                 size={24}
                                 color="black"
                             />
-                            <ThemedText>100</ThemedText>
+                            <ThemedText>3</ThemedText>
                         </Pressable>
                     </Link>
                 </View>

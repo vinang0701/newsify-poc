@@ -13,6 +13,7 @@ import {
     ScrollView,
     StyleSheet,
     TouchableHighlight,
+    Alert,
     useColorScheme,
     View,
     TextInput,
@@ -24,7 +25,7 @@ import { Header } from "@/components/header";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import axios from "axios";
 
@@ -67,6 +68,7 @@ export default function CommunitiesTab() {
     const [refreshing, setRefreshing] = React.useState(false);
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const queryClient = useQueryClient();
 
     function formatMemberCount(count: number) {
         if (count < 1000) {
@@ -94,6 +96,24 @@ export default function CommunitiesTab() {
 
         return [first, second];
     }
+
+    const joinComm = async (id: string) => {
+        try {
+            await axios.post(`${BASE_URL}/${inst_id}/users/me/communities`, {
+                community_id: id,
+                user_id: user_id,
+            });
+
+            // Refresh the query so the button changes to "Leave"
+            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+        } catch (err) {
+            console.error("Join failed", err);
+        }
+    };
+
+    const { mutate, isPending } = useMutation({
+        mutationFn: joinComm,
+    });
 
     const getAvatarColor = (name: string) => {
         let hash = 0;
@@ -129,6 +149,29 @@ export default function CommunitiesTab() {
             );
 
             return response.data;
+        },
+    });
+
+    async function leaveCommunity(community_id: string) {
+        console.log("Leaving community");
+        try {
+            const response = await axios.delete(
+                `${BASE_URL}/${inst_id}/users/me/communities/${community_id}`,
+            );
+
+            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+            return response.data;
+        } catch (error) {
+            console.error("Failed to leave:", error);
+        }
+    }
+
+    const { mutate: mu_leaveCommunity } = useMutation({
+        mutationKey: ["user_communities"],
+        mutationFn: leaveCommunity,
+        onError: (error) => {
+            Alert.alert("Error", "Something went wrong.");
+            console.error(error);
         },
     });
 
@@ -371,7 +414,7 @@ export default function CommunitiesTab() {
                                                         .text_light,
                                                 }}
                                             >
-                                                1k members
+                                                20 members
                                             </ThemedText>
                                         </View>
                                     </View>
@@ -392,6 +435,11 @@ export default function CommunitiesTab() {
                                             )
                                                 ? "transparent"
                                                 : Colors[colorScheme].tint,
+                                        }}
+                                        onPress={() => {
+                                            !joinedCommunityIds.has(item.id)
+                                                ? mutate(item.id)
+                                                : mu_leaveCommunity(item.id);
                                         }}
                                     >
                                         <ThemedText

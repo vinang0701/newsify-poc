@@ -24,6 +24,11 @@ class UserPublishPostBody(BaseModel):
         print(self.content)
 
 
+class JoinCommunityRequest(BaseModel):
+    community_id: uuid.UUID
+    user_id: uuid.UUID
+
+
 def moderate_text(text: str):
     # ingest
     # call api
@@ -181,3 +186,23 @@ async def search_users(
     except Exception as e:
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail="Error searching users")
+
+
+@router.post("/me/communities")
+async def join_community(body: JoinCommunityRequest):
+    try:
+        result = await communities_service.join_community(
+            supabase, str(body.community_id), str(body.user_id)
+        )
+
+        return {
+            "status": "success",
+            "message": "Welcome to the community!",
+            "data": result,
+        }
+    except Exception as e:
+        # Check if the error is a "Duplicate Key" (User already in community)
+        if "duplicate key" in str(e).lower():
+            raise HTTPException(status_code=400, detail="You are already a member.")
+
+        raise HTTPException(status_code=500, detail="Failed to join community")

@@ -9,6 +9,7 @@ export default function CommunityStackLayout() {
             }}
         >
             <Stack.Screen name="index" />
+            <Stack.Screen name="members" />
         </Stack>
     );
 }

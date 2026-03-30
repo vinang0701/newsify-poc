@@ -1,6 +1,6 @@
 from supabase import Client
 from typing import List
-from app.models.community import Community, CommunityMembership
+from app.models.community import Community, CommunityMembership, CommunityMember
 from app.core.db import supabase
 import uuid
 
@@ -153,3 +153,47 @@ async def leave_community(supabase: Client, community_id: str, user_id: str):
         .execute()
     )
     return response.data
+
+
+async def join_community(supabase: Client, community_id: str, user_id: str):
+    response = (
+        supabase.table("community_members")
+        .insert(
+            {
+                "community_id": community_id,
+                "user_id": user_id,
+                "joined_at": "now()",
+                "role": "member",
+            }
+        )
+        .execute()
+    )
+
+    return response
+
+
+async def get_members_by_community(supabase: Client, community_id: str):
+    # This syntax tells Supabase:
+    # 1. Look at community_members
+    # 2. Grab the related 'users' record for each row
+    # 3. Only give me specific user fields
+    response = (
+        supabase.table("community_members")
+        .select("role, users(id, name)")
+        .eq("community_id", community_id)
+        .execute()
+    )
+
+    # Supabase returns nested objects, so we flatten them for easier UI use
+    memberships = [
+        CommunityMember(
+            community_id=community_id,
+            user_id=member["users"]["id"],
+            name=member["users"]["name"],
+            role=member.get("role", "member"),  # Fallback to 'member' if NULL
+        )
+        for member in response.data
+        if member.get("users")
+    ]
+
+    return memberships

@@ -225,6 +225,7 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
         """
         )
         .eq("author", user_id)
+        .order("created_at", desc=True)
         .execute()
     )
 

@@ -38,3 +38,10 @@ class CommunityMembership(BaseModel):
     community_id: uuid.UUID
     user_id: uuid.UUID
     role: str
+
+
+class CommunityMember(BaseModel):
+    community_id: uuid.UUID
+    user_id: uuid.UUID
+    name: str
+    role: str
