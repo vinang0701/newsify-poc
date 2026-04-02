@@ -1,4 +1,3 @@
-import React from "react";
 import { Button } from "../components/ui/button";
 import { ChevronDown, Plus } from "lucide-react";
 import {
@@ -10,6 +9,28 @@ import {
 	PaginationNext,
 	PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+	DialogFooter,
+	DialogClose,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 
 const UsersDashboard = () => {
 	return (
@@ -33,10 +54,145 @@ const UsersDashboard = () => {
 								Search
 							</Button>
 						</div>
-						<Button className="rounded-sm font-semibold">
-							Add
-							<Plus strokeWidth={3} />
-						</Button>
+						<Dialog>
+							<form>
+								<DialogTrigger asChild>
+									<Button
+										className="rounded-sm font-semibold"
+										type="button"
+									>
+										Add
+										<Plus strokeWidth={3} />
+									</Button>
+								</DialogTrigger>
+								<DialogContent className="sm:max-w-lg">
+									<DialogHeader>
+										<DialogTitle>Add User</DialogTitle>
+										<DialogDescription>
+											Please fill in user account details
+											and click add to create a new
+											account.
+										</DialogDescription>
+									</DialogHeader>
+									<FieldGroup>
+										<Field className="flex flex-row items-center">
+											<Label
+												htmlFor="name-1"
+												className="grow-0"
+											>
+												Name<span>*</span>
+											</Label>
+											<Input
+												className="grow-2"
+												id="name-1"
+												name="name"
+												placeholder="John Doe"
+											/>
+										</Field>
+										<Field className="flex flex-row items-center">
+											<Label
+												htmlFor="email-1"
+												className="grow-0"
+											>
+												Email
+											</Label>
+											<Input
+												className="grow"
+												id="email-1"
+												name="email"
+												placeholder="johndoe@mymail.sim.edu.sg"
+											/>
+										</Field>
+										<Field className="flex flex-row items-center">
+											<Label
+												htmlFor="pu-1"
+												className="grow-0"
+											>
+												Partner University
+											</Label>
+											<Select>
+												<SelectTrigger className="w-full grow-2">
+													<SelectValue placeholder="Select a university" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectGroup>
+														<SelectLabel>
+															Partner University
+														</SelectLabel>
+														<SelectItem value="apple">
+															Apple
+														</SelectItem>
+														<SelectItem value="banana">
+															Banana
+														</SelectItem>
+														<SelectItem value="blueberry">
+															Blueberry
+														</SelectItem>
+														<SelectItem value="grapes">
+															Grapes
+														</SelectItem>
+														<SelectItem value="pineapple">
+															Pineapple
+														</SelectItem>
+													</SelectGroup>
+												</SelectContent>
+											</Select>
+										</Field>
+										<Field className="flex flex-row items-center">
+											<Label
+												htmlFor="pu-1"
+												className="grow-0"
+											>
+												Role
+											</Label>
+											<Select>
+												<SelectTrigger className="w-full grow-2">
+													<SelectValue placeholder="Select a role" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectGroup>
+														<SelectLabel>
+															Role
+														</SelectLabel>
+														<SelectItem value="apple">
+															Apple
+														</SelectItem>
+														<SelectItem value="banana">
+															Banana
+														</SelectItem>
+														<SelectItem value="blueberry">
+															Blueberry
+														</SelectItem>
+														<SelectItem value="grapes">
+															Grapes
+														</SelectItem>
+														<SelectItem value="pineapple">
+															Pineapple
+														</SelectItem>
+													</SelectGroup>
+												</SelectContent>
+											</Select>
+										</Field>
+									</FieldGroup>
+									<DialogFooter className="bg-transparent border-0">
+										<DialogClose asChild>
+											<Button
+												variant="default"
+												className="bg-foreground rounded-sm justify-self-end"
+											>
+												Cancel
+											</Button>
+										</DialogClose>
+										<Button
+											type="submit"
+											className="rounded-sm justify-self-end"
+										>
+											Add
+										</Button>
+									</DialogFooter>
+								</DialogContent>
+							</form>
+						</Dialog>
 					</div>
 					{/* Results and Pagination */}
 					<div className="flex flex-row justify-between items-center">
