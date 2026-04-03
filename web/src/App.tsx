@@ -1,13 +1,17 @@
-import { Routes, Route } from "react-router";
-import InstitutionAdminHome from "./institution_admin/home";
-import UsersDashboard from "./institution_admin/users";
-
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/ui/app-sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Outlet } from "react-router";
 function App() {
     return (
-        <Routes>
-            <Route path="/" element={<InstitutionAdminHome />} />
-            <Route path="/users" element={<UsersDashboard />} />
-        </Routes>
+        <TooltipProvider delayDuration={0}>
+            <SidebarProvider defaultOpen={true}>
+                <AppSidebar />
+                <main className="w-full">
+                    <Outlet />
+                </main>
+            </SidebarProvider>
+        </TooltipProvider>
     );
 }
 

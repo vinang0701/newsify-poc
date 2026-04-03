@@ -1,23 +1,27 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
 import "./index.css";
-import App from "./App.tsx";
-import { TooltipProvider } from "./components/ui/tooltip.tsx";
-import { SidebarProvider } from "./components/ui/sidebar.tsx";
-import { AppSidebar } from "./components/ui/app-sidebar.tsx";
+import UsersDashboard from "./institution_admin/users";
+import { createBrowserRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
+import App from "./App";
+import InstitutionAdminHomePage from "@/institution_admin/home";
+
+const router = createBrowserRouter([
+    {
+        path: "/admin",
+        element: <App />,
+        children: [
+            { index: true, element: <InstitutionAdminHomePage /> },
+            { path: "users", element: <UsersDashboard /> },
+            { path: "communities", element: <div>comm</div> },
+            { path: "roles", element: <div>roles</div> },
+        ],
+    },
+]);
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
-        <BrowserRouter>
-            <TooltipProvider delayDuration={0}>
-                <SidebarProvider defaultOpen={true}>
-                    <AppSidebar />
-                    <main className="w-full">
-                        <App />
-                    </main>
-                </SidebarProvider>
-            </TooltipProvider>
-        </BrowserRouter>
+        <RouterProvider router={router} />
     </StrictMode>,
 );
