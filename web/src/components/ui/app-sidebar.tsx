@@ -74,7 +74,7 @@ export function AppSidebar() {
                                     </CollapsibleTrigger>
                                 </SidebarGroupLabel>
                                 <CollapsibleContent className="border-l border-border mx-4 px-2">
-                                    <Link to={"#"}>
+                                    <Link to={"/admin/users"}>
                                         <SidebarMenuButton>
                                             Student
                                         </SidebarMenuButton>

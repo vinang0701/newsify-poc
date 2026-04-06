@@ -6,8 +6,13 @@ import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import App from "./App";
 import InstitutionAdminHomePage from "@/institution_admin/home";
+import TempHome from "./TempHome";
 
 const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <TempHome />,
+    },
     {
         path: "/admin",
         element: <App />,
