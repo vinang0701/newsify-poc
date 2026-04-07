@@ -9,11 +9,16 @@ import InstitutionAdminHomePage from "@/institution_admin/home";
 import TempHome from "./TempHome";
 import PlatformAdminDashboardPage from "./platform_admin/dashboard";
 import InstitutionsMgmtPage from "./platform_admin/institutions";
+import LoginPage from "./login";
 
 const router = createBrowserRouter([
 	{
 		path: "/",
 		element: <TempHome />,
+	},
+	{
+		path: "/login",
+		element: <LoginPage />,
 	},
 	{
 		path: "/admin",
