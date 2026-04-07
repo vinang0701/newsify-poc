@@ -1,6 +1,6 @@
 from supabase import Client
 from typing import List
-from app.models.community import Community, CommunityMembership, CommunityMember
+from app.models.community import Community, CommunityMembership, CommunityMember, CommunityApplication
 from app.core.db import supabase
 import uuid
 

@@ -3,6 +3,7 @@ from typing import List
 from app.models.news_post import NewsPost, Draft
 from app.core.db import supabase
 import uuid
+from fastapi import File, UploadFile
 
 
 async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
