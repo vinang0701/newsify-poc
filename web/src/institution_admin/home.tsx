@@ -1,5 +1,3 @@
-import { Sidebar } from "../components/ui/sidebar";
-
 function InstitutionAdminHomePage() {
     return (
         <div>
