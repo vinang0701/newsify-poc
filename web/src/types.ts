@@ -1,3 +1,5 @@
+import type { ColumnDef } from "@tanstack/react-table";
+
 export interface News {
     id: string;
     title: string;
@@ -41,7 +43,14 @@ export interface Users {
     id: string,
     name: string,
     email: string,
+    role: string,
     is_active: boolean,
     created_at: string,
     updated_at: string,
+}
+
+// Table Props
+export interface DataTableProps<TData, TValue> {
+	columns: ColumnDef<TData, TValue>[];
+	data: TData[];
 }
