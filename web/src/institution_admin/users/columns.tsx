@@ -3,11 +3,6 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 export const UserMgmtColumns: ColumnDef<Users>[] = [
     {
-        accessorKey: "id",
-        header: "ID",
-        enableHiding: true,
-    },
-    {
         accessorKey: "name",
         header: "Full Name",
     },
