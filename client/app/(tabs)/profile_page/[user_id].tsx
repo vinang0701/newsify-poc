@@ -38,7 +38,7 @@ export default function Profile() {
         console.log("refetching");
         refetch();
         profileRefetch();
-        followingRefetch();
+        followingCountRefetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -88,7 +88,7 @@ export default function Profile() {
             });
         }
 
-    const { data: following_count, isLoading, refetch: followingRefetch } = useQuery<number>({
+    const { data: following_count, isLoading, refetch: followingCountRefetch } = useQuery<number>({
             queryKey: ["following_count", user_id],
             queryFn: async () => {
                 const res = await axios.get(

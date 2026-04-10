@@ -62,6 +62,33 @@ async def get_user_following(supabase: Client, inst_id: str, user_id: str) -> Li
     ]
 
 
+async def follow_user(supabase: Client, user_id: str, followed_user_id: str):
+    response = (
+        supabase.table("user_follows")
+        .insert(
+            {
+                "follower_user_id": user_id,
+                "followed_user_id": followed_user_id,
+                "followed_at": "now()",
+            }
+        )
+        .execute()
+    )
+
+    return response
+
+
+async def unfollow_user(supabase: Client, user_id: str, followed_user_id: str):
+    response = (
+        supabase.table("user_follows")
+        .delete()
+        .eq("follower_user_id", user_id)
+        .eq("followed_user_id", followed_user_id)
+        .execute()
+    )
+    return response.data
+
+
 async def find_users_by_name(supabase: Client, inst_id: str, name: str | None):
     query = supabase.table("users").select("id, name, description, image_url")
 

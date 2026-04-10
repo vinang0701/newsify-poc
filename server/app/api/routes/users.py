@@ -29,10 +29,15 @@ class JoinCommunityRequest(BaseModel):
     user_id: uuid.UUID
 
 
+class FollowUserRequest(BaseModel):
+    user_id: uuid.UUID
+    followed_user_id: uuid.UUID
+
+
 def moderate_text(text: str):
     # ingest
     # call api
-    print("Moderting text...")
+    print("Moderating text...")
     response = client.moderations.create(
         model="omni-moderation-latest",
         input=text,
@@ -83,17 +88,57 @@ async def get_user_news(user_id: str):
     return my_news
 
 
+@router.post("/{user_id}/following")
+async def follow_user(body: FollowUserRequest):
+    try:
+        result = await users_service.follow_user(
+            supabase, str(body.user_id), str(body.followed_user_id)
+        )
+
+        return {
+            "status": "success",
+            "message": "Succesfully followed!",
+            "data": result,
+        }
+    except Exception as e:
+        # Check if the error is a "Duplicate Key" (User already following)
+        if "duplicate key" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Already following user.")
+
+        raise HTTPException(status_code=500, detail="Failed to follow user")
+
+
+@router.delete("/me/following/{user_id}")
+async def unfollow_user(user_id: str):
+    try:
+        curr_id = "4813d507-9b97-4bb7-bee4-39ec47070889"
+        # Call the service layer to handle the DB logic
+        result = await users_service.unfollow_user(
+            supabase, curr_id, user_id
+        )
+        return {
+            "status": "success",
+            "message": "Successfully unfollowed.",
+            "data": result,
+        }
+    except Exception as e:
+        print(f"Delete Error: {e}")
+        raise HTTPException(status_code=500, detail="Could not unfollow")
+
+
 @router.get("/{user_id}/following")
 async def get_user_following(inst_id: str, user_id: str):
     user_following = await users_service.get_user_following(supabase, inst_id, user_id)
 
     return user_following
 
+
 @router.get("/{user_id}/following_count")
 async def get_following_count(inst_id: str, user_id: str):
     user_following = await users_service.get_user_following(supabase, inst_id, user_id)
 
     return {"count" : len(user_following)}
+
 
 @router.post("/me/news")
 async def create_post(
