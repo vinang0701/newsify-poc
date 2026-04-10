@@ -23,8 +23,10 @@ import { News, UserProfileDetails } from "@/data/types";
 import axios from "axios";
 import { FlashList } from "@shopify/flash-list";
 import NewsPostCard from "@/components/news_post_card";
+
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+
 export default function Profile() {
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? "light";
@@ -36,6 +38,7 @@ export default function Profile() {
         console.log("refetching");
         refetch();
         profileRefetch();
+        followingRefetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -76,6 +79,24 @@ export default function Profile() {
             throw new Error("An unexpected error occurred");
         }
     }
+
+    function goToFollowing(user_id: string) {
+        console.log(user_id + "'s following");
+            router.push({
+                pathname: "/(tabs)/profile_page/following",
+                params: { user_id: user_id },
+            });
+        }
+
+    const { data: following_count, isLoading, refetch: followingRefetch } = useQuery<number>({
+            queryKey: ["following_count", user_id],
+            queryFn: async () => {
+                const res = await axios.get(
+                    `${BASE_URL}/${inst_id}/users/${user_id}/following_count`,
+                );
+                return res.data.count;
+            },
+        });
 
     const {
         status: profileStatus,
@@ -237,16 +258,23 @@ export default function Profile() {
                             </ThemedText>
                         </View>
                         <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">20</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Following
-                            </ThemedText>
+                            <Pressable
+                                onPress={() => goToFollowing(user_id)}
+                                style={styles.statsInfoContainer}
+                                >
+                                <ThemedText type="defaultSemiBold">
+                                    {following_count ?? 0}
+                                </ThemedText>
+                                <ThemedText
+                                    type="caption"
+                                    style={{
+                                        color: Colors[colorScheme].caption,
+                                        fontWeight: "500",
+                                    }}
+                                >
+                                    Following
+                                </ThemedText>
+                            </Pressable>
                         </View>
                     </View>
                 </View>

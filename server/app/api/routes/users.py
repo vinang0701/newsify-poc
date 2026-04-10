@@ -83,6 +83,18 @@ async def get_user_news(user_id: str):
     return my_news
 
 
+@router.get("/{user_id}/following")
+async def get_user_following(inst_id: str, user_id: str):
+    user_following = await users_service.get_user_following(supabase, inst_id, user_id)
+
+    return user_following
+
+@router.get("/{user_id}/following_count")
+async def get_following_count(inst_id: str, user_id: str):
+    user_following = await users_service.get_user_following(supabase, inst_id, user_id)
+
+    return {"count" : len(user_following)}
+
 @router.post("/me/news")
 async def create_post(
     inst_id: str,
