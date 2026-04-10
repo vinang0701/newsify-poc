@@ -39,7 +39,7 @@ export interface UserProfileDetails {
     description: string,
 }
 
-export interface Users {
+export interface User {
     id: string,
     name: string,
     email: string,

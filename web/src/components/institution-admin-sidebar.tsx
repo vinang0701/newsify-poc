@@ -3,12 +3,9 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarGroup,
-    SidebarGroupAction,
-    SidebarGroupContent,
     SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
-    SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
@@ -18,20 +15,47 @@ import {
     FileText,
     Flag,
     LayoutGrid,
+    LogOut,
     Tag,
     User2,
     Users2,
 } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router";
+import { Link, useLocation } from "react-router";
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { supabase } from "@/lib/supabase";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "./ui/dialog";
+import { Button } from "./ui/button";
+import { useEffect, useState } from "react";
 
 export function InstitutionAdminSidebar() {
-    const navigate = useNavigate();
-    const { pathname } = useLocation();
+    const [dialogVisible, setDialogVisible] = useState(false);
+    const { pathname, search } = useLocation();
+    const [isLoading, setIsLoading] = useState(false);
+
+    async function signOut() {
+        const { error } = await supabase.auth.signOut();
+        setIsLoading(true);
+
+        if (!error) {
+            location.reload();
+        }
+    }
+
+    useEffect(() => {
+        const handleBlur = () => setDialogVisible(false);
+        handleBlur();
+    }, [pathname, search]);
 
     return (
         <Sidebar side={"left"} className="">
@@ -133,7 +157,49 @@ export function InstitutionAdminSidebar() {
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarContent>
-            <SidebarFooter />
+
+            <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <Dialog
+                            open={dialogVisible}
+                            onOpenChange={() =>
+                                setDialogVisible(!dialogVisible)
+                            }
+                        >
+                            <DialogTrigger className="flex px-2 cursor-pointer w-full text-base h-10 items-center gap-2 hover:bg-sidebar-accent rounded-md">
+                                <LogOut size={16} /> <span>Log out</span>
+                            </DialogTrigger>
+
+                            <DialogContent className="px-6 py-4">
+                                <DialogHeader>
+                                    <DialogTitle>Log out</DialogTitle>
+                                    <DialogDescription>
+                                        Are you sure you want to log out?
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="flex flex-row justify-between gap-6 ">
+                                    <Button
+                                        variant="black"
+                                        onClick={() => setDialogVisible(false)}
+                                        className="rounded-3xl flex-grow text-base py-2 "
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={signOut}
+                                        disabled={isLoading}
+                                        className="rounded-3xl flex-grow bg-red-500 hover:bg-red-400 text-base py-2"
+                                    >
+                                        Log out
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarFooter>
         </Sidebar>
     );
 }

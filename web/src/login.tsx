@@ -4,12 +4,16 @@ import { FieldSet, FieldGroup, Field, FieldLabel } from "./components/ui/field";
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useNavigate, useSearchParams } from "react-router";
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+
     const supabase_client = supabase;
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -18,19 +22,45 @@ const LoginPage = () => {
         setError(null);
 
         try {
-            const { error } = await supabase_client.auth.signInWithPassword({
-                email,
-                password,
-            });
-            if (error) throw error;
-            // // Update this route to redirect to an authenticated route. The user already has an active session.
-            location.href = "/admin";
-        } catch (error: unknown) {
-            setError(
-                error instanceof Error ? error.message : "An error occurred",
+            const { data, error } =
+                await supabase_client.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+
+            if (error)
+                if (error) {
+                    setError(error.message);
+                    setIsLoading(false);
+                    return;
+                }
+
+            const payload = JSON.parse(
+                atob(data.session.access_token.split(".")[1]),
             );
-        } finally {
-            setIsLoading(false);
+            const isInstAdmin =
+                payload.app_metadata.user_role === "institution_admin"
+                    ? true
+                    : false;
+
+            // this is such a scuffed method but whatever it works
+            if (!isInstAdmin) {
+                await supabase.auth.signOut();
+                setError(
+                    "Unauthorized: You do not have permission to access the admin portal.",
+                );
+                setIsLoading(false);
+                throw new Error(
+                    "Unauthorized: You do not have permission to access the admin portal.",
+                );
+            }
+
+            if (!error && isInstAdmin) {
+                const next = searchParams.get("next") || "/admin";
+                navigate(next, { replace: true });
+            }
+        } catch (err: any) {
+            setError(err.message || "An unexpected error occurred");
         }
     };
 

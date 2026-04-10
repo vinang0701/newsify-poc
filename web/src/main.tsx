@@ -11,6 +11,7 @@ import PlatformAdminDashboardPage from "./platform_admin/dashboard";
 import InstitutionsMgmtPage from "./platform_admin/institutions";
 import LoginPage from "./login";
 import StaffUsersMgmtPage from "./institution_admin/staff-users-page";
+import { requireAuth, requireGuest, requireInstitutionAdmin } from "@/lib/auth";
 
 const router = createBrowserRouter([
     {
@@ -20,16 +21,26 @@ const router = createBrowserRouter([
     {
         path: "/login",
         element: <LoginPage />,
+        loader: requireGuest,
     },
     {
-        path: "/admin",
-        element: <App />,
+        id: "auth",
+        loader: requireInstitutionAdmin,
         children: [
-            { index: true, element: <InstitutionAdminHomePage /> },
-            { path: "users/students", element: <StudentUsersMgmtPage /> },
-            { path: "users/staff", element: <StaffUsersMgmtPage /> },
-            { path: "communities", element: <div>comm</div> },
-            { path: "roles", element: <div>roles</div> },
+            {
+                path: "/admin",
+                element: <App />,
+                children: [
+                    { index: true, element: <InstitutionAdminHomePage /> },
+                    {
+                        path: "users/students",
+                        element: <StudentUsersMgmtPage />,
+                    },
+                    { path: "users/staff", element: <StaffUsersMgmtPage /> },
+                    { path: "communities", element: <div>comm</div> },
+                    { path: "roles", element: <div>roles</div> },
+                ],
+            },
         ],
     },
     {
