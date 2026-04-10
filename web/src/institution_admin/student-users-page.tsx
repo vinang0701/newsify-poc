@@ -1,5 +1,5 @@
 import { Button } from "../components/ui/button";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, EyeIcon, EyeOffIcon, Plus } from "lucide-react";
 import {
     Pagination,
     PaginationContent,
@@ -29,20 +29,54 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ButtonGroup } from "@/components/ui/button-group";
-import type { Users } from "@/types";
+import type { User } from "@/types";
 import { UserMgmtColumns } from "./users/columns";
 import { DataTable } from "./data-table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { useState } from "react";
 
 const BASE_URL = "http://127.0.0.1:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 const StudentUsersMgmtPage = () => {
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [role, setRole] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [dialogOpen, setDialogOpen] = useState(false);
+
+    const handleDialogClose = () => {
+        setName("");
+        setEmail("");
+        setPassword("");
+        setRole("");
+        setShowPassword(false);
+        setDialogOpen(false);
+    };
+
+    // generate password
+    const generateStrongPassword = (length = 12) => {
+        const charset =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+        let password = "";
+
+        // Create an array of random bytes
+        const values = new Uint32Array(length);
+        window.crypto.getRandomValues(values);
+
+        for (let i = 0; i < length; i++) {
+            password += charset[values[i] % charset.length];
+        }
+
+        return password;
+    };
+
     // Data fetching
-    async function fetchStudentUsers(): Promise<Users[]> {
+    async function fetchStudentUsers(): Promise<User[]> {
         try {
-            const response = await axios.get<Users[]>(
+            const response = await axios.get<User[]>(
                 `${BASE_URL}/${inst_id}/admin/users/students`,
             );
 
@@ -57,7 +91,7 @@ const StudentUsersMgmtPage = () => {
         }
     }
 
-    const { isLoading, data, error } = useQuery<Users[]>({
+    const { isLoading, data, error } = useQuery<User[]>({
         queryKey: ["studentUsers"],
         queryFn: fetchStudentUsers,
     });
@@ -83,7 +117,14 @@ const StudentUsersMgmtPage = () => {
                                 Search
                             </Button>
                         </ButtonGroup>
-                        <Dialog>
+                        <Dialog
+                            open={dialogOpen}
+                            onOpenChange={() => {
+                                dialogOpen
+                                    ? handleDialogClose()
+                                    : setDialogOpen(true);
+                            }}
+                        >
                             <form>
                                 <DialogTrigger asChild>
                                     <Button
@@ -94,7 +135,7 @@ const StudentUsersMgmtPage = () => {
                                         <Plus strokeWidth={3} />
                                     </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-lg py-6 px-8">
+                                <DialogContent className="py-6 px-8">
                                     <DialogHeader>
                                         <DialogTitle className="text-2xl">
                                             Add User
@@ -106,103 +147,147 @@ const StudentUsersMgmtPage = () => {
                                         </DialogDescription>
                                     </DialogHeader>
                                     <FieldGroup>
-                                        <Field className="flex flex-row items-center">
+                                        <Field className="flex flex-col items-center">
                                             <Label
                                                 htmlFor="name-1"
-                                                className="grow-0"
+                                                className="w-xs"
                                             >
-                                                Name<span>*</span>
+                                                Name{" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </Label>
                                             <Input
+                                                required
+                                                value={name}
+                                                onChange={(e) =>
+                                                    setName(e.target.value)
+                                                }
                                                 type="text"
-                                                className="grow-2"
+                                                className=""
                                                 id="name-1"
                                                 name="name"
                                                 placeholder="John Doe"
                                                 autoComplete="off"
                                             />
                                         </Field>
-                                        <Field className="flex flex-row items-center">
+                                        <Field className="flex flex-col items-center">
                                             <Label
                                                 htmlFor="email-1"
-                                                className="grow-0"
+                                                className="w-xs"
                                             >
-                                                Email
+                                                Email{" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </Label>
                                             <Input
+                                                required
+                                                value={email}
+                                                onChange={(e) =>
+                                                    setEmail(e.target.value)
+                                                }
                                                 type="text"
-                                                className="grow"
+                                                className="w-xs"
                                                 id="email-1"
                                                 name="email"
                                                 placeholder="johndoe@mymail.sim.edu.sg"
                                                 autoComplete="off"
                                             />
                                         </Field>
-                                        <Field className="flex flex-row items-center">
+                                        <Field className="flex flex-col items-center">
                                             <Label
-                                                htmlFor="pu-1"
-                                                className="grow-0"
+                                                htmlFor="password-1"
+                                                className="w-xs"
                                             >
-                                                Partner University
+                                                Password{" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </Label>
-                                            <Select>
-                                                <SelectTrigger className="w-full grow-2">
-                                                    <SelectValue placeholder="Select a university" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectGroup>
-                                                        <SelectLabel>
-                                                            Partner University
-                                                        </SelectLabel>
-                                                        <SelectItem value="apple">
-                                                            Apple
-                                                        </SelectItem>
-                                                        <SelectItem value="banana">
-                                                            Banana
-                                                        </SelectItem>
-                                                        <SelectItem value="blueberry">
-                                                            Blueberry
-                                                        </SelectItem>
-                                                        <SelectItem value="grapes">
-                                                            Grapes
-                                                        </SelectItem>
-                                                        <SelectItem value="pineapple">
-                                                            Pineapple
-                                                        </SelectItem>
-                                                    </SelectGroup>
-                                                </SelectContent>
-                                            </Select>
+
+                                            <div className="flex flex-row items-center gap-2">
+                                                <div className="relative">
+                                                    <Input
+                                                        type={
+                                                            showPassword
+                                                                ? "text"
+                                                                : "password"
+                                                        }
+                                                        id="password-1"
+                                                        name="password-1"
+                                                        autoComplete="off"
+                                                        className="pr-10"
+                                                        placeholder="Enter a strong password"
+                                                        required
+                                                        value={password}
+                                                        onChange={(e) =>
+                                                            setPassword(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                                        onClick={() =>
+                                                            setShowPassword(
+                                                                (prev) => !prev,
+                                                            )
+                                                        }
+                                                    >
+                                                        {showPassword ? (
+                                                            <EyeOffIcon className="h-4 w-4 text-muted-foreground" />
+                                                        ) : (
+                                                            <EyeIcon className="h-4 w-4 text-muted-foreground" />
+                                                        )}
+                                                        <span className="sr-only">
+                                                            {showPassword
+                                                                ? "Hide password"
+                                                                : "Show password"}
+                                                        </span>
+                                                    </Button>
+                                                </div>
+
+                                                <Button
+                                                    variant="ghost"
+                                                    className="cursor-pointer font-normal"
+                                                    onClick={() =>
+                                                        setPassword(
+                                                            generateStrongPassword(),
+                                                        )
+                                                    }
+                                                >
+                                                    Generate
+                                                </Button>
+                                            </div>
                                         </Field>
-                                        <Field className="flex flex-row items-center">
+                                        <Field className="flex flex-col items-center">
                                             <Label
                                                 htmlFor="pu-1"
-                                                className="grow-0"
+                                                className="w-xs"
                                             >
-                                                Role
+                                                Role{" "}
+                                                <span className="text-destructive">
+                                                    *
+                                                </span>
                                             </Label>
-                                            <Select>
+                                            <Select required>
                                                 <SelectTrigger className="w-full grow-2">
                                                     <SelectValue placeholder="Select a role" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectGroup>
-                                                        <SelectLabel>
-                                                            Role
-                                                        </SelectLabel>
-                                                        <SelectItem value="apple">
-                                                            Apple
+                                                        <SelectItem value="Student">
+                                                            Student
                                                         </SelectItem>
-                                                        <SelectItem value="banana">
-                                                            Banana
+                                                        <SelectItem value="Staff">
+                                                            Staff
                                                         </SelectItem>
-                                                        <SelectItem value="blueberry">
-                                                            Blueberry
-                                                        </SelectItem>
-                                                        <SelectItem value="grapes">
-                                                            Grapes
-                                                        </SelectItem>
-                                                        <SelectItem value="pineapple">
-                                                            Pineapple
+                                                        <SelectItem value="Admin">
+                                                            Admin
                                                         </SelectItem>
                                                     </SelectGroup>
                                                 </SelectContent>
@@ -210,7 +295,10 @@ const StudentUsersMgmtPage = () => {
                                         </Field>
                                     </FieldGroup>
                                     <DialogFooter className="bg-transparent border-0">
-                                        <DialogClose asChild>
+                                        <DialogClose
+                                            asChild
+                                            onClick={() => handleDialogClose()}
+                                        >
                                             <Button
                                                 variant="default"
                                                 className="bg-foreground rounded-sm justify-self-end"
