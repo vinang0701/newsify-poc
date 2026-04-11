@@ -44,6 +44,22 @@ async def get_user_profile(supabase: Client, inst_id: str, user_id: str) -> List
         for user in response.data
     ]
 
+async def get_my_following(supabase: Client, inst_id: str, user_id: str) -> List[dict]:
+    response = (
+        supabase
+        .from_("user_follows")
+        .select("followed_user_id, users!user_follows_followed_user_id_fkey(name)")
+        .eq("follower_user_id", user_id)
+        .execute()
+    )
+    return [
+        MyFollowing(
+            followed_user_id=user["followed_user_id"],
+            name=user["users"]["name"]
+        )
+        for user in response.data
+    ]
+
 
 async def get_user_following(supabase: Client, inst_id: str, user_id: str) -> List[dict]:
     response = (

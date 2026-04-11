@@ -88,7 +88,7 @@ async def get_user_news(user_id: str):
     return my_news
 
 
-@router.post("/{user_id}/following")
+@router.post("/me/following")
 async def follow_user(body: FollowUserRequest):
     try:
         result = await users_service.follow_user(
