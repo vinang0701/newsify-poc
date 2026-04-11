@@ -14,3 +14,10 @@ class User(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CreateUser(BaseModel):
+    inst_id: uuid.UUID
+    name: str
+    email: email
+    role: str

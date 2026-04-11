@@ -6,8 +6,14 @@ from pydantic import EmailStr, BaseModel
 from app.services.institution_admin import users_service
 from app.core.db import supabase
 from app.core.config import settings
+from app.core.auth import verify_admin
+from app.models.admin import CreateUser
 
-router = APIRouter(prefix="/{inst_id}/admin/users", tags=["admin_users"])
+router = APIRouter(
+    prefix="/{inst_id}/admin/users",
+    tags=["admin_users"],
+    dependencies=[Depends(verify_admin)],
+)
 
 
 @router.get("/students")
@@ -23,5 +29,5 @@ async def get_student_users(inst_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error: {e}")  # Log the actual error to your console
+        print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

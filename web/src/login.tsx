@@ -5,6 +5,7 @@ import { FieldSet, FieldGroup, Field, FieldLabel } from "./components/ui/field";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useNavigate, useSearchParams } from "react-router";
+import Loading from "./components/loading";
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
@@ -28,41 +29,39 @@ const LoginPage = () => {
                     password,
                 });
 
-            if (error)
-                if (error) {
-                    setError(error.message);
-                    setIsLoading(false);
-                    return;
-                }
+            if (error) {
+                setError(error.message);
+                return;
+            }
 
             const payload = JSON.parse(
                 atob(data.session.access_token.split(".")[1]),
             );
-            const isInstAdmin =
-                payload.app_metadata.user_role === "institution_admin"
-                    ? true
-                    : false;
+            const role = payload.app_metadata.user_role;
 
             // this is such a scuffed method but whatever it works
-            if (!isInstAdmin) {
-                await supabase.auth.signOut();
-                setError(
-                    "Unauthorized: You do not have permission to access the admin portal.",
-                );
-                setIsLoading(false);
-                throw new Error(
-                    "Unauthorized: You do not have permission to access the admin portal.",
-                );
-            }
-
-            if (!error && isInstAdmin) {
-                const next = searchParams.get("next") || "/admin";
+            const next = searchParams.get("next");
+            if (next) {
                 navigate(next, { replace: true });
+            } else if (role === "institution_admin") {
+                navigate("/admin", { replace: true });
+            } else if (role === "platform_admin") {
+                navigate("/platform", { replace: true });
+            } else {
+                // Authenticated but no recognised role
+                await supabase.auth.signOut();
+                setError("You do not have permission to access this portal.");
             }
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred");
+        } finally {
+            setIsLoading(false);
         }
     };
+
+    if (isLoading) {
+        return <Loading />;
+    }
 
     return (
         <div className="flex flex-row bg-card h-screen items-center justify-between p-2 bg-linear-to-r from-primary/60 to-primary/30">

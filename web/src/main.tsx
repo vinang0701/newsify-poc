@@ -11,7 +11,8 @@ import PlatformAdminDashboardPage from "./platform_admin/dashboard";
 import InstitutionsMgmtPage from "./platform_admin/institutions";
 import LoginPage from "./login";
 import StaffUsersMgmtPage from "./institution_admin/staff-users-page";
-import { requireAuth, requireGuest, requireInstitutionAdmin } from "@/lib/auth";
+import { AuthProvider } from "./components/auth-provider";
+import ProtectedRoute from "./components/protected-route";
 
 const router = createBrowserRouter([
     {
@@ -21,31 +22,25 @@ const router = createBrowserRouter([
     {
         path: "/login",
         element: <LoginPage />,
-        loader: requireGuest,
     },
     {
-        id: "auth",
-        loader: requireInstitutionAdmin,
+        path: "/admin",
+        element: <ProtectedRoute role="institution_admin" layout={<App />} />,
+
         children: [
+            { index: true, element: <InstitutionAdminHomePage /> },
             {
-                path: "/admin",
-                element: <App />,
-                children: [
-                    { index: true, element: <InstitutionAdminHomePage /> },
-                    {
-                        path: "users/students",
-                        element: <StudentUsersMgmtPage />,
-                    },
-                    { path: "users/staff", element: <StaffUsersMgmtPage /> },
-                    { path: "communities", element: <div>comm</div> },
-                    { path: "roles", element: <div>roles</div> },
-                ],
+                path: "users/students",
+                element: <StudentUsersMgmtPage />,
             },
+            { path: "users/staff", element: <StaffUsersMgmtPage /> },
+            { path: "communities", element: <div>comm</div> },
+            { path: "roles", element: <div>roles</div> },
         ],
     },
     {
         path: "/platform",
-        element: <App />,
+        element: <ProtectedRoute role="platform_admin" layout={<App />} />,
         children: [
             { index: true, element: <PlatformAdminDashboardPage /> },
             { path: "institutions", element: <InstitutionsMgmtPage /> },
@@ -55,6 +50,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
-        <RouterProvider router={router} />
+        <AuthProvider>
+            <RouterProvider router={router} />
+        </AuthProvider>
     </StrictMode>,
 );

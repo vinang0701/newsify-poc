@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     # SUPABASE_ANON_KEY: str = secrets.token_urlsafe(32)
     SUPABASE_URL: str = secrets.token_urlsafe(32)
     OPENAI_API_KEY: str = secrets.token_urlsafe(32)
+    SUPABASE_JWT_URL: HttpUrl
     # 60 minutes * 24 hours * 8 days = 8 days
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:8081"

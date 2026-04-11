@@ -33,13 +33,16 @@ import type { User } from "@/types";
 import { UserMgmtColumns } from "./users/columns";
 import { DataTable } from "./data-table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/axios";
 import { useState } from "react";
+import Loading from "@/components/loading";
+import { useAuth } from "@/components/auth-provider";
+import axios from "axios";
 
-const BASE_URL = "http://127.0.0.1:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 const StudentUsersMgmtPage = () => {
+    const user = useAuth();
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [role, setRole] = useState("");
@@ -76,8 +79,8 @@ const StudentUsersMgmtPage = () => {
     // Data fetching
     async function fetchStudentUsers(): Promise<User[]> {
         try {
-            const response = await axios.get<User[]>(
-                `${BASE_URL}/${inst_id}/admin/users/students`,
+            const response = await api.get<User[]>(
+                `/${inst_id}/admin/users/students`,
             );
 
             return response.data;
@@ -97,7 +100,8 @@ const StudentUsersMgmtPage = () => {
     });
 
     return (
-        <div className="">
+        <div>
+            {isLoading && <Loading />}
             {/* Right Section */}
             <div className="flex flex-col gap-3">
                 {/* Header */}
@@ -167,7 +171,7 @@ const StudentUsersMgmtPage = () => {
                                                 className=""
                                                 id="name-1"
                                                 name="name"
-                                                placeholder="John Doe"
+                                                placeholder="Enter a name"
                                                 autoComplete="off"
                                             />
                                         </Field>
@@ -191,7 +195,7 @@ const StudentUsersMgmtPage = () => {
                                                 className="w-xs"
                                                 id="email-1"
                                                 name="email"
-                                                placeholder="johndoe@mymail.sim.edu.sg"
+                                                placeholder="Enter an email"
                                                 autoComplete="off"
                                             />
                                         </Field>
