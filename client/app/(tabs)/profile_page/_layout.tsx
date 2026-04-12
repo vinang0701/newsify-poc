@@ -17,6 +17,14 @@ export default function UserProfileTabLayout() {
                     options={{ headerShown: false }}
                     initialParams={{ user_id: current_user_id }}
                 />
+                <Stack.Screen
+                    name="following"
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                    name="followers"
+                    options={{ headerShown: false }}
+                />
             </Stack>
         </SafeAreaProvider>
     );
