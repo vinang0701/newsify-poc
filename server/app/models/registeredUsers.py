@@ -25,3 +25,10 @@ class UserFollowing(BaseModel):
 
     class Config:
             from_attributes = True
+
+class UserFollowers(BaseModel):
+    follower_user_id: uuid.UUID
+    name: str
+
+    class Config:
+            from_attributes = True

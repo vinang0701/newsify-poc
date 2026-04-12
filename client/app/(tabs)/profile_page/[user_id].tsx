@@ -39,6 +39,7 @@ export default function Profile() {
         refetch();
         profileRefetch();
         followingCountRefetch();
+        followerCountRefetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -89,14 +90,32 @@ export default function Profile() {
         }
 
     const { data: following_count, isLoading, refetch: followingCountRefetch } = useQuery<number>({
-            queryKey: ["following_count", user_id],
-            queryFn: async () => {
-                const res = await axios.get(
-                    `${BASE_URL}/${inst_id}/users/${user_id}/following_count`,
-                );
-                return res.data.count;
-            },
-        });
+        queryKey: ["following_count", user_id],
+        queryFn: async () => {
+            const res = await axios.get(
+                `${BASE_URL}/${inst_id}/users/${user_id}/following_count`,
+            );
+            return res.data.count;
+        },
+    });
+
+    function goToFollowers(user_id: string) {
+        console.log(user_id + "'s followers");
+            router.push({
+                pathname: "/(tabs)/profile_page/followers",
+                params: { user_id: user_id },
+            });
+        }
+
+    const { data: follower_count, isLoading: load_followerCount, refetch: followerCountRefetch } = useQuery<number>({
+        queryKey: ["follower_count", user_id],
+        queryFn: async () => {
+            const res = await axios.get(
+                `${BASE_URL}/${inst_id}/users/${user_id}/follower_count`,
+            );
+            return res.data.count;
+        },
+    });
 
     const {
         status: profileStatus,
@@ -246,16 +265,23 @@ export default function Profile() {
                             </ThemedText>
                         </View>
                         <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">20</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Followers
-                            </ThemedText>
+                            <Pressable
+                                onPress={() => goToFollowers(user_id)}
+                                style={styles.statsInfoContainer}
+                                >
+                                <ThemedText type="defaultSemiBold">
+                                    {follower_count ?? 0}
+                                </ThemedText>
+                                <ThemedText
+                                    type="caption"
+                                    style={{
+                                        color: Colors[colorScheme].caption,
+                                        fontWeight: "500",
+                                    }}
+                                >
+                                    Followers
+                                </ThemedText>
+                            </Pressable>
                         </View>
                         <View style={styles.statsInfoContainer}>
                             <Pressable
