@@ -6,6 +6,7 @@ import {
     StyleSheet,
     ScrollView,
     RefreshControl,
+    ActivityIndicator,
 } from "react-native";
 import React, { Component } from "react";
 import { Colors } from "@/constants/theme";
@@ -83,13 +84,17 @@ export default function Profile() {
 
     function goToFollowing(user_id: string) {
         console.log(user_id + "'s following");
-            router.push({
-                pathname: "/(tabs)/profile_page/following",
-                params: { user_id: user_id },
-            });
-        }
+        router.push({
+            pathname: "/(tabs)/profile_page/following",
+            params: { user_id: user_id },
+        });
+    }
 
-    const { data: following_count, isLoading, refetch: followingCountRefetch } = useQuery<number>({
+    const {
+        data: following_count,
+        isLoading,
+        refetch: followingCountRefetch,
+    } = useQuery<number>({
         queryKey: ["following_count", user_id],
         queryFn: async () => {
             const res = await axios.get(
@@ -101,13 +106,17 @@ export default function Profile() {
 
     function goToFollowers(user_id: string) {
         console.log(user_id + "'s followers");
-            router.push({
-                pathname: "/(tabs)/profile_page/followers",
-                params: { user_id: user_id },
-            });
-        }
+        router.push({
+            pathname: "/(tabs)/profile_page/followers",
+            params: { user_id: user_id },
+        });
+    }
 
-    const { data: follower_count, isLoading: load_followerCount, refetch: followerCountRefetch } = useQuery<number>({
+    const {
+        data: follower_count,
+        isLoading: load_followerCount,
+        refetch: followerCountRefetch,
+    } = useQuery<number>({
         queryKey: ["follower_count", user_id],
         queryFn: async () => {
             const res = await axios.get(
@@ -131,10 +140,13 @@ export default function Profile() {
     const { status, data, error, isFetching, refetch } = useQuery<News[]>({
         queryKey: ["user_news", user_id],
         queryFn: fetchUserNews,
+        // queryFn: () => {
+        //     return [];
+        // },
     });
 
     return (
-        <SafeAreaView edges={["top"]}>
+        <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
             {/* Header */}
             <View
                 style={[
@@ -171,7 +183,6 @@ export default function Profile() {
             <ScrollView
                 contentContainerStyle={{
                     flex: 1,
-                    paddingBottom: insets.bottom + 80,
                 }}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -185,7 +196,10 @@ export default function Profile() {
                 <View
                     style={[
                         styles.profileCardContainer,
-                        { backgroundColor: Colors[colorScheme].bg_light },
+                        {
+                            backgroundColor: Colors[colorScheme].bg_light,
+                            borderBottomColor: Colors[colorScheme].border,
+                        },
                     ]}
                 >
                     <View style={styles.flexRowContainer}>
@@ -240,7 +254,7 @@ export default function Profile() {
                     >
                         <View style={styles.statsInfoContainer}>
                             <ThemedText type="defaultSemiBold">
-                                {data?.length}
+                                {data?.length ?? 0}
                             </ThemedText>
                             <ThemedText
                                 type="caption"
@@ -268,7 +282,7 @@ export default function Profile() {
                             <Pressable
                                 onPress={() => goToFollowers(user_id)}
                                 style={styles.statsInfoContainer}
-                                >
+                            >
                                 <ThemedText type="defaultSemiBold">
                                     {follower_count ?? 0}
                                 </ThemedText>
@@ -287,7 +301,7 @@ export default function Profile() {
                             <Pressable
                                 onPress={() => goToFollowing(user_id)}
                                 style={styles.statsInfoContainer}
-                                >
+                            >
                                 <ThemedText type="defaultSemiBold">
                                     {following_count ?? 0}
                                 </ThemedText>
@@ -330,10 +344,40 @@ export default function Profile() {
                         />
                     </View> */}
                     {/* Card */}
-                    <FlashList
-                        data={data}
-                        renderItem={({ item }) => <NewsPostCard news={item} />}
-                    />
+                    {status === "pending" ? (
+                        <ActivityIndicator
+                            size={"large"}
+                            color={Colors[colorScheme].tint}
+                            style={{ flex: 1 }}
+                        />
+                    ) : (
+                        <FlashList
+                            contentContainerStyle={{ flex: 1 }}
+                            nestedScrollEnabled={false}
+                            ListEmptyComponent={
+                                <View
+                                    style={{
+                                        flex: 1,
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <ThemedText
+                                        type="sub_heading"
+                                        style={{
+                                            color: Colors[colorScheme].text,
+                                        }}
+                                    >
+                                        No Posts Yet
+                                    </ThemedText>
+                                </View>
+                            }
+                            data={data}
+                            renderItem={({ item }) => (
+                                <NewsPostCard news={item} />
+                            )}
+                        />
+                    )}
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -358,6 +402,7 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingHorizontal: 16,
         paddingVertical: 8,
+        borderBottomWidth: 1,
     },
     statsContainer: {
         paddingVertical: 8,

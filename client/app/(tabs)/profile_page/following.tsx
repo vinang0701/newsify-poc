@@ -56,7 +56,11 @@ export default function FollowingPage() {
         }
     }
 
-    const { data: my_follows, isLoading: load_myFollows, refetch: myFollowRefetch } = useQuery<UserFollowing[]>({
+    const {
+        data: my_follows,
+        isLoading: load_myFollows,
+        refetch: myFollowRefetch,
+    } = useQuery<UserFollowing[]>({
         queryKey: ["my_following", user_id],
         queryFn: () => fetchMyFollowing(),
     });
@@ -77,7 +81,11 @@ export default function FollowingPage() {
         }
     }
 
-    const { data: user_follows, isLoading, refetch } = useQuery<UserFollowing[]>({
+    const {
+        data: user_follows,
+        isLoading,
+        refetch,
+    } = useQuery<UserFollowing[]>({
         queryKey: ["user_following", user_id],
         queryFn: () => fetchFollowing(),
     });
@@ -129,7 +137,7 @@ export default function FollowingPage() {
     // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
     const filteredUsers =
         user_follows?.filter((user) =>
-            user.name.toLowerCase().includes(searchQuery.toLowerCase())
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()),
         ) ?? [];
 
     const onRefresh = React.useCallback(() => {
@@ -198,7 +206,7 @@ export default function FollowingPage() {
                                 backgroundColor: Colors[colorScheme].bg_dark,
                                 paddingHorizontal: 12,
                                 borderRadius: 20,
-                                marginTop:12,
+                                marginTop: 12,
                                 marginBottom: 8,
                                 gap: 4,
                             },
@@ -226,14 +234,22 @@ export default function FollowingPage() {
                     </View>
                     {/* Following List */}
                     {/* show following list or show no following found msg */}
-                    { !user_follows || user_follows.length === 0 ? (
-                        <View style={{ flex: 1, justifyContent: "center", alignItems: "center"}}>
-                            <Text style={{ textAlign: "center" }}>No following found</Text>
+                    {!user_follows || user_follows.length === 0 ? (
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: "center",
+                                alignItems: "center",
+                            }}
+                        >
+                            <Text style={{ textAlign: "center" }}>
+                                No following found
+                            </Text>
                         </View>
                     ) : (
                         <FlashList
                             data={filteredUsers}
-                            renderItem={({ item }) => (
+                            renderItem={({ item }) =>
                                 // only show follow button if not current user
                                 item.followed_user_id !== curr_user_id ? (
                                     <View
@@ -252,7 +268,9 @@ export default function FollowingPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(`/(tabs)/profile_page/${item.followed_user_id}`);
+                                                    router.push(
+                                                        `/(tabs)/profile_page/${item.followed_user_id}`,
+                                                    );
                                                 }}
                                             >
                                                 <Image
@@ -273,39 +291,53 @@ export default function FollowingPage() {
                                                 paddingVertical: 8,
                                                 paddingHorizontal: 12,
                                                 backgroundColor:
-                                                    followingUserIds.has(item.followed_user_id)
+                                                    followingUserIds.has(
+                                                        item.followed_user_id,
+                                                    )
                                                         ? "transparent"
                                                         : Colors[colorScheme]
                                                               .tint,
                                                 borderRadius: 20,
                                                 borderWidth: 2,
-                                                borderColor: followingUserIds.has(
-                                                    item.followed_user_id,
-                                                )
-                                                    ? Colors[colorScheme].tint
-                                                    : "transparent",
+                                                borderColor:
+                                                    followingUserIds.has(
+                                                        item.followed_user_id,
+                                                    )
+                                                        ? Colors[colorScheme]
+                                                              .tint
+                                                        : "transparent",
                                             }}
                                             onPress={() => {
-                                                !followingUserIds.has(item.followed_user_id)
-                                                    ? mutate(item.followed_user_id)
+                                                !followingUserIds.has(
+                                                    item.followed_user_id,
+                                                )
+                                                    ? mutate(
+                                                          item.followed_user_id,
+                                                      )
                                                     : Alert.alert(
-                                                        "Unfollow user",
-                                                        `Do you want to unfollow ${item.name}?`,
-                                                        [
-                                                            {
-                                                                text: "Cancel",
-                                                                onPress: () => console.log("Cancel Pressed"),
-                                                                style: "cancel",
-                                                            },
-                                                            {
-                                                                text: "Unfollow",
-                                                                style: "destructive",
-                                                                onPress: () => {
-                                                                    mu_unfollowUser(item.followed_user_id);
-                                                                },
-                                                            },
-                                                        ]
-                                                    );
+                                                          "Unfollow user",
+                                                          `Do you want to unfollow ${item.name}?`,
+                                                          [
+                                                              {
+                                                                  text: "Cancel",
+                                                                  onPress: () =>
+                                                                      console.log(
+                                                                          "Cancel Pressed",
+                                                                      ),
+                                                                  style: "cancel",
+                                                              },
+                                                              {
+                                                                  text: "Unfollow",
+                                                                  style: "destructive",
+                                                                  onPress:
+                                                                      () => {
+                                                                          mu_unfollowUser(
+                                                                              item.followed_user_id,
+                                                                          );
+                                                                      },
+                                                              },
+                                                          ],
+                                                      );
                                             }}
                                         >
                                             <ThemedText
@@ -317,12 +349,15 @@ export default function FollowingPage() {
                                                     )
                                                         ? Colors[colorScheme]
                                                               .tint
-                                                        : Colors[colorScheme].button_text,
+                                                        : Colors[colorScheme]
+                                                              .button_text,
 
                                                     fontWeight: "semibold",
                                                 }}
                                             >
-                                                {followingUserIds.has(item.followed_user_id)
+                                                {followingUserIds.has(
+                                                    item.followed_user_id,
+                                                )
                                                     ? "Following"
                                                     : "Follow"}
                                             </ThemedText>
@@ -345,7 +380,9 @@ export default function FollowingPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(`/(tabs)/profile_page/${item.followed_user_id}`);
+                                                    router.push(
+                                                        `/(tabs)/profile_page/${item.followed_user_id}`,
+                                                    );
                                                 }}
                                             >
                                                 <Image
@@ -363,14 +400,14 @@ export default function FollowingPage() {
                                         </View>
                                     </View>
                                 )
-                            )}
+                            }
                         />
                     )}
                 </ScrollView>
             </View>
         </SafeAreaView>
     );
-};
+}
 
 const styles = StyleSheet.create({
     headerContainer: {
@@ -386,5 +423,5 @@ const styles = StyleSheet.create({
         flex: 0,
         alignItems: "center",
         flexDirection: "row",
-    }
+    },
 });
