@@ -81,7 +81,9 @@ const DATA: Users[] = [
     },
 ];
 
-const UsersDashboard = () => {
+const StaffUsersMgmtPage = () => {
+    // Data fetching
+
     return (
         <div className="">
             {/* Right Section */}
@@ -286,4 +288,4 @@ const UsersDashboard = () => {
     );
 };
 
-export default UsersDashboard;
+export default StaffUsersMgmtPage;

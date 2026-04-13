@@ -13,12 +13,14 @@ import { TextInput, StyleSheet } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useAuthStore } from "@/utils/authStore";
 
 export const unstable_settings = {
     anchor: "(tabs)",
 };
 
 export default function RootLayout() {
+    const { session } = useAuthStore();
     const colorScheme = useColorScheme() || "light";
     const [loaded, error] = useFonts({
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
@@ -44,31 +46,40 @@ export default function RootLayout() {
                     value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
                 >
                     <Stack
-                        initialRouteName="(tabs)"
                         screenOptions={{
                             headerShown: false,
                         }}
                     >
-                        <Stack.Screen
-                            name="(tabs)"
-                            options={{
-                                headerShown: false,
-                            }}
-                        />
-                        <Stack.Screen
-                            name="search"
-                            options={{
-                                headerShown: false,
-                            }}
-                        />
-                        <Stack.Screen
-                            name="comment"
-                            options={{
-                                headerShown: false,
-                                presentation: "transparentModal",
-                                animation: "none",
-                            }}
-                        />
+                        <Stack.Protected guard={session !== null}>
+                            <Stack.Screen
+                                name="(tabs)"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="search"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="comment"
+                                options={{
+                                    headerShown: false,
+                                    presentation: "transparentModal",
+                                    animation: "none",
+                                }}
+                            />
+                        </Stack.Protected>
+                        <Stack.Protected guard={!session || session === null}>
+                            <Stack.Screen
+                                name="login"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
+                        </Stack.Protected>
                     </Stack>
                     <StatusBar style="auto" />
                 </ThemeProvider>
