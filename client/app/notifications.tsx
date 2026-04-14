@@ -101,8 +101,6 @@ export default function NotificationsScreen() {
                     <Feather name="arrow-left" size={18} color="#FFFFFF" />
                 </TouchableOpacity>
 
-                <Text style={styles.headerTitle}>Notifications</Text>
-
                 <View style={styles.headerRight}>
                     {activeTab === "notifications" ? (
                         <TouchableOpacity onPress={handleReadAll}>
