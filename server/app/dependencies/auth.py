@@ -1,9 +1,9 @@
 from fastapi import Header, HTTPException, status
+from typing import Optional
+from app.core.db import supabase
 
-from app.core.supabase_client import supabase
 
-
-async def get_current_user(authorization: str = Header(default=None)):
+async def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -13,26 +13,27 @@ async def get_current_user(authorization: str = Header(default=None)):
     if not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Authorization header",
+            detail="Invalid Authorization format",
         )
 
-    token = authorization.replace("Bearer ", "").strip()
+    token = authorization.split(" ")[1]
 
     try:
         user_response = supabase.auth.get_user(token)
-        user = user_response.user
 
-        if not user:
+        if not user_response or not user_response.user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired token",
             )
 
-        return user
+        return user_response.user
+
     except HTTPException:
         raise
-    except Exception:
+    except Exception as e:
+        print(f"Auth error: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate token",
+            detail="Authentication failed",
         )

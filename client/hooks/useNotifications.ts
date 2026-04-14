@@ -61,6 +61,9 @@ export function useNotifications() {
         return;
       }
 
+      console.log('API_BASE_URL:', API_BASE_URL);
+      console.log('Fetching:', `${API_BASE_URL}/notifications`);
+
       const response = await fetch(`${API_BASE_URL}/notifications`, {
         method: 'GET',
         headers: {

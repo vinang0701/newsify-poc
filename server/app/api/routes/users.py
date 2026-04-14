@@ -4,9 +4,12 @@ from typing import Any, Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File, Query
 from pydantic import EmailStr, BaseModel
 from openai import OpenAI
-from app.services import users_service, news_service, communities_service
+
+from app.services import users_service, news_service, communities_service, requests_service
 from app.core.db import supabase
 from app.core.config import settings
+from app.schemas.requests import UserRequestsResponse
+from app.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/{inst_id}/users", tags=["users"])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -35,8 +38,6 @@ class FollowUserRequest(BaseModel):
 
 
 def moderate_text(text: str):
-    # ingest
-    # call api
     print("Moderating text...")
     response = client.moderations.create(
         model="omni-moderation-latest",
@@ -58,10 +59,8 @@ async def create_post(item: UserPublishPostBody):
     }
 
 
-# Get a list a community user is a part of
 @router.get("/me/communities")
 async def get_user_communities(inst_id: str):
-    # hard code this first
     user_id = "4813d507-9b97-4bb7-bee4-39ec47070889"
     user_communities = await users_service.get_user_communities(
         supabase, inst_id, user_id
@@ -88,6 +87,20 @@ async def get_user_news(user_id: str):
     return my_news
 
 
+@router.get("/me/requests", response_model=UserRequestsResponse)
+async def get_my_requests(
+    inst_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        requests = await requests_service.get_all_user_requests(user_id)
+        return {"requests": requests}
+    except Exception as e:
+        print(f"Requests Fetch Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/me/following")
 async def follow_user(body: FollowUserRequest):
     try:
@@ -101,7 +114,6 @@ async def follow_user(body: FollowUserRequest):
             "data": result,
         }
     except Exception as e:
-        # Check if the error is a "Duplicate Key" (User already following)
         if "duplicate key" in str(e).lower():
             raise HTTPException(status_code=400, detail="Already following user.")
 
@@ -112,7 +124,6 @@ async def follow_user(body: FollowUserRequest):
 async def unfollow_user(user_id: str):
     try:
         curr_id = "4813d507-9b97-4bb7-bee4-39ec47070889"
-        # Call the service layer to handle the DB logic
         result = await users_service.unfollow_user(
             supabase, curr_id, user_id
         )
@@ -129,29 +140,25 @@ async def unfollow_user(user_id: str):
 @router.get("/{user_id}/following")
 async def get_user_following(inst_id: str, user_id: str):
     user_following = await users_service.get_user_following(supabase, inst_id, user_id)
-
     return user_following
 
 
 @router.get("/{user_id}/following_count")
 async def get_following_count(inst_id: str, user_id: str):
     user_following = await users_service.get_user_following(supabase, inst_id, user_id)
-
-    return {"count" : len(user_following)}
+    return {"count": len(user_following)}
 
 
 @router.get("/{user_id}/followers")
 async def get_user_followers(inst_id: str, user_id: str):
     user_followers = await users_service.get_user_followers(supabase, inst_id, user_id)
-
     return user_followers
 
 
 @router.get("/{user_id}/follower_count")
 async def get_follower_count(inst_id: str, user_id: str):
     user_followers = await users_service.get_user_followers(supabase, inst_id, user_id)
-
-    return {"count" : len(user_followers)}
+    return {"count": len(user_followers)}
 
 
 @router.post("/me/news")
@@ -199,10 +206,7 @@ async def save_draft(
         }
 
     except Exception as e:
-        # Log the actual error for your own debugging
         print(f"Draft Save Error: {str(e)}")
-
-        # Return a more descriptive error if possible
         raise HTTPException(
             status_code=500,
             detail="We couldn't save your draft right now. Please try again.",
@@ -229,7 +233,6 @@ async def get_user_profile(inst_id: str, user_id: str):
 async def leave_community(community_id: str):
     try:
         user_id = "4813d507-9b97-4bb7-bee4-39ec47070889"
-        # Call the service layer to handle the DB logic
         result = await communities_service.leave_community(
             supabase, community_id, user_id
         )
@@ -247,11 +250,9 @@ async def leave_community(community_id: str):
 @router.get("/")
 async def search_users(
     inst_id: str,
-    name: Optional[str] = Query(None, min_length=1),  # Prevents empty string searches
+    name: Optional[str] = Query(None, min_length=1),
 ):
     try:
-        # If no name is provided, you might want to return all users
-        # or an empty list depending on your UI needs.
         result = await users_service.find_users_by_name(supabase, inst_id, name)
         return result
     except Exception as e:
@@ -272,7 +273,6 @@ async def join_community(body: JoinCommunityRequest):
             "data": result,
         }
     except Exception as e:
-        # Check if the error is a "Duplicate Key" (User already in community)
         if "duplicate key" in str(e).lower():
             raise HTTPException(status_code=400, detail="You are already a member.")
 
