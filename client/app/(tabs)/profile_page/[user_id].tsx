@@ -6,11 +6,19 @@ import {
     StyleSheet,
     ScrollView,
     RefreshControl,
+    ActivityIndicator,
+    Modal,
 } from "react-native";
-import React, { Component } from "react";
+import React, {
+    Component,
+    useCallback,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Link, router, useLocalSearchParams } from "expo-router";
+import { Link, router, useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import {
     SafeAreaView,
@@ -23,19 +31,66 @@ import { News, UserProfileDetails } from "@/data/types";
 import axios from "axios";
 import { FlashList } from "@shopify/flash-list";
 import NewsPostCard from "@/components/news_post_card";
+import BottomSheet, {
+    BottomSheetBackdrop,
+    BottomSheetView,
+} from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useAuthStore } from "@/utils/authStore";
+
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+
 export default function Profile() {
+    const snapPoints = useMemo(() => ["20%"], []);
+    const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? "light";
     const { user_id } = useLocalSearchParams();
-    const [refreshing, setRefreshing] = React.useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+    const signOut = useAuthStore((state) => state.signOut);
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        setIsLoggingOut(true);
+        try {
+            await signOut();
+            // Redirect to the login screen after clearing state
+            router.replace("/login");
+        } catch (error) {
+            console.error("Error signing out:", error);
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
+
+    const handleSheetChange = (index: number) => {
+        if (index === -1) {
+            router.back();
+        }
+    };
+    const handleExpandSheet = () => bottomSheetRef.current?.expand();
+
+    const renderBackdrop = useCallback(
+        (props: any) => (
+            <BottomSheetBackdrop
+                appearsOnIndex={0}
+                disappearsOnIndex={-1}
+                {...props}
+            />
+        ),
+        [],
+    );
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         console.log("refetching");
         refetch();
         profileRefetch();
+        followingCountRefetch();
+        followerCountRefetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -77,6 +132,50 @@ export default function Profile() {
         }
     }
 
+    function goToFollowing(user_id: string) {
+        console.log(user_id + "'s following");
+        router.push({
+            pathname: "/(tabs)/profile_page/following",
+            params: { user_id: user_id },
+        });
+    }
+
+    const {
+        data: following_count,
+        isLoading,
+        refetch: followingCountRefetch,
+    } = useQuery<number>({
+        queryKey: ["following_count", user_id],
+        queryFn: async () => {
+            const res = await axios.get(
+                `${BASE_URL}/${inst_id}/users/${user_id}/following_count`,
+            );
+            return res.data.count;
+        },
+    });
+
+    function goToFollowers(user_id: string) {
+        console.log(user_id + "'s followers");
+        router.push({
+            pathname: "/(tabs)/profile_page/followers",
+            params: { user_id: user_id },
+        });
+    }
+
+    const {
+        data: follower_count,
+        isLoading: load_followerCount,
+        refetch: followerCountRefetch,
+    } = useQuery<number>({
+        queryKey: ["follower_count", user_id],
+        queryFn: async () => {
+            const res = await axios.get(
+                `${BASE_URL}/${inst_id}/users/${user_id}/follower_count`,
+            );
+            return res.data.count;
+        },
+    });
+
     const {
         status: profileStatus,
         data: profileData,
@@ -91,175 +190,202 @@ export default function Profile() {
     const { status, data, error, isFetching, refetch } = useQuery<News[]>({
         queryKey: ["user_news", user_id],
         queryFn: fetchUserNews,
+        // queryFn: () => {
+        //     return [];
+        // },
     });
 
     return (
-        <SafeAreaView edges={["top"]}>
-            {/* Header */}
-            <View
-                style={[
-                    styles.headerContainer,
-                    {
-                        backgroundColor: Colors[colorScheme].tint,
-                    },
-                ]}
-            >
-                <Pressable onPress={() => router.back()}>
-                    <Feather
-                        name="bell"
-                        size={24}
-                        color={Colors[colorScheme].button_text}
-                        weight="bold"
-                    />
-                </Pressable>
-
-                <Image
-                    source={require("@/assets/images/icon_light.png")}
-                    style={{ width: 42, height: 20, resizeMode: "contain" }}
-                />
-                <Link href="/search" push asChild>
-                    <Pressable onPress={() => {}}>
-                        <Feather
-                            name="search"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                        />
-                    </Pressable>
-                </Link>
-            </View>
-            {/* Content */}
-            <ScrollView
-                contentContainerStyle={{
-                    flex: 1,
-                    paddingBottom: insets.bottom + 80,
-                }}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                    />
-                }
-            >
-                {/* User Profile Card */}
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+                {/* Header */}
                 <View
                     style={[
-                        styles.profileCardContainer,
-                        { backgroundColor: Colors[colorScheme].bg_light },
+                        styles.headerContainer,
+                        {
+                            backgroundColor: Colors[colorScheme].tint,
+                        },
                     ]}
                 >
-                    <View style={styles.flexRowContainer}>
-                        <View style={[styles.flexRowContainer, { gap: 20 }]}>
-                            <Image
-                                source={require("@/assets/images/profile.png")}
-                                style={{ width: 68, height: 68 }}
-                            />
-                            <View>
-                                <ThemedText type="defaultSemiBold">
-                                    {profileData?.name}
-                                </ThemedText>
-                                <ThemedText
-                                    type="caption"
-                                    style={{
-                                        color: Colors[colorScheme].caption,
-                                    }}
-                                >
-                                    University of Wollongong
-                                </ThemedText>
-                                <ThemedText
-                                    type="caption"
-                                    style={{
-                                        color: Colors[colorScheme].caption,
-                                    }}
-                                >
-                                    Computer Science
-                                </ThemedText>
-                            </View>
-                        </View>
-                        <Pressable>
-                            <MaterialCommunityIcons
-                                name="dots-vertical"
+                    <Pressable onPress={() => router.back()}>
+                        <Feather
+                            name="bell"
+                            size={24}
+                            color={Colors[colorScheme].button_text}
+                            weight="bold"
+                        />
+                    </Pressable>
+
+                    <Image
+                        source={require("@/assets/images/icon_light.png")}
+                        style={{ width: 42, height: 20, resizeMode: "contain" }}
+                    />
+                    <Link href="/search" push asChild>
+                        <Pressable onPress={() => {}}>
+                            <Feather
+                                name="search"
                                 size={24}
-                                color={Colors[colorScheme].text}
+                                color={Colors[colorScheme].button_text}
                             />
                         </Pressable>
+                    </Link>
+                </View>
+                {/* Content */}
+                <ScrollView
+                    contentContainerStyle={{
+                        flex: 1,
+                    }}
+                    showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
+                >
+                    {/* User Profile Card */}
+                    <View
+                        style={[
+                            styles.profileCardContainer,
+                            {
+                                backgroundColor: Colors[colorScheme].bg_light,
+                                borderBottomColor: Colors[colorScheme].border,
+                            },
+                        ]}
+                    >
+                        <View style={styles.flexRowContainer}>
+                            <View
+                                style={[styles.flexRowContainer, { gap: 20 }]}
+                            >
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 68, height: 68 }}
+                                />
+                                <View>
+                                    <ThemedText type="defaultSemiBold">
+                                        {profileData?.name}
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                        }}
+                                    >
+                                        University of Wollongong
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                        }}
+                                    >
+                                        Computer Science
+                                    </ThemedText>
+                                </View>
+                            </View>
+                            <Pressable onPress={handleExpandSheet}>
+                                <MaterialCommunityIcons
+                                    name="dots-vertical"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                            </Pressable>
+                        </View>
+                        <ThemedText
+                            type="caption"
+                            style={{
+                                color: Colors[colorScheme].caption,
+                                fontWeight: 700,
+                            }}
+                        >
+                            {profileData?.description}
+                            {/* Studying Computer Science, but also passionate about
+                        writing and sharing school stories. */}
+                        </ThemedText>
+                        <View
+                            style={[
+                                styles.flexRowContainer,
+                                styles.statsContainer,
+                            ]}
+                        >
+                            <View style={styles.statsInfoContainer}>
+                                <ThemedText type="defaultSemiBold">
+                                    {data?.length ?? 0}
+                                </ThemedText>
+                                <ThemedText
+                                    type="caption"
+                                    style={{
+                                        color: Colors[colorScheme].caption,
+                                        fontWeight: "500",
+                                    }}
+                                >
+                                    News Posts
+                                </ThemedText>
+                            </View>
+                            <View style={styles.statsInfoContainer}>
+                                <ThemedText type="defaultSemiBold">
+                                    4
+                                </ThemedText>
+                                <ThemedText
+                                    type="caption"
+                                    style={{
+                                        color: Colors[colorScheme].caption,
+                                        fontWeight: "500",
+                                    }}
+                                >
+                                    Communities
+                                </ThemedText>
+                            </View>
+                            <View style={styles.statsInfoContainer}>
+                                <Pressable
+                                    onPress={() => goToFollowers(user_id)}
+                                    style={styles.statsInfoContainer}
+                                >
+                                    <ThemedText type="defaultSemiBold">
+                                        {follower_count ?? 0}
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        Followers
+                                    </ThemedText>
+                                </Pressable>
+                            </View>
+                            <View style={styles.statsInfoContainer}>
+                                <Pressable
+                                    onPress={() => goToFollowing(user_id)}
+                                    style={styles.statsInfoContainer}
+                                >
+                                    <ThemedText type="defaultSemiBold">
+                                        {following_count ?? 0}
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        Following
+                                    </ThemedText>
+                                </Pressable>
+                            </View>
+                        </View>
                     </View>
-                    <ThemedText
-                        type="caption"
+                    <View
                         style={{
-                            color: Colors[colorScheme].caption,
-                            fontWeight: 700,
+                            flex: 1,
+                            backgroundColor: Colors[colorScheme].bg,
+                            paddingHorizontal: 16,
+                            paddingVertical: 12,
+                            marginBottom: 16,
                         }}
                     >
-                        {profileData?.description}
-                        {/* Studying Computer Science, but also passionate about
-                        writing and sharing school stories. */}
-                    </ThemedText>
-                    <View
-                        style={[styles.flexRowContainer, styles.statsContainer]}
-                    >
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">
-                                {data?.length}
-                            </ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                News Posts
-                            </ThemedText>
-                        </View>
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">4</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Communities
-                            </ThemedText>
-                        </View>
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">20</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Followers
-                            </ThemedText>
-                        </View>
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">20</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Following
-                            </ThemedText>
-                        </View>
-                    </View>
-                </View>
-                <View
-                    style={{
-                        flex: 1,
-                        backgroundColor: Colors[colorScheme].bg,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        marginBottom: 16,
-                    }}
-                >
-                    {/* <View
+                        {/* <View
                         style={[
                             styles.sortButtonContainer,
                             {
@@ -275,14 +401,181 @@ export default function Profile() {
                             color={Colors[colorScheme].text}
                         />
                     </View> */}
-                    {/* Card */}
-                    <FlashList
-                        data={data}
-                        renderItem={({ item }) => <NewsPostCard news={item} />}
-                    />
-                </View>
-            </ScrollView>
-        </SafeAreaView>
+                        {/* Card */}
+                        {status === "pending" ? (
+                            <ActivityIndicator
+                                size={"large"}
+                                color={Colors[colorScheme].tint}
+                                style={{ flex: 1 }}
+                            />
+                        ) : (
+                            <FlashList
+                                contentContainerStyle={{ flex: 1 }}
+                                nestedScrollEnabled={false}
+                                ListEmptyComponent={
+                                    <View
+                                        style={{
+                                            flex: 1,
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <ThemedText
+                                            type="sub_heading"
+                                            style={{
+                                                color: Colors[colorScheme].text,
+                                            }}
+                                        >
+                                            No Posts Yet
+                                        </ThemedText>
+                                    </View>
+                                }
+                                data={data}
+                                renderItem={({ item }) => (
+                                    <NewsPostCard news={item} />
+                                )}
+                            />
+                        )}
+                    </View>
+                    <BottomSheet
+                        ref={bottomSheetRef}
+                        index={-1}
+                        snapPoints={snapPoints}
+                        backdropComponent={renderBackdrop}
+                        enablePanDownToClose
+                    >
+                        <BottomSheetView style={styles.bottomSheet}>
+                            <Pressable style={styles.modalActionButtonCtn}>
+                                <Feather
+                                    name="edit-3"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    View requests
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable style={styles.modalActionButtonCtn}>
+                                <Feather
+                                    name="award"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    View requests
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable style={styles.modalActionButtonCtn}>
+                                <Feather
+                                    name="settings"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    Change preference
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={styles.modalActionButtonCtn}
+                                onPress={() => setModalVisible(true)}
+                            >
+                                <Feather
+                                    name="log-out"
+                                    size={24}
+                                    color={Colors[colorScheme].alert_red}
+                                />
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{
+                                        color: Colors[colorScheme].alert_red,
+                                    }}
+                                >
+                                    Log out
+                                </ThemedText>
+                            </Pressable>
+                        </BottomSheetView>
+                    </BottomSheet>
+                    <Modal
+                        animationType="slide"
+                        visible={modalVisible}
+                        backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                        onRequestClose={() => {
+                            setModalVisible(!modalVisible);
+                        }}
+                    >
+                        <View style={styles.centeredView}>
+                            <View
+                                style={[
+                                    styles.modalView,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].bg_light,
+                                    },
+                                ]}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={styles.modalText}
+                                >
+                                    Log out?
+                                </ThemedText>
+                                <View style={{ flexDirection: "row", gap: 24 }}>
+                                    <Pressable
+                                        style={[
+                                            styles.button,
+                                            {
+                                                backgroundColor:
+                                                    Colors[colorScheme].text,
+                                            },
+                                        ]}
+                                        onPress={() =>
+                                            setModalVisible(!modalVisible)
+                                        }
+                                    >
+                                        <ThemedText
+                                            type="defaultSemiBold"
+                                            style={[
+                                                styles.textStyle,
+                                                {
+                                                    color: Colors[colorScheme]
+                                                        .button_text,
+                                                },
+                                            ]}
+                                        >
+                                            Cancel
+                                        </ThemedText>
+                                    </Pressable>
+                                    <Pressable
+                                        style={[
+                                            styles.button,
+                                            {
+                                                backgroundColor:
+                                                    Colors[colorScheme]
+                                                        .alert_red,
+                                            },
+                                        ]}
+                                        onPress={handleSignOut}
+                                    >
+                                        <ThemedText
+                                            type="defaultSemiBold"
+                                            style={[
+                                                styles.textStyle,
+                                                {
+                                                    color: Colors[colorScheme]
+                                                        .button_text,
+                                                },
+                                            ]}
+                                        >
+                                            Log out
+                                        </ThemedText>
+                                    </Pressable>
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
+                </ScrollView>
+            </SafeAreaView>
+        </GestureHandlerRootView>
     );
 }
 
@@ -304,6 +597,7 @@ const styles = StyleSheet.create({
         gap: 8,
         paddingHorizontal: 16,
         paddingVertical: 8,
+        borderBottomWidth: 1,
     },
     statsContainer: {
         paddingVertical: 8,
@@ -342,5 +636,52 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         paddingTop: 8,
+    },
+    bottomSheet: {
+        flex: 0,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        gap: 24,
+    },
+    modalActionButtonCtn: {
+        flex: 0,
+        flexDirection: "row",
+        gap: 8,
+    },
+    modalView: {
+        width: "100%",
+        gap: 16,
+
+        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    button: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        elevation: 2,
+    },
+    textStyle: {
+        textAlign: "center",
+    },
+    modalText: {
+        fontWeight: "bold",
+    },
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
     },
 });

@@ -1,23 +1,28 @@
-import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
+import { useAuthStore } from "@/utils/authStore";
+import { getItem, setItem, deleteItemAsync } from "expo-secure-store";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const SecureStorageAdapter = {
+    getItem: (key: string) => getItem(key),
+    setItem: (key: string, value: string) => setItem(key, value),
+    removeItem: (key: string) => deleteItemAsync(key),
+};
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
+const supabaseKey =
+    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || "";
 
-if (!supabaseUrl) {
-  throw new Error('EXPO_PUBLIC_SUPABASE_URL is missing');
-}
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+        storage: SecureStorageAdapter,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: false,
+    },
+});
 
-if (!supabaseAnonKey) {
-  throw new Error('EXPO_PUBLIC_SUPABASE_ANON_KEY is missing');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
+// The "Magic" Listener
+supabase.auth.onAuthStateChange((_event, session) => {
+    console.log("🔔 Auth State Changed:", _event);
+    console.log("👤 User in Session:", session?.user?.email ?? "No User");
+    useAuthStore.getState().setAuth(session);
 });
