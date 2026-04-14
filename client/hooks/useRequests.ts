@@ -17,7 +17,7 @@ type RequestsResponse = {
     requests: UserRequestItem[];
 };
 
-export function useRequests(instId?: string) {
+export function useRequests() {
     const [requests, setRequests] = useState<UserRequestItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -37,12 +37,6 @@ export function useRequests(instId?: string) {
         try {
             setError(null);
 
-            if (!instId) {
-                setRequests([]);
-                setError("Institution ID is missing");
-                return;
-            }
-
             const token = await getAccessToken();
 
             if (!token) {
@@ -51,22 +45,13 @@ export function useRequests(instId?: string) {
                 return;
             }
 
-            console.log("instId:", instId);
-            console.log(
-                "Requests URL:",
-                `${API_BASE_URL}/${instId}/users/me/requests`
-            );
-
-            const response = await fetch(
-                `${API_BASE_URL}/${instId}/users/me/requests`,
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                }
-            );
+            const response = await fetch(`${API_BASE_URL}/users/me/requests`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
 
             const data = await response.json();
 
@@ -84,7 +69,7 @@ export function useRequests(instId?: string) {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [instId]);
+    }, []);
 
     const refresh = async () => {
         setRefreshing(true);

@@ -1,6 +1,5 @@
-from typing import Any
-
 from pydantic import BaseModel
+from typing import Any
 
 
 class NotificationItem(BaseModel):
@@ -23,17 +22,24 @@ class InvitationItem(BaseModel):
     inviter_avatar_url: str | None = None
     status: str
     created_at: str
+    rejection_reason: str | None = None
 
 
-class NotificationsResponse(BaseModel):
-    notifications: list[NotificationItem]
-    invitations: list[InvitationItem]
+class NotificationsListResponse(BaseModel):
+    items: list[NotificationItem]
+
+
+class InvitationsListResponse(BaseModel):
+    items: list[InvitationItem]
+
+
+class UnreadCountResponse(BaseModel):
     unread_count: int
-
-
-class InvitationActionRequest(BaseModel):
-    action: str
 
 
 class GenericMessageResponse(BaseModel):
     message: str
+
+
+class InvitationActionRequest(BaseModel):
+    action: str

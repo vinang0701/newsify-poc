@@ -1,210 +1,140 @@
-import { useCallback, useEffect, useState } from 'react';
-import { API_BASE_URL } from '@/constants/api';
-import { supabase } from '@/lib/supabase';
+import { useCallback, useEffect, useState } from "react";
+import { API_BASE_URL } from "@/constants/api";
+import { supabase } from "@/lib/supabase";
 
 export type NotificationItem = {
-  id: string;
-  type: string;
-  title: string;
-  body: string | null;
-  created_at: string;
-  is_read: boolean;
-  actor_name?: string | null;
-  actor_avatar_url?: string | null;
-  metadata?: Record<string, any> | null;
+    id: string;
+    type: string;
+    title: string;
+    body: string | null;
+    created_at: string;
+    is_read: boolean;
+    actor_name?: string | null;
+    actor_avatar_url?: string | null;
+    metadata?: Record<string, any> | null;
 };
 
-export type InvitationItem = {
-  id: string;
-  community_id: string;
-  community_name: string;
-  inviter_name?: string | null;
-  inviter_avatar_url?: string | null;
-  status: 'pending' | 'accepted' | 'declined';
-  created_at: string;
-};
-
-type NotificationResponse = {
-  notifications: NotificationItem[];
-  invitations: InvitationItem[];
-  unread_count: number;
+type NotificationsResponse = {
+    items: NotificationItem[];
 };
 
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [invitations, setInvitations] = useState<InvitationItem[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  const getAccessToken = async (): Promise<string | null> => {
-    const { data, error } = await supabase.auth.getSession();
+    const getAccessToken = async (): Promise<string | null> => {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw new Error(error.message || "Failed to get session");
+        return data.session?.access_token ?? null;
+    };
 
-    if (error) {
-      throw new Error(error.message || 'Failed to get session');
-    }
+    const fetchNotifications = useCallback(async () => {
+        try {
+            setError(null);
 
-    return data.session?.access_token ?? null;
-  };
+            const token = await getAccessToken();
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      setError(null);
+            if (!token) {
+                setNotifications([]);
+                setError("No active session found");
+                return;
+            }
 
-      const token = await getAccessToken();
+            const response = await fetch(`${API_BASE_URL}/users/me/notifications`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            });
 
-      if (!token) {
-        setNotifications([]);
-        setInvitations([]);
-        setUnreadCount(0);
-        return;
-      }
+            const data = await response.json();
 
-      console.log('API_BASE_URL:', API_BASE_URL);
-      console.log('Fetching:', `${API_BASE_URL}/notifications`);
+            if (!response.ok) {
+                throw new Error(data?.detail || "Failed to fetch notifications");
+            }
 
-      const response = await fetch(`${API_BASE_URL}/notifications`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+            const typedData = data as NotificationsResponse;
+            setNotifications(typedData.items || []);
+        } catch (err: any) {
+            setError(err?.message || "Failed to load notifications");
+            setNotifications([]);
+            console.error("fetchNotifications error:", err);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
 
-      const data = await response.json();
+    const refresh = async () => {
+        setRefreshing(true);
+        await fetchNotifications();
+    };
 
-      if (!response.ok) {
-        throw new Error(data?.detail || 'Failed to fetch notifications');
-      }
+    const markAsRead = async (notificationId: string) => {
+        const token = await getAccessToken();
+        if (!token) throw new Error("No active session found");
 
-      const typedData = data as NotificationResponse;
+        const response = await fetch(
+            `${API_BASE_URL}/users/me/notifications/${notificationId}/read`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
 
-      setNotifications(typedData.notifications || []);
-      setInvitations(typedData.invitations || []);
-      setUnreadCount(typedData.unread_count || 0);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load notifications');
-      setNotifications([]);
-      setInvitations([]);
-      setUnreadCount(0);
-      console.error('fetchNotifications error:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+        const data = await response.json();
 
-  const refresh = async () => {
-    setRefreshing(true);
-    await fetchNotifications();
-  };
+        if (!response.ok) {
+            throw new Error(data?.detail || "Failed to mark notification as read");
+        }
 
-  const markAsRead = async (notificationId: string) => {
-    const token = await getAccessToken();
+        setNotifications((prev) =>
+            prev.map((item) =>
+                item.id === notificationId ? { ...item, is_read: true } : item
+            )
+        );
+    };
 
-    if (!token) {
-      throw new Error('No active session found');
-    }
+    const markAllAsRead = async () => {
+        const token = await getAccessToken();
+        if (!token) throw new Error("No active session found");
 
-    const response = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+        const response = await fetch(`${API_BASE_URL}/users/me/notifications/read-all`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+        });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (!response.ok) {
-      throw new Error(data?.detail || 'Failed to mark notification as read');
-    }
+        if (!response.ok) {
+            throw new Error(data?.detail || "Failed to mark all as read");
+        }
 
-    setNotifications((prev) =>
-      prev.map((item) =>
-        item.id === notificationId ? { ...item, is_read: true } : item
-      )
-    );
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-  };
+        setNotifications((prev) =>
+            prev.map((item) => ({ ...item, is_read: true }))
+        );
+    };
 
-  const markAllAsRead = async () => {
-    const token = await getAccessToken();
+    useEffect(() => {
+        fetchNotifications();
+    }, [fetchNotifications]);
 
-    if (!token) {
-      throw new Error('No active session found');
-    }
-
-    const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.detail || 'Failed to mark all as read');
-    }
-
-    setNotifications((prev) =>
-      prev.map((item) => ({ ...item, is_read: true }))
-    );
-    setUnreadCount(0);
-  };
-
-  const respondToInvitation = async (
-    invitationId: string,
-    action: 'accepted' | 'declined'
-  ) => {
-    const token = await getAccessToken();
-
-    if (!token) {
-      throw new Error('No active session found');
-    }
-
-    const response = await fetch(
-      `${API_BASE_URL}/notifications/invitations/${invitationId}/respond`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.detail || 'Failed to respond to invitation');
-    }
-
-    setInvitations((prev) =>
-      prev.map((item) =>
-        item.id === invitationId ? { ...item, status: action } : item
-      )
-    );
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
-
-  return {
-    notifications,
-    invitations,
-    unreadCount,
-    loading,
-    refreshing,
-    error,
-    refresh,
-    markAsRead,
-    markAllAsRead,
-    respondToInvitation,
-  };
+    return {
+        notifications,
+        loading,
+        refreshing,
+        error,
+        refresh,
+        markAsRead,
+        markAllAsRead,
+    };
 }

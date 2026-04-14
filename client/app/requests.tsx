@@ -6,7 +6,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 
@@ -15,7 +15,6 @@ import { useRequests } from "@/hooks/useRequests";
 
 export default function RequestsScreen() {
     const router = useRouter();
-    const { inst_id } = useLocalSearchParams<{ inst_id?: string }>();
 
     const {
         requests,
@@ -23,7 +22,7 @@ export default function RequestsScreen() {
         refreshing,
         error,
         refresh,
-    } = useRequests(inst_id);
+    } = useRequests();
 
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>

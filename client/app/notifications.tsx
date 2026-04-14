@@ -1,178 +1,229 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Feather from '@expo/vector-icons/Feather';
+    ActivityIndicator,
+    Alert,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Feather from "@expo/vector-icons/Feather";
 
-import NotificationTabs from '@/components/notifications/NotificationTabs';
-import NotificationList from '@/components/notifications/NotificationList';
-import InvitationList from '@/components/notifications/InvitationList';
-import { useNotifications } from '@/hooks/useNotifications';
+import NotificationTabs from "@/components/notifications/NotificationTabs";
+import NotificationList from "@/components/notifications/NotificationList";
+import InvitationList from "@/components/notifications/InvitationList";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useInvitations } from "@/hooks/useInvitations";
+import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 
 export default function NotificationsScreen() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'notifications' | 'invitations'>(
-    'notifications'
-  );
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useState<"notifications" | "invitations">(
+        "notifications"
+    );
 
-  const {
-    notifications,
-    invitations,
-    unreadCount,
-    loading,
-    refreshing,
-    error,
-    refresh,
-    markAsRead,
-    markAllAsRead,
-    respondToInvitation,
-  } = useNotifications();
+    const {
+        notifications,
+        loading: notificationsLoading,
+        refreshing: notificationsRefreshing,
+        error: notificationsError,
+        refresh: refreshNotifications,
+        markAsRead,
+        markAllAsRead,
+    } = useNotifications();
 
-  const handleNotificationPress = async (item: any) => {
-    try {
-      if (!item.is_read) {
-        await markAsRead(item.id);
-      }
+    const {
+        invitations,
+        loading: invitationsLoading,
+        refreshing: invitationsRefreshing,
+        error: invitationsError,
+        refresh: refreshInvitations,
+        respondToInvitation,
+    } = useInvitations();
 
-      if (item.metadata?.route) {
-        router.push(item.metadata.route);
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to open notification');
-    }
-  };
+    const { unreadCount, refetchUnreadCount } = useUnreadNotificationCount();
 
-  const handleRespond = async (id: string, action: 'accepted' | 'declined') => {
-    try {
-      await respondToInvitation(id, action);
-      Alert.alert('Success', `Invitation ${action}.`);
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to respond');
-    }
-  };
+    const handleNotificationPress = async (item: any) => {
+        try {
+            if (!item.is_read) {
+                await markAsRead(item.id);
+                await refetchUnreadCount();
+            }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <Stack.Screen options={{ headerShown: false }} />
+            if (item.metadata?.route) {
+                router.push(item.metadata.route);
+            }
+        } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to open notification");
+        }
+    };
 
-      <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Feather name="arrow-left" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
+    const handleReadAll = async () => {
+        try {
+            await markAllAsRead();
+            await refetchUnreadCount();
+        } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to mark all as read");
+        }
+    };
 
-        <Text style={styles.headerTitle}> </Text>
+    const handleRespond = async (id: string, action: "accepted" | "declined") => {
+        try {
+            await respondToInvitation(id, action);
+            Alert.alert("Success", `Invitation ${action}.`);
+        } catch (err: any) {
+            Alert.alert("Error", err.message || "Failed to respond");
+        }
+    };
 
-        {activeTab === 'notifications' ? (
-          <TouchableOpacity onPress={markAllAsRead} style={styles.headerRight}>
-            <Text style={styles.readAllText}> </Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.headerRight} />
-        )}
-      </View>
+    const loading =
+        activeTab === "notifications" ? notificationsLoading : invitationsLoading;
 
-      <NotificationTabs activeTab={activeTab} onChange={setActiveTab} />
+    const refreshing =
+        activeTab === "notifications"
+            ? notificationsRefreshing
+            : invitationsRefreshing;
 
-      {loading ? (
-        <View style={styles.centerWrap}>
-          <ActivityIndicator size="small" color="#2563EB" />
-        </View>
-      ) : error ? (
-        <View style={styles.centerWrap}>
-          <Text style={styles.errorTitle}>Unable to load</Text>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={refresh}>
-            <Text style={styles.retryButtonText}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : activeTab === 'notifications' ? (
-        <NotificationList
-          data={notifications}
-          refreshing={refreshing}
-          onRefresh={refresh}
-          onPressItem={handleNotificationPress}
-        />
-      ) : (
-        <InvitationList
-          data={invitations}
-          refreshing={refreshing}
-          onRefresh={refresh}
-          onRespond={handleRespond}
-        />
-      )}
-    </SafeAreaView>
-  );
+    const error =
+        activeTab === "notifications" ? notificationsError : invitationsError;
+
+    const refresh =
+        activeTab === "notifications" ? refreshNotifications : refreshInvitations;
+
+    return (
+        <SafeAreaView style={styles.container} edges={["top"]}>
+            <Stack.Screen options={{ headerShown: false }} />
+
+            <View style={styles.topHeader}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                    <Feather name="arrow-left" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+
+                <Text style={styles.headerTitle}>Notifications</Text>
+
+                <View style={styles.headerRight}>
+                    {activeTab === "notifications" ? (
+                        <TouchableOpacity onPress={handleReadAll}>
+                            <Text style={styles.readAllText}>Read all</Text>
+                        </TouchableOpacity>
+                    ) : null}
+                </View>
+            </View>
+
+            <NotificationTabs activeTab={activeTab} onChange={setActiveTab} />
+
+            {activeTab === "notifications" && unreadCount > 0 ? (
+                <View style={styles.infoBar}>
+                    <Text style={styles.infoText}>{unreadCount} unread</Text>
+                </View>
+            ) : null}
+
+            {loading ? (
+                <View style={styles.centerWrap}>
+                    <ActivityIndicator size="small" color="#2563EB" />
+                </View>
+            ) : error ? (
+                <View style={styles.centerWrap}>
+                    <Text style={styles.errorTitle}>Unable to load</Text>
+                    <Text style={styles.errorText}>{error}</Text>
+                    <TouchableOpacity style={styles.retryButton} onPress={refresh}>
+                        <Text style={styles.retryButtonText}>Try again</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : activeTab === "notifications" ? (
+                <NotificationList
+                    data={notifications}
+                    refreshing={refreshing}
+                    onRefresh={refresh}
+                    onPressItem={handleNotificationPress}
+                />
+            ) : (
+                <InvitationList
+                    data={invitations}
+                    refreshing={refreshing}
+                    onRefresh={refresh}
+                    onRespond={handleRespond}
+                />
+            )}
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  topHeader: {
-    height: 44,
-    backgroundColor: '#0B5FFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-  },
-  backButton: {
-    width: 28,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  headerRight: {
-    width: 40,
-    alignItems: 'flex-end',
-  },
-  readAllText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  centerWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    backgroundColor: '#F3F4F6',
-  },
-  errorTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  retryButton: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+    container: {
+        flex: 1,
+        backgroundColor: "#F3F4F6",
+    },
+    topHeader: {
+        height: 44,
+        backgroundColor: "#0B5FFF",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 10,
+    },
+    backButton: {
+        width: 28,
+        justifyContent: "center",
+        alignItems: "flex-start",
+    },
+    headerTitle: {
+        flex: 1,
+        textAlign: "center",
+        color: "#FFFFFF",
+        fontSize: 15,
+        fontWeight: "600",
+    },
+    headerRight: {
+        width: 60,
+        alignItems: "flex-end",
+    },
+    readAllText: {
+        color: "#FFFFFF",
+        fontSize: 11,
+        fontWeight: "600",
+    },
+    infoBar: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        backgroundColor: "#F9FAFB",
+        borderBottomWidth: 1,
+        borderBottomColor: "#F3F4F6",
+    },
+    infoText: {
+        fontSize: 12,
+        color: "#4B5563",
+    },
+    centerWrap: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 24,
+        backgroundColor: "#F3F4F6",
+    },
+    errorTitle: {
+        fontSize: 14,
+        fontWeight: "700",
+        color: "#111827",
+        marginBottom: 6,
+    },
+    errorText: {
+        fontSize: 12,
+        color: "#6B7280",
+        textAlign: "center",
+        marginBottom: 12,
+    },
+    retryButton: {
+        backgroundColor: "#2563EB",
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 6,
+    },
+    retryButtonText: {
+        color: "#FFFFFF",
+        fontSize: 12,
+        fontWeight: "600",
+    },
 });
