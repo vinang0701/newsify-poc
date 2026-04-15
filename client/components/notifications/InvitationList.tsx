@@ -33,7 +33,9 @@ export default function InvitationList({
             refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
-            contentContainerStyle={data.length === 0 ? styles.emptyListContainer : undefined}
+            contentContainerStyle={
+                data.length === 0 ? styles.emptyListContainer : undefined
+            }
             ListEmptyComponent={
                 <View style={styles.emptyWrap}>
                     <Text style={styles.emptyTitle}>No invitations available</Text>
@@ -43,44 +45,50 @@ export default function InvitationList({
                 </View>
             }
             renderItem={({ item }) => (
-                <View style={styles.row}>
-                    <AvatarPlaceholder />
-                    <View style={styles.content}>
-                        <Text style={styles.messageText}>
-                            <Text style={styles.boldText}>
-                                {item.inviter_name || "Someone"}
-                            </Text>{" "}
-                            invited you to join{" "}
-                            <Text style={styles.boldText}>
-                                {item.community_name}
+                <View style={styles.card}>
+                    <View style={styles.topRow}>
+                        <AvatarPlaceholder />
+                        <View style={styles.textWrap}>
+                            <Text style={styles.messageText}>
+                                <Text style={styles.boldText}>
+                                    {item.inviter_name || "Someone"}
+                                </Text>{" "}
+                                invited you to join{" "}
+                                <Text style={styles.boldText}>
+                                    {item.community_name}
+                                </Text>
+                                .
                             </Text>
-                            .
-                        </Text>
-                    </View>
 
-                    {item.status === "pending" ? (
-                        <View style={styles.actions}>
-                            <TouchableOpacity
-                                style={styles.acceptButton}
-                                onPress={() => onRespond(item.id, "accepted")}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.acceptText}>Accept</Text>
-                            </TouchableOpacity>
+                            {item.status === "pending" ? (
+                                <View style={styles.actionsRow}>
+                                    <TouchableOpacity
+                                        style={styles.acceptButton}
+                                        onPress={() => onRespond(item.id, "accepted")}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={styles.acceptText}>Accept</Text>
+                                    </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={styles.declineButton}
-                                onPress={() => onRespond(item.id, "declined")}
-                                activeOpacity={0.8}
-                            >
-                                <Text style={styles.declineText}>Decline</Text>
-                            </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.declineButton}
+                                        onPress={() => onRespond(item.id, "declined")}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={styles.declineText}>Decline</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <View style={styles.statusRow}>
+                                    <Text style={styles.statusText}>
+                                        {item.status === "accepted"
+                                            ? "Joined"
+                                            : "Declined"}
+                                    </Text>
+                                </View>
+                            )}
                         </View>
-                    ) : (
-                        <Text style={styles.statusText}>
-                            {item.status === "accepted" ? "Joined" : "Declined"}
-                        </Text>
-                    )}
+                    </View>
                 </View>
             )}
         />
@@ -88,12 +96,14 @@ export default function InvitationList({
 }
 
 const styles = StyleSheet.create({
-    row: {
-        flexDirection: "row",
-        alignItems: "center",
+    card: {
         paddingHorizontal: 10,
         paddingVertical: 10,
         backgroundColor: "#F3F4F6",
+    },
+    topRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
     },
     avatar: {
         width: 26,
@@ -101,30 +111,31 @@ const styles = StyleSheet.create({
         borderRadius: 13,
         backgroundColor: "#D1D5DB",
         marginRight: 8,
+        marginTop: 2,
     },
-    content: {
+    textWrap: {
         flex: 1,
-        paddingRight: 6,
     },
     messageText: {
-        fontSize: 10,
+        fontSize: 14,
         lineHeight: 14,
         color: "#111827",
     },
     boldText: {
         fontWeight: "700",
     },
-    actions: {
-        alignItems: "flex-end",
-        justifyContent: "center",
-        gap: 4,
+    actionsRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginTop: 8,
+        gap: 12,
     },
     acceptButton: {
         backgroundColor: "#1877F2",
-        paddingHorizontal: 10,
-        paddingVertical: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 5,
         borderRadius: 4,
-        minWidth: 60,
+        minWidth: 70,
         alignItems: "center",
     },
     acceptText: {
@@ -133,19 +144,27 @@ const styles = StyleSheet.create({
         fontWeight: "700",
     },
     declineButton: {
-        paddingHorizontal: 6,
-        paddingVertical: 2,
+        backgroundColor: "#EF4444", // red
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 4,
+        minWidth: 70,
+        alignItems: "center",
     },
+
     declineText: {
-        color: "#6B7280",
+        color: "#FFFFFF",
         fontSize: 10,
-        fontWeight: "600",
+        fontWeight: "700",
+    },
+    statusRow: {
+        marginTop: 8,
     },
     statusText: {
         fontSize: 10,
         color: "#6B7280",
         textTransform: "capitalize",
-        marginLeft: 4,
+        fontWeight: "600",
     },
     emptyListContainer: {
         flexGrow: 1,

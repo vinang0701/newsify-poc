@@ -56,12 +56,35 @@ async def respond_to_invitation(user_id: str, invitation_id: str, action: str) -
     if action not in ["accepted", "declined"]:
         raise ValueError("Action must be accepted or declined")
 
+    now = datetime.now(timezone.utc).isoformat()
+
+    if action == "accepted":
+        existing_membership_response = (
+            supabase.table("community_members")
+            .select("*")
+            .eq("community_id", invitation["community_id"])
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        existing_membership = existing_membership_response.data or []
+
+        if not existing_membership:
+            supabase.table("community_members").insert(
+                {
+                    "user_id": user_id,
+                    "community_id": invitation["community_id"],
+                    "joined_at": now,
+                    "role": "member",
+                }
+            ).execute()
+
     (
         supabase.table("community_invitations")
         .update(
             {
                 "status": action,
-                "responded_at": datetime.now(timezone.utc).isoformat(),
+                "responded_at": now,
             }
         )
         .eq("invitation_id", invitation_id)
