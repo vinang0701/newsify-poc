@@ -1,4 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
+import * as z from "zod";
 
 export interface News {
     id: string;
@@ -62,3 +63,19 @@ export interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
 }
+
+// Institution Admin
+export const createUserSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters long").trim(),
+
+    email: z.email("Please enter a valid email address").toLowerCase().trim(),
+
+    password: z.string().min(8, "Password must be at least 8 characters long"),
+
+    role: z.enum(
+        ["student", "staff", "institution_admin"],
+        Error("Please select a valid user role."),
+    ),
+});
+
+export type CreateUserFormData = z.infer<typeof createUserSchema>;
