@@ -5,8 +5,21 @@ from app.core.db import supabase
 async def get_user_invitations(user_id: str) -> list[dict]:
     response = (
         supabase.table("community_invitations")
-        .select("*")
+        .select(
+            """
+            invitation_id,
+            community_id,
+            invited_user_id,
+            invited_by_user_id,
+            status,
+            created_at,
+            responded_at,
+            community:communities!community_invitations_community_id_fkey(name),
+            inviter:users!community_invitations_invited_by_user_id_fkey(name, image_url)
+            """
+        )
         .eq("invited_user_id", user_id)
+        .order("status", desc=False)
         .order("created_at", desc=True)
         .execute()
     )
@@ -17,13 +30,22 @@ def map_invitations(rows: list[dict]) -> list[dict]:
     mapped_rows = []
 
     for item in rows:
+        community_data = item.get("community") or {}
+        inviter_data = item.get("inviter") or {}
+
+        if isinstance(community_data, list):
+            community_data = community_data[0] if community_data else {}
+
+        if isinstance(inviter_data, list):
+            inviter_data = inviter_data[0] if inviter_data else {}
+
         mapped_rows.append(
             {
                 "id": str(item["invitation_id"]),
                 "community_id": str(item["community_id"]),
-                "community_name": item.get("community_name", "Community"),
-                "inviter_name": item.get("inviter_name"),
-                "inviter_avatar_url": item.get("inviter_avatar_url"),
+                "community_name": community_data.get("name", "Unknown Community"),
+                "inviter_name": inviter_data.get("name", "Unknown User"),
+                "inviter_avatar_url": inviter_data.get("image_url"),
                 "status": item.get("status", "pending"),
                 "created_at": item["created_at"],
                 "rejection_reason": item.get("rejection_reason"),
