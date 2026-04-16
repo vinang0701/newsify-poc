@@ -122,33 +122,45 @@ export function InstitutionAdminSidebar() {
                                 <Users2 size={16} /> Communities
                             </Link>
                         </SidebarMenuButton>
-                        <SidebarMenuButton className="text-base h-10">
+                        <SidebarMenuButton
+                            className="text-base h-10"
+                            isActive={pathname === "/admin/roles"}
+                        >
                             <Link
-                                to={"/admin"}
+                                to={"/admin/roles"}
                                 className="w-full flex flex-row items-center gap-2"
                             >
                                 <Tag size={16} /> Roles
                             </Link>
                         </SidebarMenuButton>
-                        <SidebarMenuButton className="text-base h-10">
+                        <SidebarMenuButton
+                            className="text-base h-10"
+                            isActive={pathname === "/admin/achievements"}
+                        >
                             <Link
-                                to={"/admin"}
+                                to={"/admin/achievements"}
                                 className="w-full flex flex-row items-center gap-2"
                             >
                                 <Award size={16} /> Achievements
                             </Link>
                         </SidebarMenuButton>
-                        <SidebarMenuButton className="text-base h-10">
+                        <SidebarMenuButton
+                            className="text-base h-10"
+                            isActive={pathname === "/admin/categories"}
+                        >
                             <Link
-                                to={"/admin"}
+                                to={"/admin/categories"}
                                 className="w-full flex flex-row items-center gap-2"
                             >
                                 <FileText size={16} /> Categories
                             </Link>
                         </SidebarMenuButton>
-                        <SidebarMenuButton className="text-base h-10">
+                        <SidebarMenuButton
+                            className="text-base h-10"
+                            isActive={pathname === "/admin/moderation"}
+                        >
                             <Link
-                                to={"/admin"}
+                                to={"/admin/moderation"}
                                 className="w-full flex flex-row items-center gap-2"
                             >
                                 <Flag size={16} /> Moderation

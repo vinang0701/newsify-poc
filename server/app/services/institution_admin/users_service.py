@@ -15,7 +15,7 @@ async def get_student_users(supabase: Client, inst_id: str) -> List[dict]:
             name,
             email,
             role,
-            is_active,
+            status,
             created_at,
             updated_at
         """

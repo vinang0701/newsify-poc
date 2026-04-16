@@ -8,7 +8,7 @@ class User(BaseModel):
     name: str
     email: EmailStr
     role: str
-    is_active: bool
+    status: str
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
 

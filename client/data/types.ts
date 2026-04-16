@@ -7,7 +7,7 @@ export interface News {
     url: string;
     image_url: string;
     content: string | any; // needs changing
-};
+}
 
 export interface Community {
     id: string;
@@ -16,7 +16,7 @@ export interface Community {
     category: string;
     public: boolean;
     joined: boolean;
-};
+}
 
 export interface ModalProps {
     onModalPress: () => void;
@@ -32,16 +32,16 @@ export interface LiveStream {
 
 // Temp
 export interface UserProfileDetails {
-    id: string,
-    name: string,
-    description: string,
+    id: string;
+    name: string;
+    description: string;
 }
 
 export interface Users {
-    id: string,
-    name: string,
-    email: string,
-    is_active: boolean,
-    created_at: string,
-    updated_at: string,
+    id: string;
+    name: string;
+    email: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
 }

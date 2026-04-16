@@ -1,4 +1,4 @@
-import { Button } from "../components/ui/button";
+import { Button } from "../../components/ui/button";
 import { ChevronDown, EyeIcon, EyeOffIcon, Plus } from "lucide-react";
 import {
     Pagination,
@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { ButtonGroup } from "@/components/ui/button-group";
 import type { User } from "@/types";
-import { UserMgmtColumns } from "./users/columns";
+import { UserMgmtColumns } from "./columns";
 import { DataTable } from "./data-table";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
@@ -158,6 +158,23 @@ const StudentUsersMgmtPage = () => {
     const { isLoading, data, error } = useQuery<User[]>({
         queryKey: ["studentUsers"],
         queryFn: fetchStudentUsers,
+        select: (users) =>
+            users.map((user) => ({
+                ...user,
+                // Assuming 'created_at' is the field from Supabase
+                formatted_date: new Intl.DateTimeFormat("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                    hour12: false,
+                    timeZone: "Asia/Singapore",
+                })
+                    .format(new Date(user.created_at))
+                    .replace(",", ""),
+            })),
     });
 
     return (
