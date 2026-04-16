@@ -1,3 +1,4 @@
+import CommunityRequestCard from "@/components/community-request-card";
 import Loading from "@/components/loading";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -8,65 +9,17 @@ import {
 	PaginationItem,
 	PaginationLink,
 } from "@/components/ui/pagination";
+import type { CommunityRequest } from "@/components/community-request-card";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
-import CategoriesDataTable from "./data-table";
-import { CategoriesColumns } from "./columns";
-import type { CategoryTable } from "@/types";
 
-const data: CategoryTable[] = [
-	{
-		id: "1111111111111111",
-		category_name: "Sports",
-		created_at: "10/01/26",
-		updated_at: "10/01/26",
-		created_by: "Victor Lim",
-		status: "active",
-	},
-	{
-		id: "1111111111111111",
-		category_name: "Geography",
-		created_at: "10/01/26",
-		updated_at: "10/01/26",
-		created_by: "Victor Lim",
-		status: "active",
-	},
-	{
-		id: "1111111111111111",
-		category_name: "Technology",
-		created_at: "10/01/26",
-		updated_at: "10/01/26",
-		created_by: "Victor Lim",
-		status: "active",
-	},
-	{
-		id: "1111111111111111",
-		category_name: "Arts",
-		created_at: "10/01/26",
-		updated_at: "10/01/26",
-		created_by: "Victor Lim",
-		status: "active",
-	},
-	{
-		id: "1111111111111111",
-		category_name: "History",
-		created_at: "10/01/26",
-		updated_at: "10/01/26",
-		created_by: "Victor Lim",
-		status: "active",
-	},
-	{
-		id: "1111111111111111",
-		category_name: "Politics",
-		created_at: "10/01/26",
-		updated_at: "10/01/26",
-		created_by: "Victor Lim",
-		status: "active",
-	},
-];
+const data: CommunityRequest = {
+    id: "123",
+    community_name: "Photography Club"
+}
 
-const CategoriesMgmtPage = () => {
-	const [isLoading, setIsLoading] = useState(false);
+const RequestsMgmtPage = () => {
+    const [isLoading, setIsLoading] = useState(false);
 
 	return (
 		<div>
@@ -75,7 +28,7 @@ const CategoriesMgmtPage = () => {
 			<div className="flex flex-col gap-3">
 				{/* Header */}
 				<div className="px-4 py-6 text-2xl font-bold border-b border-border">
-					Categories
+					Communities
 				</div>
 				<section className="flex flex-col py-3 px-4 gap-6">
 					{/* Search and Add */}
@@ -102,12 +55,12 @@ const CategoriesMgmtPage = () => {
 						<Pagination className="">
 							<PaginationContent>
 								<PaginationItem>
-									<PaginationLink href="#" isActive>
-										1
-									</PaginationLink>
+									<PaginationLink href="#">1</PaginationLink>
 								</PaginationItem>
 								<PaginationItem>
-									<PaginationLink href="#">2</PaginationLink>
+									<PaginationLink href="#" isActive>
+										2
+									</PaginationLink>
 								</PaginationItem>
 								<PaginationItem>
 									<PaginationLink href="#">3</PaginationLink>
@@ -115,14 +68,13 @@ const CategoriesMgmtPage = () => {
 							</PaginationContent>
 						</Pagination>
 					</div>
-					<CategoriesDataTable
-						data={data}
-						columns={CategoriesColumns}
-					/>
+					<div className="grid grid-cols-4 gap-4">
+						<CommunityRequestCard community={} />
+						
+					</div>
 				</section>
 			</div>
 		</div>
-	);
 };
 
-export default CategoriesMgmtPage;
+export default RequestsMgmtPage;

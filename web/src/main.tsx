@@ -20,46 +20,46 @@ import AchievementsMgmtPage from "./institution_admin/achievements/page";
 import ContentModerationPage from "./institution_admin/moderation/page";
 
 const router = createBrowserRouter([
-    {
-        path: "/",
-        element: <TempHome />,
-    },
-    {
-        path: "/login",
-        element: <LoginPage />,
-    },
-    {
-        path: "/admin",
-        element: <ProtectedRoute role="institution_admin" layout={<App />} />,
+	{
+		path: "/",
+		element: <TempHome />,
+	},
+	{
+		path: "/login",
+		element: <LoginPage />,
+	},
+	{
+		path: "/admin",
+		element: <ProtectedRoute role="institution_admin" layout={<App />} />,
 
-        children: [
-            { index: true, element: <InstitutionAdminHomePage /> },
-            {
-                path: "users/students",
-                element: <StudentUsersMgmtPage />,
-            },
-            { path: "users/staff", element: <StaffUsersMgmtPage /> },
-            { path: "communities", element: <CommunitiesMgmtPage /> },
-            { path: "roles", element: <RolesMgmtPage /> },
-            { path: "achievements", element: <AchievementsMgmtPage /> },
-            { path: "categories", element: <CategoriesMgmtPage /> },
-            { path: "moderation", element: <ContentModerationPage /> },
-        ],
-    },
-    {
-        path: "/platform",
-        element: <ProtectedRoute role="platform_admin" layout={<App />} />,
-        children: [
-            { index: true, element: <PlatformAdminDashboardPage /> },
-            { path: "institutions", element: <InstitutionsMgmtPage /> },
-        ],
-    },
+		children: [
+			{ index: true, element: <InstitutionAdminHomePage /> },
+			{
+				path: "users/students",
+				element: <StudentUsersMgmtPage />,
+			},
+			{ path: "users/staff", element: <StaffUsersMgmtPage /> },
+			{ path: "communities", element: <CommunitiesMgmtPage /> },
+			{ path: "roles", element: <RolesMgmtPage /> },
+			{ path: "achievements", element: <AchievementsMgmtPage /> },
+			{ path: "categories", element: <CategoriesMgmtPage /> },
+			{ path: "moderation", element: <ContentModerationPage /> },
+		],
+	},
+	{
+		path: "/platform",
+		element: <ProtectedRoute role="platform_admin" layout={<App />} />,
+		children: [
+			{ index: true, element: <PlatformAdminDashboardPage /> },
+			{ path: "institutions", element: <InstitutionsMgmtPage /> },
+		],
+	},
 ]);
 
 createRoot(document.getElementById("root")!).render(
-    <StrictMode>
-        <AuthProvider>
-            <RouterProvider router={router} />
-        </AuthProvider>
-    </StrictMode>,
+	<StrictMode>
+		<AuthProvider>
+			<RouterProvider router={router} />
+		</AuthProvider>
+	</StrictMode>,
 );

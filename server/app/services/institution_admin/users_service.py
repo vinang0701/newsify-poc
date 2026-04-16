@@ -1,6 +1,7 @@
 from supabase import Client
 from typing import List
 from pydantic import EmailStr
+import uuid
 from app.models.admin import User, CreateUser
 from app.core.db import supabase
 
