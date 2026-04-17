@@ -1,5 +1,5 @@
-import type { ColumnDef, Row, RowData } from "@tanstack/react-table";
-import type { User } from "@/types";
+import type { ColumnDef, Row } from "@tanstack/react-table";
+import type { Community, User } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -31,8 +31,8 @@ interface ActionButtonProps {
 	row: Row<User>;
 }
 
-function titleCase(text: string) {
-	return text.toLowerCase().replace(/(?:^|\s)\w/g, function (match) {
+function titleCase(str: string) {
+	return str.toLowerCase().replace(/(?:^|\s)\w/g, function (match) {
 		return match.toUpperCase();
 	});
 }
@@ -68,7 +68,7 @@ const ActionButton = ({ row }: ActionButtonProps) => {
 	);
 };
 
-export const UserMgmtColumns: ColumnDef<User>[] = [
+export const CommunitiesMgmtColumns: ColumnDef<Community>[] = [
 	{
 		accessorKey: "name",
 		header: "Full Name",
@@ -82,25 +82,25 @@ export const UserMgmtColumns: ColumnDef<User>[] = [
 	{
 		accessorKey: "role",
 		header: "Role",
-		cell: ({ row }) => titleCase(row.original.role),
+		cell: (role) => titleCase(role.getValue() as string),
 		minSize: 80,
 	},
 	{
 		accessorKey: "created_at",
 		header: "Created at",
-		cell: (info) => formatDate(info?.getValue() as string),
+		cell: (info) => formatDate(info.getValue() as string),
 		minSize: 160,
 	},
 	{
 		accessorKey: "updated_at",
 		header: "Updated at",
-		cell: (info) => formatDate(info?.getValue() as string),
+		cell: (info) => formatDate(info.getValue() as string),
 		minSize: 160,
 	},
 	{
 		accessorKey: "status",
 		header: "Status",
-		cell: ({ row }) => titleCase(row.original.status),
+		cell: (status) => titleCase(status.getValue() as string),
 		minSize: 80,
 	},
 	{

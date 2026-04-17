@@ -1,5 +1,4 @@
 import type { ColumnDef, Row, RowData } from "@tanstack/react-table";
-import type { User } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -8,8 +7,9 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, UserPen, UserX } from "lucide-react";
+import { Edit3, MoreVertical, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import type { CategoryTable } from "@/types";
 
 const formatDate = (dateString: string) => {
 	if (!dateString) return "-";
@@ -28,7 +28,7 @@ const formatDate = (dateString: string) => {
 };
 
 interface ActionButtonProps {
-	row: Row<User>;
+	row: Row<CategoryTable>;
 }
 
 function titleCase(text: string) {
@@ -49,17 +49,17 @@ const ActionButton = ({ row }: ActionButtonProps) => {
 			<DropdownMenuContent align="end">
 				<DropdownMenuGroup>
 					<DropdownMenuItem
-						onClick={() => console.log("Update", user.id)}
+						onClick={() => console.log("Edit", user.id)}
 					>
-						<UserPen />
-						<span>Update</span>
+						<Edit3 />
+						<span>Edit</span>
 					</DropdownMenuItem>
 					<Separator orientation="horizontal" />
 					<DropdownMenuItem
 						onClick={() => console.log("Suspend", user.id)}
 						className="text-destructive focus:text-destructive"
 					>
-						<UserX />
+						<Trash2 />
 						<span>Suspend</span>
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
@@ -68,32 +68,27 @@ const ActionButton = ({ row }: ActionButtonProps) => {
 	);
 };
 
-export const UserMgmtColumns: ColumnDef<User>[] = [
+export const CategoriesColumns: ColumnDef<CategoryTable>[] = [
 	{
-		accessorKey: "name",
-		header: "Full Name",
+		accessorKey: "category_name",
+		header: "Category",
 		minSize: 280,
 	},
 	{
-		accessorKey: "email",
-		header: "Email",
-		minSize: 280,
+		accessorKey: "created_by",
+		header: "Added By",
+		minSize: 160,
 	},
-	{
-		accessorKey: "role",
-		header: "Role",
-		cell: ({ row }) => titleCase(row.original.role),
-		minSize: 80,
-	},
+
 	{
 		accessorKey: "created_at",
-		header: "Created at",
+		header: "Date Added",
 		cell: (info) => formatDate(info?.getValue() as string),
 		minSize: 160,
 	},
 	{
 		accessorKey: "updated_at",
-		header: "Updated at",
+		header: "Date Updated",
 		cell: (info) => formatDate(info?.getValue() as string),
 		minSize: 160,
 	},
