@@ -62,3 +62,23 @@ export interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
 }
+
+export interface Institution {
+  id: string;
+  name: string;
+  domain: string;
+  phone: string | null;
+  plan: string | null;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+export interface InstitutionFormData {
+  name: string;
+  email: string;
+  phone: string;
+  plan: string;
+  startDate: string;
+  endDate: string;
+}

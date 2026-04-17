@@ -1,26 +1,6 @@
 import { useState, useEffect, type CSSProperties } from "react";
-import { supabase } from "@/lib/supabase";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface Institution {
-  id: string;
-  name: string;
-  domain: string;
-  phone: string | null;
-  plan: string | null;
-  status: string;
-  start_date: string | null;
-  end_date: string | null;
-}
-
-interface FormData {
-  name: string;
-  email: string;
-  phone: string;
-  plan: string;
-  startDate: string;
-  endDate: string;
-}
+import api from "@/lib/axios";
+import type { Institution, InstitutionFormData } from "@/types";
 
 const PLANS = ["Basic", "Pro"];
 
@@ -75,11 +55,11 @@ const s: Record<string, CSSProperties> = {
   submitBtn: { background: "#2563EB", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
   errorText: { color: "#EF4444", fontSize: 11, marginTop: 3 },
   menuWrap: { position: "relative" as const },
-  menuBtn: { background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6, fontSize: 18, color: "#6B7280" },
+  menuBtn: { background: "none", border: "none", cursor: "pointer", padding: "4px 8px", borderRadius: 6, fontSize: 18, color: "#6B7280", transition: "all 0.15s" },
   dropdown: { position: "absolute" as const, right: 0, top: "110%", background: "#fff", border: "1px solid #E8ECF2", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", minWidth: 130, zIndex: 30, overflow: "hidden" },
   dropdownItem: { padding: "9px 16px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#374151" },
   dropdownItemDanger: { padding: "9px 16px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#DC2626" },
-  suspendBtn: { background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  suspendBtn: { background: "#DC2626", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" },
   errorBanner: { background: "#FEE2E2", color: "#DC2626", borderRadius: 8, padding: "10px 16px", fontSize: 13 },
 };
 
@@ -95,23 +75,27 @@ const InstitutionsMgmtPage = () => {
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState<FormData>({
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [form, setForm] = useState<InstitutionFormData>({
     name: "", email: "", phone: "", plan: "", startDate: "", endDate: "",
   });
-  const [errors, setErrors] = useState<Partial<FormData>>({});
+  const [errors, setErrors] = useState<Partial<InstitutionFormData>>({});
 
-  // ── Fetch all institutions ──
   const fetchInstitutions = async () => {
     setLoading(true);
     setError(null);
-    const { data, error } = await supabase
-      .from("institutions")
-      .select("id, name, domain, phone, plan, status, start_date, end_date")
-      .order("created_at", { ascending: true });
-
-    if (error) setError(error.message);
-    else setInstitutions(data ?? []);
-    setLoading(false);
+    try {
+      const res = await api.get("/platform/institutions/");
+      console.log(res.data); // temporary - remove after checking
+      const data = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      setInstitutions(data);
+    } catch (e: any) {
+      setError(e.response?.data?.detail ?? "Failed to fetch institutions");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -124,9 +108,11 @@ const InstitutionsMgmtPage = () => {
   };
 
   const validate = (): boolean => {
-    const e: Partial<FormData> = {};
+    const e: Partial<InstitutionFormData> = {};
     if (!form.name.trim()) e.name = "Required";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!form.email.trim()) e.email = "Required";
+    else if (!emailRegex.test(form.email)) e.email = "Invalid email format";
     if (!form.plan) e.plan = "Required";
     if (!form.startDate) e.startDate = "Required";
     if (!form.endDate) e.endDate = "Required";
@@ -137,21 +123,22 @@ const InstitutionsMgmtPage = () => {
   // ── Create ──
   const handleCreate = async () => {
     if (!validate()) return;
-    const { error } = await supabase.from("institutions").insert({
-      name: form.name,
-      domain: form.email.split("@")[1] || "",
-      phone: form.phone || null,
-      plan: form.plan,
-      status: "Active",
-      start_date: form.startDate,
-      end_date: form.endDate,
+    try {
+      await api.post("/platform/institutions/", {
+        name: form.name.toUpperCase(),
+        domain: (form.email.split("@")[1] || "").toLowerCase(),
+        phone: form.phone || null,
+        plan: form.plan,
+        start_date: form.startDate,
+        end_date: form.endDate,
     });
-    if (error) { setError(error.message); return; }
     setShowModal(false);
     resetForm();
     fetchInstitutions();
-  };
-
+  } catch (e: any) {
+    setError(e.response?.data?.detail ?? "Failed to create institution");
+  }
+};
   // ── Update ──
   const openUpdate = (inst: Institution) => {
     setSelectedId(inst.id);
@@ -170,22 +157,21 @@ const InstitutionsMgmtPage = () => {
 
   const handleUpdate = async () => {
     if (!validate()) return;
-    const { error } = await supabase
-      .from("institutions")
-      .update({
+    try {
+      await api.put(`/platform/institutions/${selectedId}`, {
         name: form.name,
         domain: form.email.split("@")[1] || "",
         phone: form.phone || null,
         plan: form.plan,
         start_date: form.startDate,
         end_date: form.endDate,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", selectedId);
-    if (error) { setError(error.message); return; }
-    setShowUpdateModal(false);
-    resetForm();
-    fetchInstitutions();
+      });
+      setShowUpdateModal(false);
+      resetForm();
+      fetchInstitutions();
+    } catch (e: any) {
+      setError(e.response?.data?.detail ?? "Failed to update institution");
+    }
   };
 
   // ── Suspend ──
@@ -196,30 +182,51 @@ const InstitutionsMgmtPage = () => {
   };
 
   const handleSuspend = async () => {
-    const { error } = await supabase
-      .from("institutions")
-      .update({ status: "Suspended", updated_at: new Date().toISOString() })
-      .eq("id", selectedId);
-    if (error) { setError(error.message); return; }
-    setShowSuspendModal(false);
-    fetchInstitutions();
+    try {
+      await api.patch(`/platform/institutions/${selectedId}/suspend`);
+      setShowSuspendModal(false);
+      fetchInstitutions();
+    } catch (e: any) {
+      setError(e.response?.data?.detail ?? "Failed to suspend institution");
+    }
   };
 
   const handleActivate = async (id: string) => {
-  	setOpenMenuId(null);
-  	const { error } = await supabase
-    	.from("institutions")
-    	.update({ status: "Active", updated_at: new Date().toISOString() })
-    	.eq("id", id);
-  	if (error) { setError(error.message); return; }
-  	fetchInstitutions();
-	};
+    setOpenMenuId(null);
+    try {
+      await api.patch(`/platform/institutions/${id}/activate`);
+      fetchInstitutions();
+    } catch (e: any) {
+      setError(e.response?.data?.detail ?? "Failed to activate institution");
+    }
+  };
+  const filtered = institutions
+    .filter(
+      (i) =>
+        i.name.toLowerCase().includes(query.toLowerCase()) ||
+        i.domain.toLowerCase().includes(query.toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!sortField) return 0;
+      const aVal = a[sortField as keyof Institution] ?? "";
+      const bVal = b[sortField as keyof Institution] ?? "";
+      if (aVal < bVal) return sortDir === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
 
-  const filtered = institutions.filter(
-    (i) =>
-      i.name.toLowerCase().includes(query.toLowerCase()) ||
-      i.domain.toLowerCase().includes(query.toLowerCase())
-  );
+  const handleSort = () => {
+    const fields = ["name", "status", "start_date", "end_date"];
+    const currentIndex = sortField ? fields.indexOf(sortField) : -1;
+    const nextIndex = (currentIndex + 1) % fields.length;
+    const nextField = fields[nextIndex];
+    if (sortField === nextField) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(nextField);
+      setSortDir("asc");
+    }
+  };  
 
   const selectedInst = institutions.find((i) => i.id === selectedId);
 
@@ -239,9 +246,15 @@ const InstitutionsMgmtPage = () => {
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && setQuery(search)}
           />
-          <button style={s.searchBtn} onClick={() => setQuery(search)}>Search</button>
+          <button style={s.searchBtn} 
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          onClick={() => setQuery(search)}>Search</button>
         </div>
-        <button style={s.createBtn} onClick={() => { resetForm(); setShowModal(true); }}>
+        <button style={s.createBtn}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")} 
+        onClick={() => { resetForm(); setShowModal(true); }}>
           <span>＋</span> Create
         </button>
       </div>
@@ -250,7 +263,50 @@ const InstitutionsMgmtPage = () => {
       <div style={s.tableCard}>
         <div style={s.tableHeader}>
           <span style={s.resultsLabel}>Results: {filtered.length}</span>
-          <button style={s.sortBtn}>Sort ▾</button>
+          <div style={{ position: "relative" }}>
+           <button
+              style={{ ...s.sortBtn, background: sortField ? "#E8ECF2" : "#F4F6FA", fontWeight: sortField ? 600 : 400 }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#D1D5DB")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = sortField ? "#E8ECF2" : "#F4F6FA")}
+              onClick={() => setShowSortMenu(!showSortMenu)}
+            >
+              {sortField ? `${sortField.replace("_", " ").charAt(0).toUpperCase() + sortField.replace("_", " ").slice(1)} ▾` : "Sort ▾"}
+            </button>
+            {showSortMenu && (
+              <div style={{ position: "absolute", right: 0, top: "110%", background: "#fff", border: "1px solid #E8ECF2", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", minWidth: 160, zIndex: 30, overflow: "hidden" }}>
+                {[
+                  { label: "Clear", field: null, dir: "asc" },
+                  { label: "Name A-Z", field: "name", dir: "asc" },
+                  { label: "Name Z-A", field: "name", dir: "desc" },
+                  { label: "Active", field: "status", dir: "asc" },
+                  { label: "Suspended", field: "status", dir: "desc" },
+                  { label: "Pro", field: "plan", dir: "desc" },
+                  { label: "Basic", field: "plan", dir: "asc" },
+                ].map((opt) => (
+                  <div
+                    key={opt.label}
+                    style={{
+                      padding: "9px 16px",
+                      fontSize: 13,
+                      cursor: "pointer",
+                      color: opt.field === null ? "#9CA3AF" : sortField === opt.field && sortDir === opt.dir ? "#2563EB" : "#374151",
+                      fontWeight: sortField === opt.field && sortDir === opt.dir ? 600 : 400,
+                      borderBottom: opt.field === null ? "1px solid #E8ECF2" : "none",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    onClick={() => {
+                      setSortField(opt.field as string | null);
+                      setSortDir(opt.dir as "asc" | "desc");
+                      setShowSortMenu(false);
+                    }}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <table style={s.table}>
           <thead>
@@ -281,18 +337,36 @@ const InstitutionsMgmtPage = () => {
                     <div style={s.menuWrap} onClick={(e) => e.stopPropagation()}>
                       <button
                         style={s.menuBtn}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "#F3F4F6";
+                          e.currentTarget.style.color = "#111827";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "none";
+                          e.currentTarget.style.color = "#6B7280";
+                        }}
                         onClick={() => setOpenMenuId(openMenuId === inst.id ? null : inst.id)}
                       >
                         ⋮
                       </button>
                       {openMenuId === inst.id && (
                         <div style={s.dropdown}>
-                          <div style={s.dropdownItem} onClick={() => openUpdate(inst)}>✏️ Update</div>
-                          {inst.status !== "Suspended" ? (
-  							<div style={s.dropdownItemDanger} onClick={() => openSuspend(inst.id)}>🚫 Suspend</div>
-						  ) : (
-  							<div style={s.dropdownItem} onClick={() => handleActivate(inst.id)}>✅ Activate</div>
-						  )}
+                          <div style={s.dropdownItem} 
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          onClick={() => openUpdate(inst)}>✏️ Update</div>
+                          
+                        {inst.status !== "Suspended" ? (
+                          <div style={s.dropdownItemDanger} 
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#FEE2E2")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          onClick={() => openSuspend(inst.id)}>🚫 Suspend</div>
+                        ) : (
+                          <div style={s.dropdownItem} 
+                          onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                          onClick={() => handleActivate(inst.id)}>✅ Activate</div>
+                        )}
                         </div>
                       )}
                     </div>
@@ -311,8 +385,18 @@ const InstitutionsMgmtPage = () => {
             <div style={s.modalTitle}>Create Institution Account</div>
             <ModalFormFields form={form} setForm={setForm} errors={errors} />
             <div style={s.modalActions}>
-              <button style={s.cancelBtn} onClick={() => { setShowModal(false); resetForm(); }}>Cancel</button>
-              <button style={s.submitBtn} onClick={handleCreate}>Create</button>
+              <button
+                style={s.cancelBtn}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+                onClick={() => { setShowModal(false); resetForm(); }}
+              >Cancel</button>
+              <button
+                style={s.submitBtn}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+                onClick={handleCreate}
+              >Create</button>
             </div>
           </div>
         </div>
@@ -325,8 +409,14 @@ const InstitutionsMgmtPage = () => {
             <div style={s.modalTitle}>→ Update Institution Account</div>
             <ModalFormFields form={form} setForm={setForm} errors={errors} />
             <div style={s.modalActions}>
-              <button style={s.cancelBtn} onClick={() => { setShowUpdateModal(false); resetForm(); }}>Cancel</button>
-              <button style={s.submitBtn} onClick={handleUpdate}>Update</button>
+              <button style={s.cancelBtn}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+              onClick={() => { setShowUpdateModal(false); resetForm(); }}>Cancel</button>
+              <button style={s.submitBtn}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+              onClick={handleUpdate}>Update</button>
             </div>
           </div>
         </div>
@@ -344,8 +434,22 @@ const InstitutionsMgmtPage = () => {
               Access will be disabled but all data will be retained.
             </p>
             <div style={s.modalActions}>
-              <button style={s.cancelBtn} onClick={() => setShowSuspendModal(false)}>Cancel</button>
-              <button style={s.suspendBtn} onClick={handleSuspend}>Suspend</button>
+              <button style={s.cancelBtn}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#F3F4F6")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+              onClick={() => setShowSuspendModal(false)}>Cancel</button>
+              <button
+              style={s.suspendBtn}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#991B1B";
+                e.currentTarget.style.transform = "scale(1.03)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#DC2626";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              onClick={handleSuspend}
+              >Suspend</button>
             </div>
           </div>
         </div>
@@ -360,9 +464,9 @@ const ModalFormFields = ({
   setForm,
   errors,
 }: {
-  form: FormData;
-  setForm: React.Dispatch<React.SetStateAction<FormData>>;
-  errors: Partial<FormData>;
+  form: InstitutionFormData;
+  setForm: React.Dispatch<React.SetStateAction<InstitutionFormData>>;
+  errors: Partial<InstitutionFormData>;
 }) => (
   <>
     <div style={s.formGroup}>
@@ -370,7 +474,7 @@ const ModalFormFields = ({
       <input
         style={{ ...s.input, borderColor: errors.name ? "#EF4444" : "#E8ECF2" }}
         value={form.name}
-        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value.toUpperCase() }))}
         placeholder="Enter institution name"
       />
       {errors.name && <div style={s.errorText}>{errors.name}</div>}
@@ -382,7 +486,7 @@ const ModalFormFields = ({
         style={{ ...s.input, borderColor: errors.email ? "#EF4444" : "#E8ECF2" }}
         type="email"
         value={form.email}
-        onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+        onChange={(e) => setForm((f) => ({ ...f, email: e.target.value.toLowerCase() }))}
         placeholder="Enter institution email"
       />
       {errors.email && <div style={s.errorText}>{errors.email}</div>}
@@ -393,7 +497,7 @@ const ModalFormFields = ({
       <input
         style={s.input}
         value={form.phone}
-        onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+        onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value.replace(/[^\d+\s-]/g, "") }))}
         placeholder="Enter phone number"
       />
     </div>
@@ -418,6 +522,7 @@ const ModalFormFields = ({
         type="date"
         value={form.startDate}
         onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+        min={new Date().toISOString().split("T")[0]}
       />
       {errors.startDate && <div style={s.errorText}>{errors.startDate}</div>}
     </div>
@@ -429,6 +534,7 @@ const ModalFormFields = ({
         type="date"
         value={form.endDate}
         onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+        min={new Date().toISOString().split("T")[0]}
       />
       {errors.endDate && <div style={s.errorText}>{errors.endDate}</div>}
     </div>

@@ -19,5 +19,5 @@ class User(BaseModel):
 class CreateUser(BaseModel):
     inst_id: uuid.UUID
     name: str
-    email: email
+    email: EmailStr
     role: str

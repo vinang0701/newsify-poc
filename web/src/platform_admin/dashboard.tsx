@@ -90,7 +90,7 @@ const PlatformAdminDashboardPage = () => {
 
       {/* Welcome Banner */}
       <div style={s.banner}>
-        <div style={s.bannerIcon}>∿p</div>
+        <img src="/icon_light.png" alt="logo" width={48} style={{ objectFit: "contain" }} />
         <div>
           <div style={s.bannerTitle}>Welcome, Platform Admin!</div>
           <div style={s.bannerSub}>Manage the platform's user accounts and subscriptions.</div>
