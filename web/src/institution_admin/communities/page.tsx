@@ -1,3 +1,4 @@
+import { useAuth } from "@/components/auth-provider";
 import CommunityCard from "@/components/community-card";
 import Loading from "@/components/loading";
 import { Button } from "@/components/ui/button";
@@ -9,22 +10,38 @@ import {
 	PaginationItem,
 	PaginationLink,
 } from "@/components/ui/pagination";
+import api from "@/lib/axios";
 import type { Community } from "@/types";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
-const communityData: Community = {
-	id: "12312312312312",
-	name: "AI Enthusiasts",
-	image_url: "",
-	description: "Building the future, one prompt at a time! lolololol",
-	public: true,
-	category: "Technology",
-	joined: true,
-};
-
 const CommunitiesMgmtPage = () => {
 	const [isLoading, setIsLoading] = useState(false);
+	const { user } = useAuth();
+
+	if (!user || user === null) {
+		console.log("You are not authorized to access this portal!");
+	}
+
+	// Data fetching function
+	async function fetchCommunities(): Promise<Community[]> {
+		try {
+			const response = await api.get(
+				`${user?.inst_id}/admin/communities`,
+			);
+
+			return response.data;
+		} catch (e) {
+			throw e;
+		}
+	}
+
+	// Tanstack Query Data Fetching
+	const { data, error } = useQuery<Community[]>({
+		queryKey: ["communities_admin"],
+		queryFn: fetchCommunities,
+	});
 
 	return (
 		<div>
@@ -73,12 +90,18 @@ const CommunitiesMgmtPage = () => {
 							</PaginationContent>
 						</Pagination>
 					</div>
-					<div className="grid grid-cols-4 gap-4">
-						<CommunityCard community={communityData} />
-						<CommunityCard community={communityData} />
-						<CommunityCard community={communityData} />
-						<CommunityCard community={communityData} />
-					</div>
+					{data && data.length > 0 ? (
+						<div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] justify-between gap-4">
+							{data.map((community) => (
+								<CommunityCard
+									key={community.id}
+									data={community}
+								/>
+							))}
+						</div>
+					) : (
+						<div>No communities created yet.</div>
+					)}
 				</section>
 			</div>
 		</div>

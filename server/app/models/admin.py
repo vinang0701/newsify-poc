@@ -30,3 +30,39 @@ class CreateUser(BaseModel):
     email: EmailStr
     password: str
     role: str
+
+
+# Communities
+class Community(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str
+    created_by_user_id: uuid.UUID
+    created_by_user_name: str
+    created_by_user_image_url: str | None = None
+    image_url: str | None = None
+    status: str
+    created_at: str
+    updated_at: str | None = None
+
+
+#
+class CommunityCreationReqBody(BaseModel):
+    request_id: str
+    response_status: str  # "approved" or "rejected"
+    rejection_reason: str | None = None
+
+
+class CommunityCreationRequest(BaseModel):
+    request_id: uuid.UUID
+    requested_by_user_id: uuid.UUID
+    requested_by_user_name: str
+    requested_by_user_image_url: str | None = None
+    community_name: str
+    description: str
+    status: str
+    created_at: str
+    reviewed_at: str | None = None
+    reviewed_by_user_id: uuid.UUID | None = None
+    reviewed_by_user_name: str | None = None
+    rejection_reason: str | None = None

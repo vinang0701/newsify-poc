@@ -15,11 +15,14 @@ export interface News {
 export interface Community {
 	id: string;
 	name: string;
-	image_url: string;
 	description: string;
-	category: string;
-	public: boolean;
-	joined: boolean;
+	created_by_user_id: string;
+	created_by_user_name: string;
+	created_by_user_image_url: string | null;
+	image_url: string | null;
+	status: string;
+	created_at: string;
+	updated_at: string | null;
 }
 
 export interface ModalProps {
@@ -88,4 +91,19 @@ export interface CategoryTable {
 	created_by: string;
 	created_at: string;
 	updated_at: string;
+}
+
+export interface CommunityCreationRequest {
+	request_id: string;
+	requested_by_user_id: string;
+	requested_by_user_name: string;
+	requested_by_user_image_url: string | null;
+	community_name: string;
+	description: string;
+	status: string;
+	created_at: string;
+	reviewed_at: string | null;
+	reviewed_by_user_id: string | null;
+	reviewed_by_user_name: string | null;
+	rejection_reason: string | null;
 }
