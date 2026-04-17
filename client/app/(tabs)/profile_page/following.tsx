@@ -28,7 +28,7 @@ import React, { useCallback, useMemo, useRef } from "react";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const curr_user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+const curr_user_id = "7369b0d7-3ba3-4a28-bfbe-0e7addaf3eec";
 
 export default function FollowingPage() {
     const insets = useSafeAreaInsets();
@@ -36,6 +36,8 @@ export default function FollowingPage() {
     const router = useRouter();
     const snapPoints = useMemo(() => ["20%"], []);
     const [searchQuery, setSearchQuery] = useState("");
+    const [modalVisible, setModalVisible] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<UserFollowing | null>(null);
     const queryClient = useQueryClient();
     const { user_id } = useLocalSearchParams();
     const [refreshing, setRefreshing] = React.useState(false);
@@ -312,32 +314,12 @@ export default function FollowingPage() {
                                                     item.followed_user_id,
                                                 )
                                                     ? mutate(
-                                                          item.followed_user_id,
-                                                      )
-                                                    : Alert.alert(
-                                                          "Unfollow user",
-                                                          `Do you want to unfollow ${item.name}?`,
-                                                          [
-                                                              {
-                                                                  text: "Cancel",
-                                                                  onPress: () =>
-                                                                      console.log(
-                                                                          "Cancel Pressed",
-                                                                      ),
-                                                                  style: "cancel",
-                                                              },
-                                                              {
-                                                                  text: "Unfollow",
-                                                                  style: "destructive",
-                                                                  onPress:
-                                                                      () => {
-                                                                          mu_unfollowUser(
-                                                                              item.followed_user_id,
-                                                                          );
-                                                                      },
-                                                              },
-                                                          ],
-                                                      );
+                                                        item.followed_user_id,
+                                                    )
+                                                    : (() => {
+                                                        setSelectedUser(item);
+                                                        setModalVisible(true);
+                                                    })();
                                             }}
                                         >
                                             <ThemedText
@@ -405,6 +387,90 @@ export default function FollowingPage() {
                     )}
                 </ScrollView>
             </View>
+            <Modal
+                animationType="slide"
+                visible={modalVisible}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() => {
+                    setModalVisible(false);
+                }}
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            {
+                                backgroundColor:
+                                    Colors[colorScheme].bg_light,
+                            },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={styles.modalText}
+                        >
+                            Unfollow {selectedUser?.name}?
+                        </ThemedText>
+                        <View style={{ flexDirection: "row", gap: 24 }}>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() =>
+                                    setModalVisible(false)
+                                }
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme]
+                                                .alert_red,
+                                    },
+                                ]}
+                                onPress={() => {
+                                    if (!selectedUser) return;
+                                    mu_unfollowUser(selectedUser.followed_user_id);
+                                    setModalVisible(false); // close modal
+                                    setSelectedUser(null);  // reset state
+                                }}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Unfollow
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -423,5 +489,40 @@ const styles = StyleSheet.create({
         flex: 0,
         alignItems: "center",
         flexDirection: "row",
+    },
+    modalView: {
+        width: "100%",
+        gap: 16,
+        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    button: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        elevation: 2,
+    },
+    textStyle: {
+        textAlign: "center",
+    },
+    modalText: {
+        fontWeight: "bold",
+    },
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
     },
 });
