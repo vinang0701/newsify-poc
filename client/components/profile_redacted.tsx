@@ -5,502 +5,382 @@ import {
     View,
     StyleSheet,
     ScrollView,
+    ActivityIndicator,
 } from "react-native";
-import React, { Component } from "react";
+import React, { useEffect, useState } from "react";
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Link, router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import Feather from "@expo/vector-icons/Feather";
-import { useQuery } from "@tanstack/react-query";
-import { News } from "@/data/types";
-import axios from "axios";
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+import { supabase } from "@/lib/supabase";
+
+type ProfileData = {
+    id: string;
+    full_name?: string | null;
+    avatar_url?: string | null;
+    university?: string | null;
+    major?: string | null;
+    description?: string | null;
+};
+
 export default function Profile_Redacted() {
     const colorScheme = useColorScheme() ?? "light";
+    const router = useRouter();
+    const { inst_id } = useLocalSearchParams<{ inst_id?: string }>();
 
-    const { status, data, error, isFetching, refetch } = useQuery<News[]>({
-        queryKey: ["news"],
-        queryFn: fetchUserNews,
-    });
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [user, setUser] = useState<any>(null);
+    const [profile, setProfile] = useState<ProfileData | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                setLoading(true);
+
+                const {
+                    data: { user },
+                    error: userError,
+                } = await supabase.auth.getUser();
+
+                if (userError) {
+                    console.error("Error fetching user:", userError);
+                    return;
+                }
+
+                setUser(user);
+
+                if (!user?.id) return;
+
+                const { data: profileData, error: profileError } = await supabase
+                    .from("profiles")
+                    .select("*")
+                    .eq("id", user.id)
+                    .single();
+
+                if (profileError) {
+                    console.error("Profile fetch error:", profileError);
+                    return;
+                }
+
+                setProfile(profileData);
+            } catch (error) {
+                console.error("Unexpected profile fetch error:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
+
+    const displayName =
+        profile?.full_name ||
+        user?.user_metadata?.full_name ||
+        user?.email ||
+        "Guest User";
+
+    const displayUniversity = profile?.university || "No university added";
+    const displayMajor = profile?.major || "No major added";
+    const displayDescription =
+        profile?.description || "No profile description added.";
 
     return (
-        <SafeAreaView>
-            {/* Header */}
-            <View
-                style={[
-                    styles.headerContainer,
-                    {
-                        backgroundColor: Colors[colorScheme].tint,
-                    },
-                ]}
-            >
-                <Pressable onPress={() => router.back()}>
-                    <Feather
-                        name="bell"
-                        size={24}
-                        color={Colors[colorScheme].button_text}
-                        weight="bold"
+        <SafeAreaView style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
+                {menuVisible && (
+                    <Pressable
+                        style={styles.overlay}
+                        onPress={() => setMenuVisible(false)}
                     />
-                </Pressable>
+                )}
 
-                <Image
-                    source={require("@/assets/images/icon_light.png")}
-                    style={{ width: 42, height: 20, resizeMode: "contain" }}
-                />
-
-                <Pressable onPress={() => {}}>
-                    <Feather
-                        name="search"
-                        size={24}
-                        color={Colors[colorScheme].button_text}
-                    />
-                </Pressable>
-            </View>
-            {/* Content */}
-            <ScrollView showsVerticalScrollIndicator={false}>
-                {/* User Profile Card */}
                 <View
                     style={[
-                        styles.profileCardContainer,
-                        { backgroundColor: Colors[colorScheme].bg_light },
+                        styles.headerContainer,
+                        {
+                            backgroundColor: Colors[colorScheme].tint,
+                        },
                     ]}
                 >
-                    <View style={styles.flexRowContainer}>
-                        <View style={[styles.flexRowContainer, { gap: 20 }]}>
-                            <Image
-                                source={require("@/assets/images/profile.png")}
-                                style={{ width: 68, height: 68 }}
-                            />
-                            <View>
-                                <ThemedText type="defaultSemiBold">
-                                    John Lee
-                                </ThemedText>
-                                <ThemedText
-                                    type="caption"
-                                    style={{
-                                        color: Colors[colorScheme].caption,
-                                    }}
-                                >
-                                    University of Wollongong
-                                </ThemedText>
-                                <ThemedText
-                                    type="caption"
-                                    style={{
-                                        color: Colors[colorScheme].caption,
-                                    }}
-                                >
-                                    Computer Science
-                                </ThemedText>
-                            </View>
-                        </View>
-                        <Pressable>
-                            <MaterialCommunityIcons
-                                name="dots-vertical"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                        </Pressable>
-                    </View>
-                    <ThemedText
-                        type="caption"
-                        style={{
-                            color: Colors[colorScheme].caption,
-                            fontWeight: 700,
-                        }}
-                    >
-                        Studying Computer Science, but also passionate about
-                        writing and sharing school stories.
-                    </ThemedText>
-                    <View
-                        style={[styles.flexRowContainer, styles.statsContainer]}
-                    >
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">88</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                News Posts
-                            </ThemedText>
-                        </View>
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">4</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Communities
-                            </ThemedText>
-                        </View>
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">168</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Followers
-                            </ThemedText>
-                        </View>
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">28</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
-                            >
-                                Following
-                            </ThemedText>
-                        </View>
-                    </View>
+                    <Pressable onPress={() => router.back()}>
+                        <Feather
+                            name="arrow-left"
+                            size={24}
+                            color={Colors[colorScheme].button_text}
+                        />
+                    </Pressable>
+
+                    <Image
+                        source={require("@/assets/images/icon_light.png")}
+                        style={{ width: 42, height: 20, resizeMode: "contain" }}
+                    />
+
+                    <Pressable onPress={() => {}}>
+                        <Feather
+                            name="search"
+                            size={24}
+                            color={Colors[colorScheme].button_text}
+                        />
+                    </Pressable>
                 </View>
-                <View
-                    style={{
-                        flex: 1,
-                        backgroundColor: Colors[colorScheme].bg,
-                        paddingHorizontal: 16,
-                    }}
-                >
-                    <View
-                        style={[
-                            styles.sortButtonContainer,
-                            {
-                                borderColor: Colors[colorScheme].border,
-                                backgroundColor: Colors[colorScheme].bg_light,
-                            },
-                        ]}
-                    >
-                        <ThemedText>Sort</ThemedText>
-                        <MaterialCommunityIcons
-                            name="chevron-down"
-                            size={16}
-                            color={Colors[colorScheme].text}
+
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator
+                            size="large"
+                            color={Colors[colorScheme].tint}
                         />
                     </View>
-                    {/* Card */}
-                    <View
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: Colors[colorScheme].bg_light,
-                                borderColor: Colors[colorScheme].border,
-                            },
-                        ]}
-                    >
-                        <View style={styles.flexRowContainer}>
-                            <View style={[styles.flexRowContainer, { gap: 8 }]}>
-                                <Image
-                                    source={require("@/assets/images/favicon.png")}
-                                    style={{
-                                        height: 28,
-                                        width: 28,
-                                        borderRadius: 100,
-                                        borderWidth: 1,
-                                        borderColor: Colors[colorScheme].border,
-                                        resizeMode: "contain",
-                                    }}
-                                />
-                                <ThemedText type="defaultSemiBold">
-                                    John Lee
-                                </ThemedText>
-                            </View>
-                            <MaterialCommunityIcons
-                                name="dots-vertical"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                        </View>
-                        <Image
-                            source={require("@/assets/images/favicon.png")}
-                            style={{
-                                height: 200,
-                                width: "100%",
-                                resizeMode: "contain",
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                borderColor: "transparent",
-                            }}
-                        />
-
-                        <ThemedText type="sub_heading">
-                            Campus Vibes at the 2026 Campus Fair
-                        </ThemedText>
-                        <ThemedText
-                            type="body_medium"
-                            style={{ color: Colors[colorScheme].caption }}
+                ) : (
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                        <View
+                            style={[
+                                styles.profileCardContainer,
+                                { backgroundColor: Colors[colorScheme].bg_light },
+                            ]}
                         >
-                            Enjoy food, games and live performances at the 2026
-                            Campus fair on the SIM Campus!
-                        </ThemedText>
-                        <View style={styles.iconsContainer}>
-                            {/* Interaction */}
-                            <View
+                            <View style={styles.flexRowContainer}>
+                                <View style={[styles.flexRowContainer, { gap: 20 }]}>
+                                    <Image
+                                        source={
+                                            profile?.avatar_url
+                                                ? { uri: profile.avatar_url }
+                                                : require("@/assets/images/profile.png")
+                                        }
+                                        style={{ width: 68, height: 68, borderRadius: 34 }}
+                                    />
+                                    <View style={{ flexShrink: 1 }}>
+                                        <ThemedText type="defaultSemiBold">
+                                            {displayName}
+                                        </ThemedText>
+                                        <ThemedText
+                                            type="caption"
+                                            style={{
+                                                color: Colors[colorScheme].caption,
+                                            }}
+                                        >
+                                            {displayUniversity}
+                                        </ThemedText>
+                                        <ThemedText
+                                            type="caption"
+                                            style={{
+                                                color: Colors[colorScheme].caption,
+                                            }}
+                                        >
+                                            {displayMajor}
+                                        </ThemedText>
+                                    </View>
+                                </View>
+
+                                <View style={styles.menuAnchor}>
+                                    <Pressable
+                                        onPress={() => setMenuVisible((prev) => !prev)}
+                                    >
+                                        <MaterialCommunityIcons
+                                            name="dots-vertical"
+                                            size={24}
+                                            color={Colors[colorScheme].text}
+                                        />
+                                    </Pressable>
+
+                                    {menuVisible && (
+                                        <View style={styles.menuContainer}>
+                                            <Pressable
+                                                style={styles.menuItem}
+                                                onPress={() => {
+                                                    setMenuVisible(false);
+
+                                                    if (!inst_id) {
+                                                        console.warn(
+                                                            "No inst_id provided",
+                                                        );
+                                                        return;
+                                                    }
+
+                                                    router.push({
+                                                        pathname: "/requests",
+                                                        params: { inst_id },
+                                                    });
+                                                }}
+                                            >
+                                                <Feather
+                                                    name="file-text"
+                                                    size={16}
+                                                    color="#111827"
+                                                />
+                                                <Text style={styles.menuText}>
+                                                    View requests
+                                                </Text>
+                                            </Pressable>
+
+                                            <Pressable
+                                                style={styles.menuItem}
+                                                onPress={() => {
+                                                    setMenuVisible(false);
+                                                }}
+                                            >
+                                                <Feather
+                                                    name="bookmark"
+                                                    size={16}
+                                                    color="#111827"
+                                                />
+                                                <Text style={styles.menuText}>
+                                                    View bookmarks
+                                                </Text>
+                                            </Pressable>
+
+                                            <Pressable
+                                                style={styles.menuItem}
+                                                onPress={() => {
+                                                    setMenuVisible(false);
+                                                }}
+                                            >
+                                                <Feather
+                                                    name="award"
+                                                    size={16}
+                                                    color="#111827"
+                                                />
+                                                <Text style={styles.menuText}>
+                                                    View achievements
+                                                </Text>
+                                            </Pressable>
+
+                                            <Pressable
+                                                style={styles.menuItem}
+                                                onPress={() => {
+                                                    setMenuVisible(false);
+                                                }}
+                                            >
+                                                <Feather
+                                                    name="settings"
+                                                    size={16}
+                                                    color="#111827"
+                                                />
+                                                <Text style={styles.menuText}>
+                                                    Change preference
+                                                </Text>
+                                            </Pressable>
+
+                                            <View style={styles.menuDivider} />
+
+                                            <Pressable
+                                                style={styles.menuItem}
+                                                onPress={() => {
+                                                    setMenuVisible(false);
+                                                }}
+                                            >
+                                                <Feather
+                                                    name="log-out"
+                                                    size={16}
+                                                    color="#DC2626"
+                                                />
+                                                <Text
+                                                    style={[
+                                                        styles.menuText,
+                                                        { color: "#DC2626" },
+                                                    ]}
+                                                >
+                                                    Log out
+                                                </Text>
+                                            </Pressable>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+
+                            <ThemedText
+                                type="caption"
                                 style={{
-                                    flex: 1,
-                                    flexDirection: "row",
-                                    justifyContent: "flex-start",
-                                    gap: 24,
+                                    color: Colors[colorScheme].caption,
+                                    fontWeight: "700",
                                 }}
                             >
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        alignItems: "center",
-                                        justifyContent: "flex-start",
-                                    }}
-                                >
-                                    <Feather
-                                        name="heart"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        justifyContent: "flex-start",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Feather
-                                        name="message-square"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                            </View>
-                            <Feather name="bookmark" size={24} color="black" />
-                        </View>
-                    </View>
-                    <View
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: Colors[colorScheme].bg_light,
-                                borderColor: Colors[colorScheme].border,
-                            },
-                        ]}
-                    >
-                        <View style={styles.flexRowContainer}>
-                            <View style={[styles.flexRowContainer, { gap: 8 }]}>
-                                <Image
-                                    source={require("@/assets/images/favicon.png")}
-                                    style={{
-                                        height: 28,
-                                        width: 28,
-                                        borderRadius: 100,
-                                        borderWidth: 1,
-                                        borderColor: Colors[colorScheme].border,
-                                        resizeMode: "contain",
-                                    }}
-                                />
-                                <ThemedText type="defaultSemiBold">
-                                    John Lee
-                                </ThemedText>
-                            </View>
-                            <MaterialCommunityIcons
-                                name="dots-vertical"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                        </View>
-                        <Image
-                            source={require("@/assets/images/favicon.png")}
-                            style={{
-                                height: 200,
-                                width: "100%",
-                                resizeMode: "contain",
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                borderColor: "transparent",
-                            }}
-                        />
+                                {displayDescription}
+                            </ThemedText>
 
-                        <ThemedText type="sub_heading">
-                            Campus Vibes at the 2026 Campus Fair
-                        </ThemedText>
-                        <ThemedText
-                            type="body_medium"
-                            style={{ color: Colors[colorScheme].caption }}
-                        >
-                            Enjoy food, games and live performances at the 2026
-                            Campus fair on the SIM Campus!
-                        </ThemedText>
-                        <View style={styles.iconsContainer}>
-                            {/* Interaction */}
                             <View
-                                style={{
-                                    flex: 1,
-                                    flexDirection: "row",
-                                    justifyContent: "flex-start",
-                                    gap: 24,
-                                }}
+                                style={[styles.flexRowContainer, styles.statsContainer]}
                             >
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        alignItems: "center",
-                                        justifyContent: "flex-start",
-                                    }}
-                                >
-                                    <Feather
-                                        name="heart"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        justifyContent: "flex-start",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Feather
-                                        name="message-square"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
+                                <View style={styles.statsInfoContainer}>
+                                    <ThemedText type="defaultSemiBold">
+                                        0
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        News Posts
+                                    </ThemedText>
+                                </View>
+                                <View style={styles.statsInfoContainer}>
+                                    <ThemedText type="defaultSemiBold">
+                                        0
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        Communities
+                                    </ThemedText>
+                                </View>
+                                <View style={styles.statsInfoContainer}>
+                                    <ThemedText type="defaultSemiBold">
+                                        0
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        Followers
+                                    </ThemedText>
+                                </View>
+                                <View style={styles.statsInfoContainer}>
+                                    <ThemedText type="defaultSemiBold">
+                                        0
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="caption"
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        Following
+                                    </ThemedText>
+                                </View>
                             </View>
-                            <Feather name="bookmark" size={24} color="black" />
                         </View>
-                    </View>
-                    <View
-                        style={[
-                            styles.card,
-                            {
-                                backgroundColor: Colors[colorScheme].bg_light,
-                                borderColor: Colors[colorScheme].border,
-                            },
-                        ]}
-                    >
-                        <View style={styles.flexRowContainer}>
-                            <View style={[styles.flexRowContainer, { gap: 8 }]}>
-                                <Image
-                                    source={require("@/assets/images/favicon.png")}
-                                    style={{
-                                        height: 28,
-                                        width: 28,
-                                        borderRadius: 100,
-                                        borderWidth: 1,
-                                        borderColor: Colors[colorScheme].border,
-                                        resizeMode: "contain",
-                                    }}
-                                />
-                                <ThemedText type="defaultSemiBold">
-                                    John Lee
-                                </ThemedText>
-                            </View>
-                            <MaterialCommunityIcons
-                                name="dots-vertical"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                        </View>
-                        <Image
-                            source={require("@/assets/images/favicon.png")}
-                            style={{
-                                height: 200,
-                                width: "100%",
-                                resizeMode: "contain",
-                                borderWidth: 1,
-                                borderRadius: 8,
-                                borderColor: "transparent",
-                            }}
-                        />
-
-                        <ThemedText type="sub_heading">
-                            Campus Vibes at the 2026 Campus Fair
-                        </ThemedText>
-                        <ThemedText
-                            type="body_medium"
-                            style={{ color: Colors[colorScheme].caption }}
-                        >
-                            Enjoy food, games and live performances at the 2026
-                            Campus fair on the SIM Campus!
-                        </ThemedText>
-                        <View style={styles.iconsContainer}>
-                            {/* Interaction */}
-                            <View
-                                style={{
-                                    flex: 1,
-                                    flexDirection: "row",
-                                    justifyContent: "flex-start",
-                                    gap: 24,
-                                }}
-                            >
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        alignItems: "center",
-                                        justifyContent: "flex-start",
-                                    }}
-                                >
-                                    <Feather
-                                        name="heart"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                                <Pressable
-                                    style={{
-                                        flex: 0,
-                                        flexDirection: "row",
-                                        gap: 4,
-                                        justifyContent: "flex-start",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Feather
-                                        name="message-square"
-                                        size={24}
-                                        color="black"
-                                    />
-                                    <Text>100</Text>
-                                </Pressable>
-                            </View>
-                            <Feather name="bookmark" size={24} color="black" />
-                        </View>
-                    </View>
-                </View>
-            </ScrollView>
+                    </ScrollView>
+                )}
+            </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    overlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 10,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
     headerContainer: {
-        flex: 0,
         flexDirection: "row",
         justifyContent: "space-between",
         paddingHorizontal: 16,
@@ -513,9 +393,9 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
     },
     profileCardContainer: {
-        gap: 8,
         paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingVertical: 12,
+        gap: 8,
     },
     statsContainer: {
         paddingVertical: 8,
@@ -526,33 +406,38 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    sortButtonContainer: {
-        alignSelf: "flex-start",
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        borderWidth: 1,
-        marginVertical: 12,
+    menuAnchor: {
+        position: "relative",
+        zIndex: 20,
     },
-    card: {
-        flex: 1,
-        gap: 8,
-        alignContent: "flex-start",
-        borderRadius: 8,
-        paddingVertical: 12,
+    menuContainer: {
+        position: "absolute",
+        top: 28,
+        right: 0,
+        width: 185,
+        backgroundColor: "#FFFFFF",
+        borderRadius: 10,
+        paddingVertical: 8,
         paddingHorizontal: 12,
-        borderWidth: 1,
-        marginBottom: 4,
-        minHeight: 200,
-        elevation: 2,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 8,
     },
-
-    iconsContainer: {
-        flex: 1,
+    menuItem: {
         flexDirection: "row",
         alignItems: "center",
-        paddingTop: 8,
+        gap: 10,
+        paddingVertical: 10,
+    },
+    menuText: {
+        fontSize: 14,
+        color: "#111827",
+    },
+    menuDivider: {
+        height: 1,
+        backgroundColor: "#E5E7EB",
+        marginVertical: 4,
     },
 });
