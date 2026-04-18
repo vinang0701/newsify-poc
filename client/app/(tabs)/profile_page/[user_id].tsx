@@ -466,15 +466,17 @@ export default function Profile() {
                                 </ThemedText>
                             </Pressable>
 
-                            <Pressable style={styles.modalActionButtonCtn}>
-                                <Feather
-                                    name="settings"
-                                    size={24}
-                                    color={Colors[colorScheme].text}
-                                />
-                                <ThemedText type="defaultSemiBold">
-                                    Change preference
-                                </ThemedText>
+                            <Pressable style={styles.modalActionButtonCtn}
+                                onPress={() => {
+                                    bottomSheetRef.current?.close(); // close the bottom sheet first
+                                    router.push({
+                                        pathname: "/(tabs)/profile_page/preferences",
+                                        params: { inst_id: inst_id }, // pass inst_id like your other routes do
+                                    });
+                                }}
+                                >
+                                <Feather name="settings" size={24} color={Colors[colorScheme].text} />
+                                <ThemedText type="defaultSemiBold">Change preference</ThemedText>
                             </Pressable>
 
                             <Pressable

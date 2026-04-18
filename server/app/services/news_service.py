@@ -106,6 +106,7 @@ async def create_post(
     content: str,
     school: str,
     communities: List[str],
+    category_id: str | None = None,
 ) -> List[dict]:
     try:
 
@@ -137,6 +138,7 @@ async def create_post(
                     "description": content[:100],
                     "content": {"text": content},
                     "status": "PUBLISHED",
+                    "category_id": category_id,
                 }
             )
             .execute()
@@ -274,3 +276,60 @@ async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:
             for draft in response.data
         ]
     return []
+
+async def get_personalised_news(supabase: Client, inst_id: str, user_id: str) -> List[dict]:
+
+    # Step 1: Get this user's preferred category_ids from user_preferences table
+    prefs_response = (
+        supabase.table("user_preferences")
+        .select("category_id")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    
+    # Turn the list of dicts into a flat list of ids
+    # e.g. [{"category_id": "abc"}] → ["abc"]
+    preferred_ids = [row["category_id"] for row in prefs_response.data]
+
+    # If user has no preferences, return the normal feed so screen isnt empty
+    if not preferred_ids:
+        return await get_institution_news(supabase, inst_id)
+
+    # Step 2: Fetch posts where category_id matches user's preferences
+    # category_id is now directly on news_posts so no joining needed!
+    response = (
+        supabase.table("news_posts")
+        .select(
+            """
+            id,
+            author,
+            title,
+            description,
+            image_url,
+            content,
+            users!news_posts_author_fkey!inner(name, image_url)
+            """
+        )
+        .eq("inst_id", inst_id)                  # only this institution
+        .in_("category_id", preferred_ids)        # only matching categories
+        .order("created_at", desc=True)           # newest first
+        .execute()
+    )
+
+    # Return empty list if no matching posts found
+    if not response.data:
+        return []
+
+    # Map to NewsPost objects — same pattern as get_institution_news
+    return [
+        NewsPost(
+            id=post["id"],
+            author_id=post["author"],
+            author=post["users"]["name"],
+            title=post["title"],
+            description=post["description"] or "",
+            image_url=post["image_url"] or "",
+            content=post["content"] or {},
+        )
+        for post in response.data
+    ]

@@ -223,6 +223,7 @@ async def create_news_post(
     school: str = Form(...),
     communities: list[str] = Form(...),
     image: UploadFile = File(...),
+    category_id: str | None = Form(None),
     current_user=Depends(get_current_user),
 ):
     try:
@@ -230,7 +231,7 @@ async def create_news_post(
         isSchool = school == "true"
 
         await news_service.create_post(
-            supabase, inst_id, user_id, image, title, content, isSchool, communities
+            supabase, inst_id, user_id, image, title, content, isSchool, communities, category_id
         )
 
         return {
