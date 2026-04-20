@@ -3,16 +3,17 @@ import React from "react";
 import { Stack } from "expo-router";
 
 const StreamStackLayout = () => {
-    return (
-        <Stack
-            initialRouteName="index"
-            screenOptions={{
-                headerShown: false,
-            }}
-        >
-            <Stack.Screen name="index" />
-        </Stack>
-    );
+	return (
+		<Stack
+			initialRouteName="index"
+			screenOptions={{
+				headerShown: false,
+			}}
+		>
+			<Stack.Screen name="index" />
+			<Stack.Screen name="player" />
+		</Stack>
+	);
 };
 
 export default StreamStackLayout;
