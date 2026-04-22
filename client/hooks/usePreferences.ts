@@ -36,6 +36,7 @@ export function usePreferences() {
                 .select("category_id, category_name")
                 .eq("status", "active");
             setCategories(data || []);
+            setLoading(false)
         };
         fetchCategories();
     }, []); // [] only run once on load
@@ -54,7 +55,6 @@ export function usePreferences() {
             //extract just the category_id values into a flat array like:
             //["uuid-1", "uuid-2"]
             setSelected(data?.map((p) => p.category_id) || []);
-            setLoading(false); //done loading
         };
         fetchPreferences();
     }, [userId]); //re-run whenever userId changes (i.e once we get it)

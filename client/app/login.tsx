@@ -49,20 +49,7 @@ const Login = () => {
             );
             const role = payload.app_metadata.user_role;
 
-            // Check if this user already has preferences saved
-            const { data: existingPrefs } = await supabase
-                .from("user_preferences")
-                .select("category_id")
-                .eq("user_id", data.user.id)
-                .limit(1); // we only need to know if at least one exists
-
-            if (existingPrefs && existingPrefs.length > 0) {
-                // User has preferences → go straight to feed
-                router.push("/(tabs)");
-            } else {
-                // First time login → go to preferences setup
-                router.push("/(tabs)/profile_page/preferences");
-            }
+            router.push("/(tabs)");
 
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred");
