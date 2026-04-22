@@ -141,6 +141,20 @@ async def get_community_membership(supabase, user_id: str):
         for comm in res.data
     ]
 
+async def get_community_role(supabase, community_id: str, user_id: str):
+    res = (
+        supabase.table("community_members")
+        .select("role")
+        .eq("user_id", user_id)
+        .eq("community_id", community_id)
+        .execute()
+    )
+
+    if res.data:
+        return res.data["role"]
+
+    return None
+
 
 async def leave_community(supabase: Client, community_id: str, user_id: str):
     print(user_id)

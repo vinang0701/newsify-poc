@@ -8,7 +8,7 @@ from app.services import communities_service, news_service
 from app.core.config import settings
 from app.core.db import supabase
 from app.models.community import CommunityApplication, CommunityApplicationReq
-
+from app.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/{inst_id}/communities", tags=["communities"])
 
@@ -89,3 +89,18 @@ async def get_community_members(inst_id: str, community_id: str):
     except Exception as e:
         print(f"Error fetching members: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community members")
+
+@router.get("/{community_id}/members/me/role")
+async def get_community_role(
+    inst_id: str,
+    community_id: str,
+    current_user=Depends(get_current_user)
+):
+    try:
+        role = await communities_service.get_community_role(
+            supabase, community_id, current_user.id
+        )
+        return {"role": role}
+    except Exception as e:
+        print(f"Error fetching members: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch community role")

@@ -38,7 +38,7 @@ import Loading from "@/components/loading";
 const HEADER_HEIGHT = 250;
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+const user_id = "7369b0d7-3ba3-4a28-bfbe-0e7addaf3eec";
 
 interface UserCommunities {
     community_id: string;
@@ -54,7 +54,7 @@ export default function CommunityPage() {
     const [modalVisible, setModalVisible] = useState(false);
     const queryClient = useQueryClient();
 
-    const tenantId = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+    const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
     // ref
     const bottomSheetRef = useRef<BottomSheet>(null);
 
@@ -90,7 +90,7 @@ export default function CommunityPage() {
     async function fetchCommunity(): Promise<Community[]> {
         try {
             const response = await axios.get<Community[]>(
-                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}`,
+                `http://10.0.2.2:8000/api/v1/${inst_id}/communities/${communityId}`,
             );
             console.log(response.data);
             return response.data;
@@ -103,11 +103,11 @@ export default function CommunityPage() {
         }
     }
 
-    async function fetchCommunityNews(tenantId: string): Promise<News[]> {
+    async function fetchCommunityNews(inst_id: string): Promise<News[]> {
         console.log("fetching in community");
         try {
             const response = await axios.get<News[]>(
-                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}/news`,
+                `http://10.0.2.2:8000/api/v1/${inst_id}/communities/${communityId}/news`,
             );
             console.log("news", response.data);
             return response.data;
@@ -120,6 +120,26 @@ export default function CommunityPage() {
             throw new Error("An unexpected error occurred");
         }
     }
+
+    async function fetchUserRole(communityId: string, user_id: string) {
+        try {
+            const response = await axios.get(
+                `${BASE_URL}/${inst_id}/communities/${communityId}/members/me/role`,
+        );
+        return response.data.role; // get either admin/member
+        } catch (error) {
+            console.error('Error fetching user role:', error);
+            throw new Error('Could not fetch user role');
+        }
+    }
+
+    const {
+        data: userRole,
+        isLoading: load_userRole,
+    } = useQuery({
+        queryKey: ["user_role", communityId, user_id],
+        queryFn: () => fetchUserRole(communityId, user_id),
+    });
 
     async function leaveCommunity() {
         console.log("Leaving community");
@@ -169,8 +189,8 @@ export default function CommunityPage() {
 
     // Fetch data from server
     const { isFetching, status, data, error } = useQuery({
-        queryKey: ["community_news", tenantId],
-        queryFn: () => fetchCommunityNews(tenantId),
+        queryKey: ["community_news", inst_id],
+        queryFn: () => fetchCommunityNews(inst_id),
     });
 
     const {
@@ -445,6 +465,27 @@ export default function CommunityPage() {
                 enablePanDownToClose
             >
                 <BottomSheetView style={styles.bottomSheet}>
+                    {userRole === "admin" && (
+                        <Pressable
+                            style={styles.modalActionButtonCtn}
+                            onPress={() => {
+                                bottomSheetRef.current?.close();
+                                router.push({
+                                    pathname: "community/[communityId]/post_requests",
+                                    params: { communityId: communityId },
+                                });
+                            }}
+                        >
+                            <Feather
+                                name="file-text"
+                                size={24}
+                                color={Colors[colorScheme].text}
+                            />
+                            <ThemedText type="defaultSemiBold">
+                                View post requests
+                            </ThemedText>
+                        </Pressable>
+                    )}
                     <Pressable style={styles.modalActionButtonCtn}>
                         <MaterialCommunityIcons
                             name="help-circle-outline"

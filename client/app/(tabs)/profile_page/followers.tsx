@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
     View,
     StyleSheet,
@@ -24,7 +23,7 @@ import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Image } from "expo-image";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState} from "react";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -86,9 +85,8 @@ export default function FollowerPage() {
 
     const followUser = async (id: string) => {
         try {
-            await axios.post(`${BASE_URL}/${inst_id}/users/me/following`, {
-                user_id: curr_user_id,
-                followed_user_id: id,
+            await axios.post(`${BASE_URL}/users/${id}/following`, {
+                target_user_id: id,
             });
 
             // Refresh the query so the button changes to "Following"
@@ -106,7 +104,7 @@ export default function FollowerPage() {
         console.log("Unfollowing User");
         try {
             const response = await axios.delete(
-                `${BASE_URL}/${inst_id}/users/me/following/${target_id}`,
+                `${BASE_URL}/users/me/following/${target_id}`,
             );
 
             queryClient.invalidateQueries({ queryKey: ["my_following"] });
@@ -138,7 +136,7 @@ export default function FollowerPage() {
         setRefreshing(true);
         console.log("refetching");
         refetch();
-        myFollowersRefetch();
+        myFollowRefetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);

@@ -45,3 +45,25 @@ export interface Users {
     created_at: string,
     updated_at: string,
 }
+
+export interface UserFollowing {
+    followed_user_id: string,
+    name: string,
+}
+
+export interface UserFollowers {
+    follower_user_id: string,
+    name: string,
+}
+
+export interface PostRequest {
+    request_id: string;
+    requested_by_user_id: string;
+    community_name: string;
+    description: string;
+    status: string;
+    created_at: string;
+    reviewed_at: string;
+    reviewed_by_user_id: string;
+    rejection_reason: string;
+};
