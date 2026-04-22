@@ -48,7 +48,8 @@ export function usePreferences() {
             const { data } = await supabase
                 .from("user_preferences")
                 .select("category_id")
-                .eq("user_id", userId);
+                .eq("user_id", userId)
+                .eq("preference_type", "include"); //only pre-select included categories
             
             //extract just the category_id values into a flat array like:
             //["uuid-1", "uuid-2"]

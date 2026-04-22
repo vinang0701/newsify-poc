@@ -2,7 +2,6 @@ import {
     View,
     TouchableOpacity,
     StyleSheet,
-    Alert,
     ScrollView,
     Pressable,
     useColorScheme,
@@ -19,18 +18,22 @@ export default function PreferencesScreen() {
     const colorScheme = useColorScheme() ?? "light"; // get light/dark mode
     
     // Pull everything we need from our custom hook
-    const { categories, selected, toggleCategory, savePreferences, loading } =
+    const { categories, selected, toggleCategory, loading } =
         usePreferences();
 
     // Runs when user taps "Save Preferences"
-    const handleSave = async () => {
-        const success = await savePreferences(); // call the hook's save function
-        if (success) {
-            Alert.alert("Saved!", "Your preferences have been updated.");
-            router.back(); // go back to previous screen
-        } else {
-            Alert.alert("Error", "Something went wrong. Please try again.");
-        }
+    const handleNext = () => {
+        //don't save yet - just pass the selected include ids to the next screen
+        //router.push passes data to the next screen via params
+        router.push({
+            pathname: "/(tabs)/profile_page/exclude_preferences",
+            params: {
+                //json.stringify turns the array into a string so it can be passed as a parameter
+                //e.g. ["uuid-1", "uuid-2"] → '["uuid-1","uuid-2"]'
+                includeIds: JSON.stringify(selected),
+            },
+        });
+        
     };
 
     // Show a loading state while fetching from DB
@@ -51,7 +54,7 @@ export default function PreferencesScreen() {
                     <Feather name="arrow-left" size={24} color={Colors[colorScheme].button_text} />
                 </Pressable>
                 <ThemedText type="defaultSemiBold" style={{ color: Colors[colorScheme].button_text }}>
-                    My Interests
+                    Select Preferred Catergories
                 </ThemedText>
                 {/* Empty view to center the title (balances the back button) */}
                 <View style={{ width: 24 }} />
@@ -59,10 +62,10 @@ export default function PreferencesScreen() {
 
             <ScrollView contentContainerStyle={styles.container}>
                 <ThemedText type="defaultSemiBold" style={styles.title}>
-                    What are you interested in?
+                    Pick Your Interests
                 </ThemedText>
                 <ThemedText style={styles.subtitle}>
-                    Pick topics you want to see in your news feed.
+                    Choose what will appear on your news feed!
                 </ThemedText>
 
                 {/* The grid of category chips */}
@@ -105,7 +108,7 @@ export default function PreferencesScreen() {
                     disabled={selected.length === 0} // cant save if nothing selected
                 >
                     <ThemedText style={{ color: Colors[colorScheme].button_text }}>
-                        Save Preferences
+                        Next
                     </ThemedText>
                 </Pressable>
             </ScrollView>
