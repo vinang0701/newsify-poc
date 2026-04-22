@@ -104,7 +104,7 @@ export default function PreferencesScreen() {
                 {/* Save button - disabled if nothing is selected */}
                 <Pressable
                     style={[styles.saveBtn, { backgroundColor: Colors[colorScheme].tint }]}
-                    onPress={handleSave}
+                    onPress={handleNext}
                     disabled={selected.length === 0} // cant save if nothing selected
                 >
                     <ThemedText style={{ color: Colors[colorScheme].button_text }}>
