@@ -1,3 +1,5 @@
+import { registerGlobals } from "@livekit/react-native";
+registerGlobals();
 import {
     DarkTheme,
     DefaultTheme,
@@ -26,6 +28,7 @@ export default function RootLayout() {
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
         // Poppins: require("@/assets/fonts/Poppins-Regular.ttf"),
     });
+
     // Create a client
     const queryClient = new QueryClient();
 

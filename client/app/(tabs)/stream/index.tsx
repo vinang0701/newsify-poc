@@ -391,7 +391,7 @@ const StreamTab = () => {
 									},
 								]}
 								onPress={() =>
-									router.navigate("/stream/player")
+									router.navigate("/stream/prejoin")
 								}
 							>
 								<ThemedText
