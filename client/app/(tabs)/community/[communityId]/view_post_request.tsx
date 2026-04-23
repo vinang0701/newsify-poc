@@ -272,11 +272,12 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                         </ThemedText>
                         <View style={{ flexDirection: "row", gap: 24 }}>
                             <Pressable
-                                style={[
+                                style={ ({ pressed }) => [
                                     styles.modalButton,
                                     {
-                                        backgroundColor:
-                                            Colors[colorScheme].text,
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].caption
+                                        : Colors[colorScheme].text
                                     },
                                 ]}
                                 onPress={() =>
@@ -299,12 +300,12 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                             </Pressable>
 
                             <Pressable
-                                style={[
+                                style={ ({ pressed }) => [
                                     styles.modalButton,
                                     {
-                                        backgroundColor:
-                                            Colors[colorScheme]
-                                                .secondary,
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].secondary_dark
+                                        : Colors[colorScheme].secondary
                                     },
                                 ]}
                                 //onPress={handleSignOut}
@@ -364,11 +365,12 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                         />
                         <View style={{ flexDirection: "row", gap: 24 }}>
                             <Pressable
-                                style={[
+                                style={ ({ pressed }) => [
                                     styles.modalButton,
                                     {
-                                        backgroundColor:
-                                            Colors[colorScheme].text,
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].caption
+                                        : Colors[colorScheme].text
                                     },
                                 ]}
                                 onPress={() =>
@@ -391,15 +393,15 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                             </Pressable>
 
                             <Pressable
-                                style={[
+                                style={ ({ pressed }) => [
                                     styles.modalButton,
                                     {
-                                        backgroundColor:
-                                            Colors[colorScheme]
-                                                .alert_red,
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].alert_red_dark
+                                        : Colors[colorScheme].alert_red
                                     },
                                 ]}
-                                //onPress={handleSignOut}
+                                //onPress={}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"

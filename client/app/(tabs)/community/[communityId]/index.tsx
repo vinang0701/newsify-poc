@@ -465,7 +465,7 @@ export default function CommunityPage() {
                 enablePanDownToClose
             >
                 <BottomSheetView style={styles.bottomSheet}>
-                    {userRole === "admin" && (
+                    {/*{userRole === "admin" && (*/}
                         <Pressable
                             style={styles.modalActionButtonCtn}
                             onPress={() => {
@@ -485,7 +485,7 @@ export default function CommunityPage() {
                                 View post requests
                             </ThemedText>
                         </Pressable>
-                    )}
+
                     <Pressable style={styles.modalActionButtonCtn}>
                         <MaterialCommunityIcons
                             name="help-circle-outline"

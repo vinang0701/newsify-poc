@@ -46,6 +46,10 @@ class JoinCommunityRequest(BaseModel):
     user_id: uuid.UUID | None = None
 
 
+class FollowRequest(BaseModel):
+    followed_user_id: uuid.UUID
+
+
 def moderate_text(text: str):
     print("Moderating text...")
     response = client.moderations.create(
@@ -275,12 +279,14 @@ async def get_user_drafts(current_user=Depends(get_current_user)):
 
 @router.post("/users/me/following")
 async def follow_user(
-    user_id: str,
+    body: FollowRequest,
     current_user=Depends(get_current_user),
 ):
     try:
         result = await users_service.follow_user(
-            supabase, str(current_user.id), user_id
+            supabase,
+            str(current_user.id),
+            body.followed_user_id
         )
 
         return {
@@ -293,7 +299,7 @@ async def follow_user(
             raise HTTPException(status_code=400, detail="Already following user.")
 
         raise HTTPException(status_code=500, detail="Failed to follow user")
-        print(str(current_user.id))
+
 
 
 @router.delete("/users/me/following/{user_id}")
@@ -366,6 +372,12 @@ async def get_user_news(inst_id: str, user_id: str):
     if my_news is None or len(my_news) == 0:
         raise HTTPException(status_code=404, detail="No news found")
     return my_news
+
+
+@router.get("/{inst_id}/users/me/following")
+async def get_my_following(inst_id: str, current_user=Depends(get_current_user)):
+    my_following = await users_service.get_user_following(supabase, inst_id, str(current_user.id))
+    return my_following
 
 
 @router.get("/{inst_id}/users/{user_id}/following")

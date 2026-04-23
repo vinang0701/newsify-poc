@@ -24,131 +24,60 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Image } from "expo-image";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const curr_user_id = "7369b0d7-3ba3-4a28-bfbe-0e7addaf3eec";
+import { useUserFollowing, UserFollowing } from "@/hooks/useUserFollowing";
 
 export default function FollowingPage() {
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? "light";
+    const { user_id } = useLocalSearchParams();
     const router = useRouter();
-    const snapPoints = useMemo(() => ["20%"], []);
     const [searchQuery, setSearchQuery] = useState("");
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserFollowing | null>(null);
-    const queryClient = useQueryClient();
-    const { user_id } = useLocalSearchParams();
-    const [refreshing, setRefreshing] = React.useState(false);
-
-    async function fetchMyFollowing(): Promise<UserFollowing[]> {
-        try {
-            const response = await axios.get<UserFollowing[]>(
-                `${BASE_URL}/${inst_id}/users/${curr_user_id}/following`,
-            );
-            console.log(response.data);
-            return response.data;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
-    }
 
     const {
-        data: my_follows,
-        isLoading: load_myFollows,
-        refetch: myFollowRefetch,
-    } = useQuery<UserFollowing[]>({
-        queryKey: ["my_following", user_id],
-        queryFn: () => fetchMyFollowing(),
-    });
+        following,
+        myFollowing,
+        followingUserIds,
+        loading,
+        refreshing,
+        error,
+        refresh,
+        followUser,
+        unfollowUser,
+        currentUserId,
+    } = useUserFollowing(user_id as string);
 
-    async function fetchFollowing(): Promise<UserFollowing[]> {
+    // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
+    const filteredUsers = useMemo(() => {
+        return following.filter((user) =>
+            user.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [following, searchQuery]);
+
+    const handleFollow = async (id: string) => {
         try {
-            const response = await axios.get<UserFollowing[]>(
-                `${BASE_URL}/${inst_id}/users/${user_id}/following`,
-            );
-            console.log(response.data);
-            return response.data;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
-    }
-
-    const {
-        data: user_follows,
-        isLoading,
-        refetch,
-    } = useQuery<UserFollowing[]>({
-        queryKey: ["user_following", user_id],
-        queryFn: () => fetchFollowing(),
-    });
-
-    const followUser = async (id: string) => {
-        try {
-            await axios.post(`${BASE_URL}/users/${id}/following`, {
-                target_user_id: id,
-            });
-
-            // Refresh the query so the button changes to "Following"
-            queryClient.invalidateQueries({ queryKey: ["my_following"] });
-        } catch (err) {
-            console.error("Follow failed", err);
+            await followUser(id);
+        } catch (err: any) {
+            console.log("Failed to follow: " + err.message);
         }
     };
 
-    const { mutate, isPending } = useMutation({
-        mutationFn: followUser,
-    });
+    const handleUnfollow = async () => {
+        if (!selectedUser) return;
 
-    async function unfollowUser(target_id: string) {
-        console.log("Unfollowing User");
         try {
-            const response = await axios.delete(
-                `${BASE_URL}/users/me/following/${target_id}`,
-            );
-
-            queryClient.invalidateQueries({ queryKey: ["my_following"] });
-        } catch (error) {
-            console.error("Failed to unfollow:", error);
+            await unfollowUser(selectedUser.followed_user_id);
+            setModalVisible(false);
+            setSelectedUser(null);  // unselect user
+        } catch (err: any) {
+            console.log("Failed to unfollow: " + err.message)
         }
-    }
-
-    const { mutate: mu_unfollowUser } = useMutation({
-        mutationKey: ["my_following"],
-        mutationFn: unfollowUser,
-        onError: (error) => {
-            Alert.alert("Error", "Something went wrong.");
-            console.error(error);
-        },
-    });
-
-    const followingUserIds = React.useMemo(() => {
-        return new Set(my_follows?.map((u) => u.followed_user_id) || []);
-    }, [my_follows]);
-
-    // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
-    const filteredUsers =
-        user_follows?.filter((user) =>
-            user.name.toLowerCase().includes(searchQuery.toLowerCase()),
-        ) ?? [];
+    };
 
     const onRefresh = React.useCallback(() => {
-        setRefreshing(true);
-        console.log("refetching");
-        refetch();
-        myFollowRefetch();
-        setTimeout(() => {
-            setRefreshing(false);
-        }, 2000);
-    }, []);
+        refresh();
+    }, [refresh]);
 
     return (
         <SafeAreaView style={{ flex: 1 }}>
@@ -234,7 +163,7 @@ export default function FollowingPage() {
                     </View>
                     {/* Following List */}
                     {/* show following list or show no following found msg */}
-                    {!user_follows || user_follows.length === 0 ? (
+                    { filteredUsers.length === 0 ? (
                         <View
                             style={{
                                 flex: 1,
@@ -251,7 +180,7 @@ export default function FollowingPage() {
                             data={filteredUsers}
                             renderItem={({ item }) =>
                                 // only show follow button if not current user
-                                item.followed_user_id !== curr_user_id ? (
+                                item.followed_user_id !== currentUserId ? (
                                     <View
                                         style={{
                                             flexDirection: "row",
@@ -308,16 +237,14 @@ export default function FollowingPage() {
                                                         : "transparent",
                                             }}
                                             onPress={() => {
-                                                !followingUserIds.has(
+                                                followingUserIds.has(
                                                     item.followed_user_id,
                                                 )
-                                                    ? mutate(
-                                                        item.followed_user_id,
-                                                    )
-                                                    : (() => {
+                                                    ? (() => {
                                                         setSelectedUser(item);
                                                         setModalVisible(true);
-                                                    })();
+                                                    }) ()
+                                                    : handleFollow(item.followed_user_id)
                                             }}
                                         >
                                             <ThemedText
@@ -445,12 +372,7 @@ export default function FollowingPage() {
                                                 .alert_red,
                                     },
                                 ]}
-                                onPress={() => {
-                                    if (!selectedUser) return;
-                                    mu_unfollowUser(selectedUser.followed_user_id);
-                                    setModalVisible(false);
-                                    setSelectedUser(null);  // reset selected user
-                                }}
+                                onPress={handleUnfollow}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"
