@@ -25,6 +25,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Image } from "expo-image";
 import React, { useCallback, useMemo, useRef } from "react";
+import api from "@/lib/axios";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -42,7 +43,7 @@ export default function FollowingPage() {
 
     async function fetchMyFollowing(): Promise<UserFollowing[]> {
         try {
-            const response = await axios.get<UserFollowing[]>(
+            const response = await api.get<UserFollowing[]>(
                 `${BASE_URL}/${inst_id}/users/${curr_user_id}/following`,
             );
             console.log(response.data);
@@ -67,7 +68,7 @@ export default function FollowingPage() {
 
     async function fetchFollowing(): Promise<UserFollowing[]> {
         try {
-            const response = await axios.get<UserFollowing[]>(
+            const response = await api.get<UserFollowing[]>(
                 `${BASE_URL}/${inst_id}/users/${user_id}/following`,
             );
             console.log(response.data);
@@ -268,9 +269,16 @@ export default function FollowingPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(
-                                                        `/(tabs)/profile_page/${item.followed_user_id}`,
-                                                    );
+                                                    // router.push(
+                                                    //     `/(tabs)/profile_page/${item.followed_user_id}`,
+                                                    // );
+                                                    router.push({
+                                                        pathname: `/[user_id]`,
+                                                        params: {
+                                                            user_id:
+                                                                item.followed_user_id,
+                                                        },
+                                                    });
                                                 }}
                                             >
                                                 <Image
@@ -380,9 +388,16 @@ export default function FollowingPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(
-                                                        `/(tabs)/profile_page/${item.followed_user_id}`,
-                                                    );
+                                                    // router.push(
+                                                    //     `/(tabs)/profile_page/${item.followed_user_id}`,
+                                                    // );
+                                                    router.push({
+                                                        pathname: `/[user_id]`,
+                                                        params: {
+                                                            user_id:
+                                                                item.followed_user_id,
+                                                        },
+                                                    });
                                                 }}
                                             >
                                                 <Image

@@ -56,7 +56,11 @@ export default function FollowerPage() {
         }
     }
 
-    const { data: my_follows, isLoading: load_myFollows, refetch: myFollowRefetch } = useQuery<UserFollowing[]>({
+    const {
+        data: my_follows,
+        isLoading: load_myFollows,
+        refetch: myFollowRefetch,
+    } = useQuery<UserFollowing[]>({
         queryKey: ["my_following", user_id],
         queryFn: () => fetchMyFollowing(),
     });
@@ -77,7 +81,11 @@ export default function FollowerPage() {
         }
     }
 
-    const { data: user_followers, isLoading, refetch } = useQuery<UserFollowers[]>({
+    const {
+        data: user_followers,
+        isLoading,
+        refetch,
+    } = useQuery<UserFollowers[]>({
         queryKey: ["user_followers", user_id],
         queryFn: () => fetchFollowers(),
     });
@@ -129,14 +137,14 @@ export default function FollowerPage() {
     // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
     const filteredUsers =
         user_followers?.filter((user) =>
-            user.name.toLowerCase().includes(searchQuery.toLowerCase())
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()),
         ) ?? [];
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         console.log("refetching");
         refetch();
-        myFollowersRefetch();
+        myFollowRefetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -198,7 +206,7 @@ export default function FollowerPage() {
                                 backgroundColor: Colors[colorScheme].bg_dark,
                                 paddingHorizontal: 12,
                                 borderRadius: 20,
-                                marginTop:12,
+                                marginTop: 12,
                                 marginBottom: 8,
                                 gap: 4,
                             },
@@ -216,7 +224,6 @@ export default function FollowerPage() {
                             value={searchQuery}
                             onChangeText={setSearchQuery}
                             style={[
-                                styles.searchInput,
                                 {
                                     flex: 1,
                                     borderColor: "transparent",
@@ -226,14 +233,22 @@ export default function FollowerPage() {
                     </View>
                     {/* Followers List */}
                     {/* show follower list or show no followers found msg */}
-                    { !user_followers || user_followers.length === 0 ? (
-                        <View style={{ flex: 1, justifyContent: "center", alignItems: "center"}}>
-                            <Text style={{ textAlign: "center" }}>No followers found</Text>
+                    {!user_followers || user_followers.length === 0 ? (
+                        <View
+                            style={{
+                                flex: 1,
+                                justifyContent: "center",
+                                alignItems: "center",
+                            }}
+                        >
+                            <Text style={{ textAlign: "center" }}>
+                                No followers found
+                            </Text>
                         </View>
                     ) : (
                         <FlashList
                             data={filteredUsers}
-                            renderItem={({ item }) => (
+                            renderItem={({ item }) =>
                                 // only show follow button if not current user
                                 item.follower_user_id !== curr_user_id ? (
                                     <View
@@ -252,7 +267,14 @@ export default function FollowerPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(`/(tabs)/profile_page/${item.follower_user_id}`);
+                                                    // router.push(`/(tabs)/profile_page/${item.follower_user_id}`);
+                                                    router.push({
+                                                        pathname: `/[user_id]`,
+                                                        params: {
+                                                            user_id:
+                                                                item.follower_user_id,
+                                                        },
+                                                    });
                                                 }}
                                             >
                                                 <Image
@@ -273,39 +295,53 @@ export default function FollowerPage() {
                                                 paddingVertical: 8,
                                                 paddingHorizontal: 12,
                                                 backgroundColor:
-                                                    followingUserIds.has(item.follower_user_id)
+                                                    followingUserIds.has(
+                                                        item.follower_user_id,
+                                                    )
                                                         ? "transparent"
                                                         : Colors[colorScheme]
                                                               .tint,
                                                 borderRadius: 20,
                                                 borderWidth: 2,
-                                                borderColor: followingUserIds.has(
-                                                    item.follower_user_id,
-                                                )
-                                                    ? Colors[colorScheme].tint
-                                                    : "transparent",
+                                                borderColor:
+                                                    followingUserIds.has(
+                                                        item.follower_user_id,
+                                                    )
+                                                        ? Colors[colorScheme]
+                                                              .tint
+                                                        : "transparent",
                                             }}
                                             onPress={() => {
-                                                !followingUserIds.has(item.follower_user_id)
-                                                    ? mutate(item.follower_user_id)
+                                                !followingUserIds.has(
+                                                    item.follower_user_id,
+                                                )
+                                                    ? mutate(
+                                                          item.follower_user_id,
+                                                      )
                                                     : Alert.alert(
-                                                        "Unfollow user",
-                                                        `Do you want to unfollow ${item.name}?`,
-                                                        [
-                                                            {
-                                                                text: "Cancel",
-                                                                onPress: () => console.log("Cancel Pressed"),
-                                                                style: "cancel",
-                                                            },
-                                                            {
-                                                                text: "Unfollow",
-                                                                style: "destructive",
-                                                                onPress: () => {
-                                                                    mu_unfollowUser(item.follower_user_id);
-                                                                },
-                                                            },
-                                                        ]
-                                                    );
+                                                          "Unfollow user",
+                                                          `Do you want to unfollow ${item.name}?`,
+                                                          [
+                                                              {
+                                                                  text: "Cancel",
+                                                                  onPress: () =>
+                                                                      console.log(
+                                                                          "Cancel Pressed",
+                                                                      ),
+                                                                  style: "cancel",
+                                                              },
+                                                              {
+                                                                  text: "Unfollow",
+                                                                  style: "destructive",
+                                                                  onPress:
+                                                                      () => {
+                                                                          mu_unfollowUser(
+                                                                              item.follower_user_id,
+                                                                          );
+                                                                      },
+                                                              },
+                                                          ],
+                                                      );
                                             }}
                                         >
                                             <ThemedText
@@ -317,12 +353,15 @@ export default function FollowerPage() {
                                                     )
                                                         ? Colors[colorScheme]
                                                               .tint
-                                                        : Colors[colorScheme].button_text,
+                                                        : Colors[colorScheme]
+                                                              .button_text,
 
                                                     fontWeight: "semibold",
                                                 }}
                                             >
-                                                {followingUserIds.has(item.follower_user_id)
+                                                {followingUserIds.has(
+                                                    item.follower_user_id,
+                                                )
                                                     ? "Following"
                                                     : "Follow"}
                                             </ThemedText>
@@ -345,7 +384,14 @@ export default function FollowerPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(`/(tabs)/profile_page/${item.follower_user_id}`);
+                                                    // router.push(`/(tabs)/profile_page/${item.follower_user_id}`);
+                                                    router.push({
+                                                        pathname: `/[user_id]`,
+                                                        params: {
+                                                            user_id:
+                                                                item.follower_user_id,
+                                                        },
+                                                    });
                                                 }}
                                             >
                                                 <Image
@@ -363,14 +409,14 @@ export default function FollowerPage() {
                                         </View>
                                     </View>
                                 )
-                            )}
+                            }
                         />
                     )}
                 </ScrollView>
             </View>
         </SafeAreaView>
     );
-};
+}
 
 const styles = StyleSheet.create({
     headerContainer: {
@@ -386,5 +432,5 @@ const styles = StyleSheet.create({
         flex: 0,
         alignItems: "center",
         flexDirection: "row",
-    }
+    },
 });

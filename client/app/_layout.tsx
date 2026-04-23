@@ -74,6 +74,12 @@ export default function RootLayout() {
                                     animation: "none",
                                 }}
                             />
+                            <Stack.Screen
+                                name="[user_id]"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
                         </Stack.Protected>
                         <Stack.Protected guard={!session || session === null}>
                             <Stack.Screen

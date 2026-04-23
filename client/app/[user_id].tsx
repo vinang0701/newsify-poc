@@ -31,21 +31,26 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuthStore } from "@/utils/authStore";
+import api from "@/lib/axios";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
-export default function Profile() {
+export default function OtherUserProfileStack() {
     const { user, session, metadata } = useAuthStore();
-    console.log(session?.access_token);
 
     const snapPoints = useMemo(() => ["20%"], []);
     const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? "light";
 
-    const user_id = user?.id ?? "";
-    const inst_id = metadata?.inst_id ?? "";
+    const params = useLocalSearchParams<{
+        user_id?: string;
+        inst_id?: string;
+    }>();
+
+    const user_id = params.user_id ?? "";
+    const inst_id = params.inst_id ?? FALLBACK_INST_ID;
 
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -93,7 +98,7 @@ export default function Profile() {
 
     async function fetchUserNews(): Promise<News[]> {
         try {
-            const response = await axios.get<News[]>(
+            const response = await api.get<News[]>(
                 `${BASE_URL}/${inst_id}/users/${user_id}/news`,
             );
 
@@ -109,7 +114,7 @@ export default function Profile() {
 
     async function fetchUserProfile(): Promise<UserProfileDetails> {
         try {
-            const response = await axios.get<UserProfileDetails[]>(
+            const response = await api.get<UserProfileDetails[]>(
                 `${BASE_URL}/${inst_id}/users/${user_id}`,
             );
 
@@ -144,7 +149,7 @@ export default function Profile() {
     } = useQuery<number>({
         queryKey: ["following_count", user_id],
         queryFn: async () => {
-            const res = await axios.get(
+            const res = await api.get(
                 `${BASE_URL}/${inst_id}/users/${user_id}/following_count`,
             );
             return res.data.count;
@@ -159,7 +164,7 @@ export default function Profile() {
     } = useQuery<number>({
         queryKey: ["follower_count", user_id],
         queryFn: async () => {
-            const res = await axios.get(
+            const res = await api.get(
                 `${BASE_URL}/${inst_id}/users/${user_id}/follower_count`,
             );
             return res.data.count;
@@ -198,33 +203,15 @@ export default function Profile() {
                 >
                     <Pressable
                         onPress={() => {
-                            router.push({
-                                pathname: "/notifications",
-                                params: { inst_id: inst_id },
-                            });
+                            router.back();
                         }}
                     >
                         <Feather
-                            name="bell"
+                            name="arrow-left"
                             size={24}
                             color={Colors[colorScheme].button_text}
                         />
                     </Pressable>
-
-                    <Image
-                        source={require("@/assets/images/icon_light.png")}
-                        style={{ width: 42, height: 20, resizeMode: "contain" }}
-                    />
-
-                    <Link href="/search" push asChild>
-                        <Pressable>
-                            <Feather
-                                name="search"
-                                size={24}
-                                color={Colors[colorScheme].button_text}
-                            />
-                        </Pressable>
-                    </Link>
                 </View>
 
                 <ScrollView

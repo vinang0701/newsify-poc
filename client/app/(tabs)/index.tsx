@@ -20,12 +20,14 @@ import {
     useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import NewsPostCard from "@/components/news_post_card";
-import CommentsModal from "@/components/comments_modal";
+// import CommentsModal from "@/components/comments_modal";
 import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
 const HEADER_HEIGHT = 250;
 
 const DATA = [
@@ -45,12 +47,19 @@ const DATA = [
 // like, comment, repost, save
 
 export default function HomeScreen() {
+    const { user, metadata } = useAuthStore();
+
+    if (!metadata || !user) {
+        throw new Error("Error occurred when retrieving user data.");
+    }
+    const inst_id = metadata.inst_id;
+
     const colorScheme = useColorScheme() ?? "light";
     const [activeFilter, setActiveFilter] = useState("Recent");
-    const snapPoints = useMemo(() => ["100%"], []);
-    const bottomSheetRef = useRef<BottomSheet>(null);
+    // const snapPoints = useMemo(() => ["100%"], []);
+    // const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
-    const navigation = useNavigation();
+    // const navigation = useNavigation();
 
     const [refreshing, setRefreshing] = React.useState(false);
 
@@ -67,34 +76,39 @@ export default function HomeScreen() {
     const { status, data, error, isFetching, refetch } = useQuery<News[]>({
         queryKey: ["news"],
         queryFn: async (): Promise<News[]> => {
-            const response = await fetch(
-                "http://10.0.2.2:8000/api/v1/391848ae-e6c6-43ec-a34c-e6ce06f0d842/news/feed",
-            );
-            if (!response.ok) {
-                throw new Error("Network response was not ok");
+            try {
+                const response = await api.get(`${inst_id}/news/feed`);
+
+                return response.data;
+            } catch (error) {
+                console.error(
+                    "Error occurred when fetching news posts: " + error,
+                );
+                throw new Error(
+                    "Error occurred when fetching news posts: " + error,
+                );
             }
-            return await response.json();
         },
     });
 
-    const handleSheetChange = (index: number) => {
-        if (index === -1) {
-            navigation.getParent()?.setOptions({
-                tabBarVisible: false,
-            });
-        }
-    };
+    // const handleSheetChange = (index: number) => {
+    //     if (index === -1) {
+    //         navigation.getParent()?.setOptions({
+    //             tabBarVisible: false,
+    //         });
+    //     }
+    // };
 
-    const renderBackdrop = useCallback(
-        (props: any) => (
-            <BottomSheetBackdrop
-                appearsOnIndex={0}
-                disappearsOnIndex={-1}
-                {...props}
-            />
-        ),
-        [],
-    );
+    // const renderBackdrop = useCallback(
+    //     (props: any) => (
+    //         <BottomSheetBackdrop
+    //             appearsOnIndex={0}
+    //             disappearsOnIndex={-1}
+    //             {...props}
+    //         />
+    //     ),
+    //     [],
+    // );
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -349,17 +363,6 @@ export default function HomeScreen() {
                         </View>
                     )}
                 </ScrollView>
-                <BottomSheet
-                    ref={bottomSheetRef}
-                    index={-1}
-                    backdropComponent={renderBackdrop}
-                    snapPoints={snapPoints}
-                    enablePanDownToClose
-                    topInset={insets.top}
-                    onChange={handleSheetChange}
-                >
-                    <CommentsModal />
-                </BottomSheet>
             </SafeAreaView>
         </GestureHandlerRootView>
     );

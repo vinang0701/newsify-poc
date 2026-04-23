@@ -20,15 +20,16 @@ type NewsPostCardProps = {
 
 function NewsPostCard({ news }: NewsPostCardProps) {
     const colorScheme = useColorScheme() ?? "light";
-    const [like, setLike] = useState(false);
-    const [bookmark, setBookmark] = useState(false);
-    const [likeCount, setLikeCount] = useState(20);
+    const [like, setLike] = useState(news.has_liked);
+    const [bookmark, setBookmark] = useState(news.has_saved);
+    const [likeCount, setLikeCount] = useState(news.likes_count);
     const router = useRouter();
 
     function handleNavigate(user_id: string) {
         console.log(user_id);
         router.push({
-            pathname: "/(tabs)/profile_page/[user_id]",
+            // pathname: "/(tabs)/profile_page/[user_id]",
+            pathname: "/[user_id]",
             params: { user_id: user_id },
         });
     }
@@ -38,7 +39,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
         if (!like) {
             setLikeCount(likeCount + 1);
         } else {
-            setLikeCount(20);
+            setLikeCount(news.likes_count);
         }
     }
 
@@ -159,24 +160,30 @@ function NewsPostCard({ news }: NewsPostCardProps) {
 
                         <ThemedText>{likeCount}</ThemedText>
                     </Pressable>
-                    <Link href="/comment" push asChild>
-                        <Pressable
-                            style={{
-                                flex: 0,
-                                flexDirection: "row",
-                                gap: 4,
-                                justifyContent: "flex-start",
-                                alignItems: "center",
-                            }}
-                        >
-                            <Feather
-                                name="message-square"
-                                size={24}
-                                color="black"
-                            />
-                            <ThemedText>3</ThemedText>
-                        </Pressable>
-                    </Link>
+                    {/* <Link href="/comment" push asChild> */}
+                    <Pressable
+                        style={{
+                            flex: 0,
+                            flexDirection: "row",
+                            gap: 4,
+                            justifyContent: "flex-start",
+                            alignItems: "center",
+                        }}
+                        onPress={() =>
+                            router.push({
+                                pathname: "/comment",
+                                params: { post_id: news.id },
+                            })
+                        }
+                    >
+                        <Feather
+                            name="message-square"
+                            size={24}
+                            color="black"
+                        />
+                        <ThemedText>{news.comments_count}</ThemedText>
+                    </Pressable>
+                    {/* </Link> */}
                 </View>
                 <Pressable onPress={() => setBookmark(!bookmark)}>
                     {bookmark ? (

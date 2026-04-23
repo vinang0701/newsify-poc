@@ -1,6 +1,11 @@
 from supabase import Client
 from typing import List
-from app.models.community import Community, CommunityMembership, CommunityMember, CommunityApplication
+from app.models.community import (
+    Community,
+    CommunityMembership,
+    CommunityMember,
+    CommunityApplication,
+)
 from app.core.db import supabase
 import uuid
 
@@ -143,8 +148,6 @@ async def get_community_membership(supabase, user_id: str):
 
 
 async def leave_community(supabase: Client, community_id: str, user_id: str):
-    print(user_id)
-    print(community_id)
     response = (
         supabase.table("community_members")
         .delete()
