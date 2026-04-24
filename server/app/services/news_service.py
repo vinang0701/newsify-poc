@@ -22,6 +22,7 @@ async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
         """
         )
         .eq("inst_id", inst_id)
+        .eq("status", "PUBLISHED") #<- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -78,6 +79,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
         """
         )
         .eq("community_id", community_id)
+        .eq("status", "PUBLISHED") #<- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -228,6 +230,7 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
         """
         )
         .eq("author", user_id)
+        .eq("status", "PUBLISHED") #<- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -312,6 +315,7 @@ async def get_personalised_news(supabase: Client, inst_id: str, user_id: str) ->
         )
         .eq("inst_id", inst_id)                  # only this institution
         .in_("category_id", preferred_ids)        # only matching categories
+        .eq("status", "PUBLISHED") #<- show only published posts. no suspended posts
         .order("created_at", desc=True)           # newest first
         .execute()
     )

@@ -34,6 +34,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
 import axios, { AxiosError } from "axios";
 import Loading from "@/components/loading";
+import { supabase } from "@/lib/supabase";
 
 const HEADER_HEIGHT = 250;
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
@@ -228,6 +229,14 @@ export default function CommunityPage() {
             </SafeAreaView>
         );
     }
+
+    const { data: currentUser } = useQuery({
+        queryKey: ["current_user"],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            return user;
+        },
+    });
 
     return (
         <GestureHandlerRootView>
@@ -430,7 +439,7 @@ export default function CommunityPage() {
                                 nestedScrollEnabled={false}
                                 data={data}
                                 renderItem={({ item, index }) => (
-                                    <NewsPostCard news={item} key={index} />
+                                    <NewsPostCard news={item} key={index} currentUserId={currentUser?.id} />
                                 )}
                             />
                         </View>

@@ -294,7 +294,7 @@ export default function HomeScreen() {
                                 style={{ marginBottom: 16 }}
                                 data={data}
                                 renderItem={({ item }) => (
-                                    <NewsPostCard news={item} key={item.id} />
+                                    <NewsPostCard news={item} key={item.id} currentUserId={currentUser?.id} />
                                 )}
                             />
                         </View>
@@ -366,7 +366,7 @@ export default function HomeScreen() {
                                     style={{ marginBottom: 16 }}
                                     data={personalisedData}
                                     renderItem={({ item }) => (
-                                        <NewsPostCard news={item} key={item.id} />
+                                        <NewsPostCard news={item} key={item.id} currentUserId={currentUser?.id} />
                                     )}
                                 />
                             )}
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)", // dark transparent background
     justifyContent: "flex-end",          // card sticks to bottom like a bottom sheet
     },
-    
+
     modalCard: {
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
