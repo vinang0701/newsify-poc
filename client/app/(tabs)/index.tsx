@@ -65,7 +65,6 @@ export default function HomeScreen() {
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
-        console.log("refetching");
         refetch();
         setTimeout(() => {
             setRefreshing(false);
@@ -73,21 +72,18 @@ export default function HomeScreen() {
     }, []);
 
     // Testing
-    const { status, data, error, isFetching, refetch } = useQuery<News[]>({
+    const {
+        data: news = [],
+        isLoading,
+        error,
+        refetch,
+    } = useQuery<News[]>({
         queryKey: ["news"],
-        queryFn: async (): Promise<News[]> => {
-            try {
-                const response = await api.get(`${inst_id}/news/feed`);
-
-                return response.data;
-            } catch (error) {
-                console.error(
-                    "Error occurred when fetching news posts: " + error,
-                );
-                throw new Error(
-                    "Error occurred when fetching news posts: " + error,
-                );
-            }
+        queryFn: async () => {
+            const response = await api.get(`${inst_id}/news/feed`);
+            // Optional: Zod validation here
+            // return NewsSchema.array().parse(response.data);
+            return response.data;
         },
     });
 
@@ -186,7 +182,7 @@ export default function HomeScreen() {
                         <View style={{ paddingBottom: insets.bottom + 20 }}>
                             <FlashList
                                 style={{ marginBottom: 16 }}
-                                data={data}
+                                data={news}
                                 renderItem={({ item }) => (
                                     <NewsPostCard news={item} key={item.id} />
                                 )}

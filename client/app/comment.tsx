@@ -1,4 +1,5 @@
 import {
+    ActivityIndicator,
     Modal,
     Pressable,
     StyleSheet,
@@ -39,6 +40,10 @@ import api from "@/lib/axios";
 import { PostComment } from "@/data/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import DropdownMenu, { MenuOption } from "@/components/dropdown_menu";
+import Feather from "@expo/vector-icons/Feather";
 
 export const CreateCommentSchema = z.object({
     comment_text: z
@@ -61,6 +66,10 @@ const Comment = () => {
         undefined,
     );
 
+    // Report modal
+    const [modalVisible, setModalVisible] = useState(false);
+    const [reportCommentId, setReportCommentId] = useState<string | null>(null);
+
     // from comments modal
     const colorScheme = useColorScheme() ?? "light";
     // const insets = useSafeAreaInsets();
@@ -70,10 +79,10 @@ const Comment = () => {
     const [commentParentId, setCommentParentId] = useState<string | undefined>(
         undefined,
     );
+    const [expandedComments, setExpandedComments] = useState<Set<string>>(
+        new Set(),
+    );
     const BottomSheetFlashListScrollable = useBottomSheetScrollableCreator();
-    useEffect(() => {
-        console.log(session?.access_token);
-    }, []);
 
     if (!metadata) {
         console.error("Unable to retrieve metadata from JWt.");
@@ -86,24 +95,20 @@ const Comment = () => {
     const post_id = params.post_id;
 
     const fetchPostComments = async (): Promise<PostComment[]> => {
-        try {
-            const response = await api.get(
-                `${inst_id}/news/${post_id}/comments`,
-            );
+        const response = await api.get(`${inst_id}/news/${post_id}/comments`);
 
-            return response.data;
-        } catch (error) {
-            throw new Error(
-                "Error occurred while fetching post comments: " + error,
-            );
-        }
+        return response.data;
     };
 
-    const { data: comment_data, error: comment_error } = useQuery<
-        PostComment[]
-    >({
+    const {
+        isFetching: isFetchingComments,
+        data: comment_data,
+        error: comment_error,
+    } = useQuery<PostComment[]>({
         queryKey: ["comments", post_id],
         queryFn: fetchPostComments,
+        staleTime: 1000 * 60 * 5,
+        gcTime: 1000 * 60 * 30,
     });
 
     // useMutation create comment
@@ -138,6 +143,9 @@ const Comment = () => {
                 queryClient.invalidateQueries({
                     queryKey: ["comments", post_id],
                 });
+                queryClient.invalidateQueries({
+                    queryKey: ["news"],
+                });
             },
             onError: (error) => {
                 console.log(error);
@@ -154,11 +162,15 @@ const Comment = () => {
     };
 
     // Reply functions
-    const handleReply = (commentId: string, name: string) => {
-        setCommentParentId(commentId);
-        setReplyingToName(name);
+    const handleReply = (
+        commentId: string,
+        name: string,
+        parentCommentId?: string,
+    ) => {
+        const actualParentId = parentCommentId || commentId;
 
-        // Smoothly focus the input
+        setCommentParentId(actualParentId);
+        setReplyingToName(name);
         inputRef.current?.focus();
     };
 
@@ -178,45 +190,112 @@ const Comment = () => {
         [],
     );
 
+    // calculate elapsed days since commented
+    dayjs.extend(relativeTime);
+
+    const getRelativeTime = (date: string) => {
+        const now = dayjs();
+        const then = dayjs(date);
+        const diffInSeconds = now.diff(then, "second");
+        const diffInMinutes = now.diff(then, "minute");
+        const diffInHours = now.diff(then, "hour");
+        const diffInDays = now.diff(then, "day");
+        const diffInWeeks = now.diff(then, "week");
+
+        if (diffInSeconds < 60) return "now";
+        if (diffInMinutes < 60) return `${diffInMinutes}m`;
+        if (diffInHours < 24) return `${diffInHours}h`;
+        if (diffInDays < 7) return `${diffInDays}d`;
+        if (diffInWeeks < 52) return `${diffInWeeks}w`;
+        return then.format("MM/DD/YY");
+    };
+
     // Testing flattening data
     const flattenComments = (comments: any[]) => {
-        const map = new Map();
-        const roots: any[] = [];
+        const commentMap = new Map(
+            comments.map((c) => [
+                c.comment_id,
+                {
+                    ...c,
+                    displayTime: getRelativeTime(c.created_at),
+                },
+            ]),
+        );
 
-        // 1. Initialize map with depth 0
-        comments.forEach((c) => {
-            map.set(c.comment_id, { ...c, replies: [], depth: 0 });
-        });
-
-        // 2. Attach replies to parents
         const flattened: any[] = [];
-        const traverse = (node: any, depth: number) => {
-            flattened.push({ ...node, depth });
+
+        // 1. Get all Top-Level comments (Depth 0)
+        const roots = comments
+            .filter((c) => !c.parent_comment_id)
+            .sort(
+                (a, b) =>
+                    new Date(b.created_at).getTime() -
+                    new Date(a.created_at).getTime(),
+            );
+
+        roots.forEach((root) => {
+            const enrichedRoot = commentMap.get(root.comment_id);
+            flattened.push({ ...enrichedRoot, depth: 0 });
+
+            // 2. Find all descendants (Replies to this parent, or replies to those replies)
+            // We find anything that eventually traces back to this root.
+            // For a simple "max 1 depth", we find all comments where parent_comment_id == root.comment_id
             const replies = comments
-                .filter((c) => c.parent_comment_id === node.comment_id)
+                .filter((c) => c.parent_comment_id === root.comment_id)
                 .sort(
                     (a, b) =>
                         new Date(a.created_at).getTime() -
                         new Date(b.created_at).getTime(),
                 );
 
-            replies.forEach((reply) =>
-                traverse(map.get(reply.comment_id), depth + 1),
-            );
-        };
+            const isExpanded = expandedComments.has(root.comment_id);
 
-        // 3. Find top-level comments and start traversal
-        comments
-            .filter((c) => !c.parent_comment_id)
-            .forEach((root) => traverse(map.get(root.comment_id), 0));
+            if (replies.length > 0) {
+                if (isExpanded) {
+                    replies.forEach((reply) => {
+                        const parent = commentMap.get(reply.parent_comment_id);
+                        flattened.push({
+                            ...commentMap.get(reply.comment_id),
+                            depth: 1,
+                            reply_to_user_name: parent?.commented_by_user_name,
+                        });
+                    });
+                    flattened.push({
+                        comment_id: `hide-${root.comment_id}`,
+                        type: "hide_trigger",
+                        parent_comment_id: root.comment_id,
+                        depth: 1,
+                    });
+                } else {
+                    flattened.push({
+                        comment_id: `expand-${root.comment_id}`, // unique ID
+                        type: "expand_trigger",
+                        parent_comment_id: root.comment_id,
+                        count: replies.length,
+                        depth: 1,
+                    });
+                }
+            }
+        });
 
         return flattened;
     };
 
     const processedComments: any[] = useMemo(
         () => (comment_data ? flattenComments(comment_data) : []),
-        [comment_data],
+        [comment_data, expandedComments],
     );
+
+    const toggleExpandComment = (id: string) => {
+        setExpandedComments((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleReportPress = (comment_id: string) => {};
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -293,7 +372,97 @@ const Comment = () => {
                             </View>
                         }
                         renderItem={({ item }) => {
-                            const isReply = item.depth > 0;
+                            if (item.type === "expand_trigger") {
+                                return (
+                                    <Pressable
+                                        onPress={() =>
+                                            toggleExpandComment(
+                                                item.parent_comment_id,
+                                            )
+                                        }
+                                        style={{
+                                            marginLeft: 36,
+                                            paddingVertical: 4,
+                                        }}
+                                    >
+                                        <View
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                gap: 8,
+                                            }}
+                                        >
+                                            <View
+                                                style={{
+                                                    height: 1,
+                                                    width: 20,
+                                                    backgroundColor:
+                                                        Colors[colorScheme]
+                                                            .border,
+                                                }}
+                                            />
+                                            <ThemedText
+                                                type="body_small"
+                                                emphasized
+                                                style={{
+                                                    color: Colors[colorScheme]
+                                                        .caption,
+                                                }}
+                                            >
+                                                View {item.count} more{" "}
+                                                {item.count > 1
+                                                    ? "replies"
+                                                    : "reply"}
+                                            </ThemedText>
+                                        </View>
+                                    </Pressable>
+                                );
+                            }
+
+                            if (item.type === "hide_trigger") {
+                                return (
+                                    <Pressable
+                                        onPress={() =>
+                                            toggleExpandComment(
+                                                item.parent_comment_id,
+                                            )
+                                        }
+                                        style={{
+                                            marginLeft: 36,
+                                            paddingVertical: 4,
+                                        }}
+                                    >
+                                        <View
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                gap: 8,
+                                            }}
+                                        >
+                                            <View
+                                                style={{
+                                                    height: 1,
+                                                    width: 20,
+                                                    backgroundColor:
+                                                        Colors[colorScheme]
+                                                            .border,
+                                                }}
+                                            />
+                                            <ThemedText
+                                                type="body_small"
+                                                emphasized
+                                                style={{
+                                                    color: Colors[colorScheme]
+                                                        .caption,
+                                                }}
+                                            >
+                                                Hide replies
+                                            </ThemedText>
+                                        </View>
+                                    </Pressable>
+                                );
+                            }
+                            const isReply = item.depth === 1;
 
                             return (
                                 <View
@@ -322,111 +491,99 @@ const Comment = () => {
                                     />
 
                                     <View style={{ flex: 1 }}>
+                                        <View>
+                                            <View
+                                                style={{
+                                                    flexDirection: "row",
+                                                    gap: 4,
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <ThemedText
+                                                    type="body_small"
+                                                    emphasized
+                                                >
+                                                    {
+                                                        item.commented_by_user_name
+                                                    }
+                                                </ThemedText>
+                                                <ThemedText type="caption">
+                                                    {item.displayTime}
+                                                </ThemedText>
+                                            </View>
+                                            <View
+                                                style={{
+                                                    flexDirection: "row",
+                                                    gap: 4,
+                                                    alignItems: "center",
+                                                }}
+                                            >
+                                                <ThemedText type="body_small">
+                                                    {isReply &&
+                                                        item.reply_to_user_name && (
+                                                            <ThemedText
+                                                                type="body_small"
+                                                                emphasized
+                                                                style={{
+                                                                    color: Colors[
+                                                                        colorScheme
+                                                                    ].tint,
+                                                                }}
+                                                            >
+                                                                @
+                                                                {
+                                                                    item.reply_to_user_name
+                                                                }{" "}
+                                                            </ThemedText>
+                                                        )}
+                                                    {item.comment_text}
+                                                </ThemedText>
+                                            </View>
+                                        </View>
                                         <View
                                             style={{
                                                 flexDirection: "row",
-                                                gap: 4,
                                                 alignItems: "center",
+                                                gap: 12,
                                             }}
                                         >
-                                            <ThemedText
-                                                type="body_small"
-                                                emphasized
+                                            <Pressable
+                                                onPress={() =>
+                                                    handleReply(
+                                                        item.comment_id,
+                                                        item.commented_by_user_name,
+                                                        item.parent_comment_id,
+                                                    )
+                                                }
                                             >
-                                                {item.commented_by_user_name}
-                                            </ThemedText>
-                                            <ThemedText type="caption">
-                                                1d
-                                            </ThemedText>
+                                                <ThemedText
+                                                    type="caption"
+                                                    emphasized
+                                                    style={{
+                                                        color: Colors[
+                                                            colorScheme
+                                                        ].caption,
+                                                        marginTop: 4,
+                                                    }}
+                                                >
+                                                    Reply
+                                                </ThemedText>
+                                            </Pressable>
+                                            <Pressable
+                                                onPress={() =>
+                                                    setModalVisible(true)
+                                                }
+                                            >
+                                                <Feather
+                                                    size={14}
+                                                    name="flag"
+                                                />
+                                            </Pressable>
                                         </View>
-
-                                        <ThemedText type="body_small">
-                                            {item.comment_text}
-                                        </ThemedText>
-
-                                        <Pressable
-                                            onPress={() =>
-                                                handleReply(
-                                                    item.comment_id,
-                                                    item.commented_by_user_name,
-                                                )
-                                            }
-                                        >
-                                            <ThemedText
-                                                type="caption"
-                                                emphasized
-                                                style={{
-                                                    color: Colors[colorScheme]
-                                                        .caption,
-                                                    marginTop: 4,
-                                                }}
-                                            >
-                                                Reply
-                                            </ThemedText>
-                                        </Pressable>
                                     </View>
                                 </View>
                             );
                         }}
-                        // renderItem={({ item }) => (
-                        //     <View
-                        //         style={{
-                        //             flexDirection: "row",
-                        //             gap: 12,
-                        //         }}
-                        //     >
-                        //         {/* Image */}
-                        //         <Image
-                        //             source={require("@/assets/images/icon.png")}
-                        //             style={{
-                        //                 width: 36,
-                        //                 height: 36,
-                        //                 resizeMode: "contain",
-                        //                 borderWidth: 1,
-                        //                 borderColor: Colors[colorScheme].border,
-                        //                 borderRadius: 100,
-                        //             }}
-                        //         />
-                        //         {/* Info Container */}
-                        //         <View>
-                        //             <View
-                        //                 style={{ flexDirection: "row", gap: 4 }}
-                        //             >
-                        //                 <ThemedText
-                        //                     type="body_small"
-                        //                     emphasized
-                        //                 >
-                        //                     {item.commented_by_user_name}
-                        //                 </ThemedText>
-                        //                 <ThemedText type="caption">
-                        //                     1d
-                        //                 </ThemedText>
-                        //             </View>
-                        //             <ThemedText type="body_small">
-                        //                 {item.comment_text}
-                        //             </ThemedText>
-                        //             <Pressable
-                        //                 onPress={() =>
-                        //                     handleReply(
-                        //                         item.comment_id,
-                        //                         item.commented_by_user_name,
-                        //                     )
-                        //                 }
-                        //             >
-                        //                 <ThemedText
-                        //                     type="caption"
-                        //                     emphasized
-                        //                     style={{
-                        //                         color: Colors[colorScheme]
-                        //                             .caption,
-                        //                     }}
-                        //                 >
-                        //                     Reply
-                        //                 </ThemedText>
-                        //             </Pressable>
-                        //         </View>
-                        //     </View>
-                        // )}
                         renderScrollComponent={BottomSheetFlashListScrollable}
                     />
                     <View
@@ -492,6 +649,82 @@ const Comment = () => {
                     </View>
                 </BottomSheetView>
             </BottomSheet>
+            <Modal
+                animationType="slide"
+                visible={modalVisible}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() => {
+                    setModalVisible(!modalVisible);
+                    setReportCommentId(null);
+                }}
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            { backgroundColor: Colors[colorScheme].bg_light },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={styles.modalText}
+                        >
+                            Report comment?
+                        </ThemedText>
+                        <View style={{ flexDirection: "row", gap: 24 }}>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() => {
+                                    setModalVisible(false);
+                                    setReportCommentId(null);
+                                }}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        {
+                                            textAlign: "center",
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].alert_red,
+                                    },
+                                ]}
+                                onPress={() => {}}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        {
+                                            textAlign: "center",
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Report
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </GestureHandlerRootView>
     );
 };
@@ -504,10 +737,12 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         height: "100%",
     },
-    modalActionButtonCtn: {
-        flex: 0,
-        flexDirection: "row",
-        gap: 8,
+
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
     },
     modalView: {
         width: "100%",
@@ -524,6 +759,16 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 4,
         elevation: 5,
+    },
+    modalText: {
+        fontWeight: "bold",
+    },
+    button: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        elevation: 2,
     },
     commentsContainer: {
         paddingHorizontal: 16,

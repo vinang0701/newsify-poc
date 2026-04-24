@@ -186,7 +186,7 @@ const Login = () => {
                             </ThemedText>
                         </View>
                     )}
-                    <Link href={"/"}>
+                    <Link href={"/forgot_password"} push asChild>
                         <ThemedText
                             type="body_medium"
                             style={{

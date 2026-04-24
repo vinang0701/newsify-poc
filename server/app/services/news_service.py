@@ -1,6 +1,11 @@
 from supabase import Client
 from typing import List
-from app.models.news_post import NewsPost, Draft
+from app.models.news_post import (
+    NewsPost,
+    Draft,
+    LikeToggleResponse,
+    LikeToggleResponseData,
+)
 from app.core.db import supabase
 import uuid
 from fastapi import File, UploadFile
@@ -309,3 +314,24 @@ async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:
             for draft in response.data
         ]
     return []
+
+
+# ----------------------------
+# MY LIKES
+# ----------------------------
+async def toggle_post_like(post_id: uuid.UUID, user_id: uuid.UUID):
+    try:
+
+        response = supabase.rpc(
+            "toggle_post_like", {"p_post_id": str(post_id), "p_user_id": str(user_id)}
+        ).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404, detail="Post not found or update failed"
+            )
+
+        return LikeToggleResponseData(**response.data[0])
+    except APIError as e:
+        # Log the error and raise a clean message
+        raise HTTPException(status_code=400, detail=f"Database error: {e.message}")

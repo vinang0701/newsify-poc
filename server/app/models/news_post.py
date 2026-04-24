@@ -45,3 +45,13 @@ class PostComment(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class LikeToggleResponseData(BaseModel):
+    new_likes_count: int
+    is_liked: bool
+
+
+class LikeToggleResponse(BaseModel):
+    status: str = "success"
+    data: LikeToggleResponseData

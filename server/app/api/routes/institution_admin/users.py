@@ -14,7 +14,7 @@ from pydantic import EmailStr, BaseModel
 from app.services.institution_admin import users_service
 from app.core.db import supabase
 from app.core.config import settings
-from app.core.auth import verify_admin, get_current_user
+from app.core.auth import verify_admin, get_current_user, UserPayload
 from app.models.admin import CreateUser
 
 router = APIRouter(
@@ -39,16 +39,16 @@ async def get_student_users(inst_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/", status_code=201)
+@router.post("", status_code=201)
 async def create_user_route(
-    current_user: dict = Depends(get_current_user),
+    current_user: UserPayload = Depends(get_current_user),
     new_user_name: str = Form(...),
     new_user_email: EmailStr = Form(...),
     password: str = Form(...),
     role: str = Form(...),
 ):
     try:
-        inst_id = current_user.get("app_metadata", {}).get("inst_id")
+        inst_id = current_user.inst_id
         if not inst_id:
             raise HTTPException(
                 status_code=403,

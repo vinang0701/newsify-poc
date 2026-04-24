@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from app.services import news_service, comment_service
 from app.core.config import settings
 from app.core.db import supabase
-from app.models.news_post import PostComment, PostCommentCreate
+from app.models.news_post import PostComment, PostCommentCreate, LikeToggleResponse
 from app.core.auth import get_current_user
 
 # from app.dependencies.auth import get_current_user
@@ -78,3 +78,21 @@ async def create_comment(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal error occurred while processing the comment.",
         )
+
+
+# ----------------------------
+# MY LIKES
+# ----------------------------
+@router.post("/{post_id}/likes", response_model=LikeToggleResponse)
+async def toggle_post_like(
+    post_id: uuid.UUID, current_user: UserPayload = Depends(get_current_user)
+):
+    try:
+        user_id = current_user.id
+        result = await news_service.toggle_post_like(post_id=post_id, user_id=user_id)
+        return {
+            "status": "success",
+            "data": result,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error while toggling likes: {e}")
