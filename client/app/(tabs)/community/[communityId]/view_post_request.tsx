@@ -25,9 +25,7 @@ import axios from "axios";
 import { Image } from "expo-image";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { PostRequest } from "@/data/types";
-
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+import { useCommunityPostRequests } from "@/hooks/useCommunityPostRequests";
 
 const testData = [
     {
@@ -56,36 +54,38 @@ const testData = [
         author: "Victor Lim",
         created_at: "10/01/2026"
     },
-    {
-        id: "2",
-        title: "Weekly News",
-        description: "Here’s what happened in Newsify School this week!",
-        thumbnail: require("@/assets/images/android-icon-background.png"),
-        author: "Victor Lim",
-        created_at: "10/01/2026"
-    },
 ];
 
-type PostRequestCardProps = {
-    request: PostRequest;
-};
-
-export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
+export default function ViewPostRequestPage() {
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
-    const [activeFilter, setActiveFilter] = useState("All");
     const [approveModalVisible, setApproveModalVisible] = useState(false);
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
 
     const params = useLocalSearchParams<{
-        user_id?: string;
         inst_id?: string;
-        community_id: string;
+        communityId: string;
+        request_id: string;
     }>();
+    const communityId = params.communityId;
+    const inst_id = params.inst_id;
+    const request_id = params.request_id;
 
-    const user_id = params.user_id ?? "7369b0d7-3ba3-4a28-bfbe-0e7addaf3eec";
-    const community_id = params.community_id ?? "96454f8b-d680-4fe9-92ea-04d1df8c5a55";
-    const inst_id = params.inst_id ?? FALLBACK_INST_ID;
+    const {
+        requests: postRequestDetails,
+        loading: postRequestDetailsLoading,
+        refreshing: postRequestDetailsRefreshing,
+        error: postRequestDetailsError,
+        refresh: postRequestDetailsRefresh
+    } = useCommunityPostRequests(inst_id, communityId);
+
+    const selectedRequest = postRequestDetails.filter((request) => {
+        return request.request_id === request_id;
+    })[0];
+
+    console.log("Post Requests:", selectedRequest);
+    console.log("Request ID:", request_id);
+    console.log("Community ID:", communityId);
 
     return (
         <SafeAreaView style={{ flex: 1 }}>
@@ -138,7 +138,7 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                                     style={{ width: 28, height: 28 }}
                                 />
                                 <ThemedText type="defaultSemiBold">
-                                    {testData[0].author}
+                                    {selectedRequest.author_name}
                                 </ThemedText>
                             </View>
                         </Pressable>
@@ -155,7 +155,7 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                         <Image
                             alt="image"
                             source={
-                                testData[0].thumbnail
+                                selectedRequest.image_url
                             }
                             style={{
                                 width: "100%",
@@ -171,7 +171,7 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                                 fontSize: 20,
                             }}
                         >
-                            {testData[0].title}
+                            {selectedRequest.title}
                         </ThemedText>
                         <ThemedText
                             style={{
@@ -180,7 +180,7 @@ export default function ViewPostRequestPage({ request }: PostRequestCardProps) {
                                 fontSize: 14,
                             }}
                         >
-                            {testData[0].description}
+                            {selectedRequest.description}
                         </ThemedText>
                     </View>
                     <View style={[

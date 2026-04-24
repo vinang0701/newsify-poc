@@ -221,10 +221,9 @@ async def get_community_post_requests(supabase, community_id: str) -> list[Commu
             """
             request_id,
             status,
-            description,
             reviewed_at,
             rejection_reason,
-            news_posts(id, title, created_at),
+            news_posts(id, title, created_at, description, image_url),
             author_name:requested_by_user_id(name),
             reviewed_by:reviewed_by_user_id(name)
             """
@@ -239,9 +238,11 @@ async def get_community_post_requests(supabase, community_id: str) -> list[Commu
     result = []
 
     for row in response.data or []:
-        author_name = row.get("author_name", {}).get("name", "Unknown")
-        reviewed_by = row.get("reviewed_by", {}).get("name", "Unknown") if row.get("reviewed_by") else "NULL"
+        author_name = row.get("author_name", {}).get("name", "")
+        reviewed_by = row.get("reviewed_by", {}).get("name", "") if row.get("reviewed_by") else "NULL"
+        image_url = row.get("news_posts", {}).get("image_url", "")
         title = row.get("news_posts", {}).get("title", "Untitled")
+        description = row.get("news_posts", {}).get("description", "")
         created_at = datetime.fromisoformat(row.get("news_posts", {}).get("created_at", ""))
         formatted_created_at = created_at.strftime("%d/%m/%Y")
         reviewed_at = datetime.fromisoformat(row["reviewed_at"]) if row.get("reviewed_at") else None
@@ -251,8 +252,9 @@ async def get_community_post_requests(supabase, community_id: str) -> list[Commu
             CommunityPostRequest(
                 request_id = row["request_id"],
                 author_name = author_name,
+                image_url = image_url,
                 title = title,
-                description = row["description"],
+                description = description,
                 status = row["status"],
                 created_at = formatted_created_at,
                 reviewed_at = formatted_reviewed_at,

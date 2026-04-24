@@ -50,6 +50,7 @@ class CommunityMember(BaseModel):
 class CommunityPostRequest(BaseModel):
     request_id: str
     author_name: str
+    image_url: str
     title: str
     description: str
     status: str
