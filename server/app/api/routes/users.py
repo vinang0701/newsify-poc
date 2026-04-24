@@ -416,3 +416,61 @@ async def search_users(
     except Exception as e:
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail="Error searching users")
+    
+
+# Check if a post is saved by the current user
+@router.get("/users/me/saved/{post_id}")
+async def check_saved_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        is_saved = await news_service.is_post_saved(supabase, str(user_id), post_id)
+        return { "is_saved": is_saved }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not check saved status")
+
+
+# Save a post
+@router.post("/users/me/saved/{post_id}")
+async def save_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.save_post(supabase, str(user_id), post_id)
+        return { "status": "success", "message": "Post saved successfully" }
+    except Exception as e:
+        # If already saved, duplicate key error will be thrown
+        if "duplicate key" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Post already saved")
+        raise HTTPException(status_code=500, detail="Could not save post")
+
+
+# Unsave a post
+@router.delete("/users/me/saved/{post_id}")
+async def unsave_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.unsave_post(supabase, str(user_id), post_id)
+        return { "status": "success", "message": "Post unsaved successfully" }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not unsave post")
+
+
+# Get all saved posts for current user
+@router.get("/users/me/saved")
+async def get_saved_posts(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        saved_posts = await news_service.get_saved_posts(supabase, str(user_id))
+        return saved_posts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch saved posts")

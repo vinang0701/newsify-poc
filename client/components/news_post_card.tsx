@@ -7,7 +7,7 @@ import {
     Alert,
     Modal,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
@@ -22,6 +22,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
 
+const BASE_URL = "http://10.0.2.2:8000/api/v1";
+
 type NewsPostCardProps = {
     news: News;
     currentUserId?: string //if not passed, suspend wont show. need to check if current user is the logged in user to be able to suspend own post
@@ -31,6 +33,7 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
     const colorScheme = useColorScheme() ?? "light";
     const [like, setLike] = useState(false);
     const [bookmark, setBookmark] = useState(false);
+    const [bookmarkLoading, setBookmarkLoading] = useState(false);
     const [likeCount, setLikeCount] = useState(20);
     const router = useRouter();
 
@@ -53,6 +56,29 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
     );
 
     const queryClient = useQueryClient();
+
+    // Add below your existing useEffect or state declarations
+    useEffect(() => {
+        const checkSaved = async () => {
+            if (!currentUserId) return;
+            try {
+                const response = await fetch(
+                    `${BASE_URL}/users/me/saved/${news.id}`,
+                    {
+                        headers: {
+                            // Get the session token for auth
+                            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                        }
+                    }
+                );
+                const data = await response.json();
+                setBookmark(data.is_saved); // pre-set bookmark state based on DB
+            } catch (err) {
+                console.log("Could not check saved status", err);
+            }
+        };
+        checkSaved();
+    }, [currentUserId, news.id]);
 
     function handleNavigate(user_id: string) {
         console.log(user_id);
@@ -103,6 +129,39 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
             Alert.alert("Error", "Could not suspend post. Please try again.");
         } finally {
             setSuspending(false);
+        }
+    };
+
+
+    const handleBookmark = async () => {
+        if (!currentUserId || bookmarkLoading) return;
+        setBookmarkLoading(true);
+
+        try {
+            // Get auth token
+            const token = (await supabase.auth.getSession()).data.session?.access_token;
+
+            if (bookmark) {
+                // Already saved → unsave it
+                await fetch(`${BASE_URL}/users/me/saved/${news.id}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setBookmark(false);
+            } else {
+                // Not saved → save it
+                await fetch(`${BASE_URL}/users/me/saved/${news.id}`, {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                setBookmark(true);
+            }
+            // Refetch saved posts query so bookmarks page updates
+            queryClient.invalidateQueries({ queryKey: ["saved_posts"] });
+        } catch (err) {
+            Alert.alert("Error", "Could not update bookmark. Please try again.");
+        } finally {
+            setBookmarkLoading(false);
         }
     };
 
@@ -243,7 +302,7 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
                             </Pressable>
                         </Link>
                     </View>
-                    <Pressable onPress={() => setBookmark(!bookmark)}>
+                    <Pressable onPress={handleBookmark} disabled={bookmarkLoading}>
                         {bookmark ? (
                             <MaterialCommunityIcons
                                 name="bookmark"

@@ -337,3 +337,80 @@ async def get_personalised_news(supabase: Client, inst_id: str, user_id: str) ->
         )
         for post in response.data
     ]
+
+async def save_post(supabase: Client, user_id: str, post_id: str) -> dict:
+    # Insert a new row into saved_post table
+    response = (
+        supabase.table("saved_post")
+        .insert({
+            "user_id": user_id,
+            "post_id": post_id,
+        })
+        .execute()
+    )
+    return response.data
+
+async def unsave_post(supabase: Client, user_id: str, post_id: str) -> dict:
+    # Delete the row from saved_post table
+    response = (
+        supabase.table("saved_post")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("post_id", post_id)
+        .execute()
+    )
+    return response.data
+
+async def get_saved_posts(supabase: Client, user_id: str) -> List[dict]:
+    # Fetch all posts saved by this user
+    response = (
+        supabase.table("saved_post")
+        .select(
+            """
+            post_id,
+            news_posts!inner(
+                id,
+                author,
+                title,
+                description,
+                image_url,
+                content,
+                status,
+                users!news_posts_author_fkey!inner(name, image_url)
+            )
+            """
+        )
+        .eq("user_id", user_id)                          # only this user's saved posts
+        .eq("news_posts.status", "PUBLISHED")            # only published posts
+        .order("saved_at", desc=True)                    # most recently saved first
+        .execute()
+    )
+
+    if not response.data:
+        return []
+
+    return [
+        NewsPost(
+            id=row["news_posts"]["id"],
+            author_id=row["news_posts"]["author"],
+            author=row["news_posts"]["users"]["name"],
+            title=row["news_posts"]["title"],
+            description=row["news_posts"]["description"] or "",
+            image_url=row["news_posts"]["image_url"] or "",
+            content=row["news_posts"]["content"] or {},
+        )
+        for row in response.data
+    ]
+
+async def is_post_saved(supabase: Client, user_id: str, post_id: str) -> bool:
+    # Check if a specific post is already saved by this user
+    response = (
+        supabase.table("saved_post")
+        .select("post_id")
+        .eq("user_id", user_id)
+        .eq("post_id", post_id)
+        .limit(1)
+        .execute()
+    )
+    # Returns True if a row exists, False if not
+    return len(response.data) > 0

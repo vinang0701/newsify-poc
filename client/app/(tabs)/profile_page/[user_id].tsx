@@ -475,6 +475,23 @@ export default function Profile() {
                                 </ThemedText>
                             </Pressable>
 
+                            <Pressable
+                                style={styles.modalActionButtonCtn}
+                                onPress={() => {
+                                    bottomSheetRef.current?.close();
+                                    router.push("/(tabs)/profile_page/bookmarks");
+                                }}
+                            >
+                                <Feather
+                                    name="bookmark"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    View bookmarks
+                                </ThemedText>
+                            </Pressable>
+
                             <Pressable style={styles.modalActionButtonCtn}
                                 onPress={() => {
                                     bottomSheetRef.current?.close(); // close the bottom sheet first
