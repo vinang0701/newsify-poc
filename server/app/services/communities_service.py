@@ -1,8 +1,9 @@
 from supabase import Client
 from typing import List
-from app.models.community import Community, CommunityMembership, CommunityMember, CommunityApplication
+from app.models.community import Community, CommunityMembership, CommunityMember, CommunityApplication, CommunityPostRequest
 from app.core.db import supabase
 import uuid
+from datetime import datetime
 
 
 async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
@@ -75,7 +76,7 @@ async def get_community(supabase: Client, community_id: str) -> List[dict]:
 # For now, insert in both communities_requests table and communities table
 async def create_community_application(
     supabase: Client, formData: CommunityApplication
-):
+    ):
     req_res = (
         supabase.table("community_requests")
         .insert(
@@ -211,3 +212,53 @@ async def get_members_by_community(supabase: Client, community_id: str):
     ]
 
     return memberships
+
+
+async def get_community_post_requests(supabase, community_id: str) -> list[CommunityPostRequest]:
+    response = (
+        supabase.table("community_post_requests")
+        .select(
+            """
+            request_id,
+            status,
+            description,
+            reviewed_at,
+            rejection_reason,
+            news_posts(id, title, created_at),
+            author_name:requested_by_user_id(name),
+            reviewed_by:reviewed_by_user_id(name)
+            """
+        )
+        .eq("community_id", community_id)
+        .order("news_posts(created_at)", desc=True)
+        .execute()
+    )
+    print(f"Fetching post requests for community_id: {community_id}")
+    print("Response:", response)
+
+    result = []
+
+    for row in response.data or []:
+        author_name = row.get("author_name", {}).get("name", "Unknown")
+        reviewed_by = row.get("reviewed_by", {}).get("name", "Unknown") if row.get("reviewed_by") else "NULL"
+        title = row.get("news_posts", {}).get("title", "Untitled")
+        created_at = datetime.fromisoformat(row.get("news_posts", {}).get("created_at", ""))
+        formatted_created_at = created_at.strftime("%d/%m/%Y")
+        reviewed_at = datetime.fromisoformat(row["reviewed_at"]) if row.get("reviewed_at") else None
+        formatted_reviewed_at = reviewed_at.strftime("%d/%m/%Y") if reviewed_at else None
+
+        result.append(
+            CommunityPostRequest(
+                request_id = row["request_id"],
+                author_name = author_name,
+                title = title,
+                description = row["description"],
+                status = row["status"],
+                created_at = formatted_created_at,
+                reviewed_at = formatted_reviewed_at,
+                reviewed_by = reviewed_by,
+                rejection_reason = row.get("rejection_reason"),
+            )
+        )
+
+    return result

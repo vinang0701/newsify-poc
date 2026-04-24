@@ -67,3 +67,15 @@ export interface PostRequest {
     reviewed_by_user_id: string;
     rejection_reason: string;
 };
+
+export interface CommunityPostRequest {
+    request_id: string;
+    author_name: string;
+    title: string;
+    description: string;
+    status: string;
+    created_at: string;
+    reviewed_at?: string | null;
+    reviewed_by?: string | null;
+    rejection_reason?: string | null;
+}

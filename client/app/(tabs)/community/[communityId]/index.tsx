@@ -121,6 +121,7 @@ export default function CommunityPage() {
         }
     }
 
+    {/*
     async function fetchUserRole(communityId: string, user_id: string) {
         try {
             const response = await axios.get(
@@ -140,6 +141,7 @@ export default function CommunityPage() {
         queryKey: ["user_role", communityId, user_id],
         queryFn: () => fetchUserRole(communityId, user_id),
     });
+    */}
 
     async function leaveCommunity() {
         console.log("Leaving community");
@@ -472,7 +474,7 @@ export default function CommunityPage() {
                                 bottomSheetRef.current?.close();
                                 router.push({
                                     pathname: "community/[communityId]/post_requests",
-                                    params: { communityId: communityId },
+                                    params: { communityId: communityId, inst_id:  inst_id},
                                 });
                             }}
                         >

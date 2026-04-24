@@ -24,9 +24,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Image } from "expo-image";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+import { useCommunityPostRequests } from "@/hooks/useCommunityPostRequests";
 
 const testData = [
     {
@@ -49,12 +47,15 @@ const testData = [
     },
 ];
 
-const DATA = [
+const filterTag = [
     {
         filter: "All",
     },
     {
-        filter: "Past Requests",
+        filter: "Approved",
+    },
+    {
+        filter: "Rejected",
     },
 ];
 
@@ -64,19 +65,27 @@ export default function PostRequestPage() {
     const [activeFilter, setActiveFilter] = useState("All");
 
     const params = useLocalSearchParams<{
-        user_id?: string;
         inst_id?: string;
-        community_id: string;
+        communityId: string;
     }>();
+    const communityId = params.communityId;
+    const inst_id = params.inst_id;
 
-    const user_id = params.user_id ?? "7369b0d7-3ba3-4a28-bfbe-0e7addaf3eec";
-    const community_id = params.community_id ?? "96454f8b-d680-4fe9-92ea-04d1df8c5a55";
-    const inst_id = params.inst_id ?? FALLBACK_INST_ID;
+    const {
+        requests,
+        loading,
+        refreshing,
+        error,
+        refresh,
+    } = useCommunityPostRequests(inst_id, communityId);
 
     function goToViewPostRequest(request_id: string) {
         router.push({
-            pathname: "/(tabs)/community/[communityId]/view_post_request",
-            params: { request_id: request_id, inst_id: inst_id, communityId: community_id, user_id: user_id },
+            pathname: "/(tabs)/community/[communityId]/post_requests",
+            params: {
+                communityId,
+                inst_id,
+            }
         });
     }
 
@@ -125,7 +134,7 @@ export default function PostRequestPage() {
                 <FlashList
                     horizontal={true}
                     style={{ marginBottom: 12, elevation: 10 }}
-                    data={DATA}
+                    data={filterTag}
                     renderItem={({ item }) => (
                         <Pressable
                             style={{
@@ -166,12 +175,12 @@ export default function PostRequestPage() {
                 />
                 <FlashList
                     showsVerticalScrollIndicator={false}
-                    data={testData}
+                    data={requests}
                     renderItem={({ item }) => (
                     <Pressable
                         onPress={() => {
-                            console.log("request_id:", item.id, "community_id:", community_id, "user_id:", user_id);
-                            goToViewPostRequest(item.id);
+                            console.log("request_id:", item.request_id, "community_id:", item.community_id, "user_id:", item.author_name);
+                            goToViewPostRequest(item.request_id);
                         }}
                     >
                         <View
@@ -229,7 +238,7 @@ export default function PostRequestPage() {
                                             style={{ width: 26, height: 26 }}
                                         />
                                         <ThemedText type="caption" emphasized>
-                                            {item.author}
+                                            {item.author_name}
                                         </ThemedText>
                                     </View>
                                     <View

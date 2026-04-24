@@ -90,6 +90,7 @@ async def get_community_members(inst_id: str, community_id: str):
         print(f"Error fetching members: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community members")
 
+
 @router.get("/{community_id}/members/me/role")
 async def get_community_role(
     inst_id: str,
@@ -104,3 +105,15 @@ async def get_community_role(
     except Exception as e:
         print(f"Error fetching members: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community role")
+
+
+@router.get("/{community_id}/post_requests")
+async def get_community_post_requests(inst_id: str, community_id: str):
+    try:
+        post_request = await communities_service.get_community_post_requests(
+            supabase, community_id
+        )
+        return post_request
+    except Exception as e:
+        print(f"Error fetching members: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch community post requests")

@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from pydantic import EmailStr, BaseModel
 
 
@@ -45,3 +45,19 @@ class CommunityMember(BaseModel):
     user_id: uuid.UUID
     name: str
     role: str
+
+
+class CommunityPostRequest(BaseModel):
+    request_id: str
+    author_name: str
+    title: str
+    description: str
+    status: str
+    created_at: str
+    reviewed_at: Optional[str] = None
+    reviewed_by: Optional[str] = None
+    rejection_reason: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        use_enum_values = True
