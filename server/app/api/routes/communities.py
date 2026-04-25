@@ -9,8 +9,14 @@ from app.core.config import settings
 from app.core.db import supabase
 from app.models.community import CommunityApplication, CommunityApplicationReq
 from app.dependencies.auth import get_current_user
+from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(prefix="/{inst_id}/communities", tags=["communities"])
+
+class UpdatePostRequestStatus(BaseModel):
+    status: str
+    rejection_reason: Optional[str] = None
 
 
 # Return an array of institution news
@@ -117,3 +123,33 @@ async def get_community_post_requests(inst_id: str, community_id: str):
     except Exception as e:
         print(f"Error fetching members: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community post requests")
+
+
+@router.post("/{community_id}/post_requests/{request_id}")
+async def update_community_post_request(
+    inst_id: str,
+    community_id: str,
+    request_id: str,
+    review_data: UpdatePostRequestStatus,
+    current_user=Depends(get_current_user),
+):
+    try:
+        updated_request, error = await communities_service.update_community_post_request(
+            supabase,
+            request_id=request_id,
+            status=review_data.status,
+            reviewed_by_user_id=current_user.id,
+            rejection_reason=review_data.rejection_reason,
+        )
+
+        if error:
+            raise HTTPException(status_code=400, detail=f"Failed to update post request: {error}")
+
+        return {
+            "status": "ok",
+            "message": f"Post request {review_data.status}",
+            "data": updated_request,
+        }
+    except Exception as e:
+        print(f"Error reviewing post request: {e}")
+        raise HTTPException(status_code=500, detail="Failed to review post request")

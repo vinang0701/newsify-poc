@@ -28,9 +28,6 @@ import { useCommunityPostRequests } from "@/hooks/useCommunityPostRequests";
 
 const filterTag = [
     {
-        filter: "All",
-    },
-    {
         filter: "Pending",
     },
     {
@@ -44,7 +41,7 @@ const filterTag = [
 export default function PostRequestPage() {
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
-    const [activeFilter, setActiveFilter] = useState("All");
+    const [activeFilter, setActiveFilter] = useState("Pending");
 
     const params = useLocalSearchParams<{
         inst_id?: string;
@@ -62,7 +59,6 @@ export default function PostRequestPage() {
     } = useCommunityPostRequests(inst_id, communityId);
 
     const filteredRequests = postRequests.filter((request) => {
-        if (activeFilter === "All") return true; // show all requests
         return request.status.toLowerCase() === activeFilter.toLowerCase();
     });
 

@@ -2,99 +2,88 @@ import {
     View,
     StyleSheet,
     ScrollView,
-    Text,
-    useColorScheme,
     Pressable,
     Modal,
     TextInput,
-    RefreshControl,
-    Alert,
+    useColorScheme,
 } from "react-native";
-import {
-    SafeAreaView,
-    useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import Feather from "@expo/vector-icons/Feather";
 import { Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { FlashList } from "@shopify/flash-list";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { Image } from "expo-image";
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { PostRequest } from "@/data/types";
+import React, { useState } from "react";
 import { useCommunityPostRequests } from "@/hooks/useCommunityPostRequests";
-
-const testData = [
-    {
-        id: "1",
-        title: "Weekly News",
-        description: "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! " +
-            "Here’s what happened in Newsify School this week! ",
-        thumbnail: require("@/assets/images/android-icon-background.png"),
-        author: "Victor Lim",
-        created_at: "10/01/2026"
-    },
-];
 
 export default function ViewPostRequestPage() {
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
     const [approveModalVisible, setApproveModalVisible] = useState(false);
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState("");
 
     const params = useLocalSearchParams<{
         inst_id?: string;
         communityId: string;
         request_id: string;
     }>();
-    const communityId = params.communityId;
-    const inst_id = params.inst_id;
-    const request_id = params.request_id;
 
     const {
         requests: postRequestDetails,
         loading: postRequestDetailsLoading,
         refreshing: postRequestDetailsRefreshing,
         error: postRequestDetailsError,
-        refresh: postRequestDetailsRefresh
-    } = useCommunityPostRequests(inst_id, communityId);
+        refresh: postRequestDetailsRefresh,
+        updatePostRequestStatus,
+    } = useCommunityPostRequests(params.inst_id, params.communityId);
 
-    const selectedRequest = postRequestDetails.filter((request) => {
-        return request.request_id === request_id;
-    })[0];
+    const selectedRequest = postRequestDetails.find(
+        (request) => request.request_id === params.request_id
+    );
 
-    console.log("Post Requests:", selectedRequest);
-    console.log("Request ID:", request_id);
-    console.log("Community ID:", communityId);
+    const handleApprove = async () => {
+        try {
+            await updatePostRequestStatus(selectedRequest.request_id, "approved");
+            router.push({
+                pathname: "community/[communityId]/post_requests",
+                params: { communityId: params.communityId, inst_id:  params.inst_id},
+            });
+            setApproveModalVisible(false);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to approve post.");
+        }
+    };
+
+    const handleReject = async (reason: string) => {
+        try {
+            await updatePostRequestStatus(selectedRequest.request_id, "rejected", reason);
+            router.push({
+                pathname: "community/[communityId]/post_requests",
+                params: { communityId: params.communityId, inst_id:  params.inst_id},
+            });
+            setRejectModalVisible(false);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to reject post.");
+        }
+    };
+
+    if (postRequestDetailsLoading) {
+        return (
+            <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                <ThemedText>Loading post request...</ThemedText>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={{ flex: 1 }}>
             <View
                 style={[
                     styles.headerContainer,
-                    {
-                        backgroundColor: Colors[colorScheme].tint,
-                    },
+                    { backgroundColor: Colors[colorScheme].tint },
                 ]}
             >
                 <Pressable onPress={() => router.back()}>
@@ -108,12 +97,8 @@ export default function ViewPostRequestPage() {
             </View>
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    flex: 1,
-                    flexGrow: 1,
-                }}>
+                style={{ paddingHorizontal: 16, paddingVertical: 12 }}
+            >
                 <View
                     style={[
                         styles.card,
@@ -124,7 +109,7 @@ export default function ViewPostRequestPage() {
                     ]}
                 >
                     <View style={styles.cardInfoContainer}>
-                        <Pressable> {/*onPress={() => handleNavigate(news.author_id)*/}
+                        <Pressable>
                             <View
                                 style={{
                                     flexDirection: "row",
@@ -138,31 +123,19 @@ export default function ViewPostRequestPage() {
                                     style={{ width: 28, height: 28 }}
                                 />
                                 <ThemedText type="defaultSemiBold">
-                                    {selectedRequest.author_name}
+                                    {selectedRequest?.author_name ?? ""}
                                 </ThemedText>
                             </View>
                         </Pressable>
-                        {/*<Pressable style={{ marginLeft: "auto" }}>
-                            <Feather
-                                name="more-vertical"
-                                size={20}
-                                color={Colors[colorScheme].icon}
-                            />
-                        </Pressable> */}
                     </View>
                     <View>
-                        {/* Content */}
-                        <Image
-                            alt="image"
-                            source={
-                                selectedRequest.image_url
-                            }
-                            style={{
-                                width: "100%",
-                                height: 200,
-                                resizeMode: "cover",
-                            }}
-                        />
+                        {selectedRequest?.image_url ? (
+                            <Image
+                                alt="image"
+                                source={{ uri: selectedRequest.image_url }}
+                                style={{ width: "100%", height: 200, resizeMode: "cover" }}
+                            />
+                        ) : null}
                         <ThemedText
                             type="sub_heading"
                             style={{
@@ -171,7 +144,7 @@ export default function ViewPostRequestPage() {
                                 fontSize: 20,
                             }}
                         >
-                            {selectedRequest.title}
+                            {selectedRequest?.title ?? ""}
                         </ThemedText>
                         <ThemedText
                             style={{
@@ -180,117 +153,222 @@ export default function ViewPostRequestPage() {
                                 fontSize: 14,
                             }}
                         >
-                            {selectedRequest.description}
+                            {selectedRequest?.description ?? ""}
                         </ThemedText>
                     </View>
-                    <View style={[
-                            styles.actionButtonsContainer,
-                            {
-                                paddingHorizontal: 12,
-                            }
-                        ]}>
-                        <Pressable
-                            style={ ({ pressed }) => [
-                                styles.button,
-                                {
-                                    backgroundColor: pressed
-                                    ? Colors[colorScheme].secondary_dark
-                                    : Colors[colorScheme].secondary
-                                },
-                            ]}
-                            onPress={() => setApproveModalVisible(true)}
-                        >
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{
-                                    color: Colors[colorScheme].button_text,
-                                    textAlign: "center",
-                                }}
+                    <View
+                      style={[
+                        styles.actionButtonsContainer,
+                        { paddingHorizontal: 12 },
+                      ]}
+                    >
+                        {selectedRequest?.status === "pending" && (
+                            <>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.button,
+                                    {
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].secondary_dark
+                                        : Colors[colorScheme].secondary,
+                                    },
+                                ]}
+                                onPress={() => setApproveModalVisible(true)}
                             >
-                                Approve
-                            </ThemedText>
-                        </Pressable>
-                        <Pressable
-                            style={ ({ pressed }) => [
-                                styles.button,
-                                {
-                                    backgroundColor: pressed
-                                    ? Colors[colorScheme].alert_red_dark
-                                    : Colors[colorScheme].alert_red
-                                },
-                            ]}
-                            onPress={() => setRejectModalVisible(true)}
-                        >
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{
-                                    color: Colors[colorScheme].button_text,
-                                    textAlign: "center",
-                                }}
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
+                                >
+                                    Approve
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.button,
+                                    {
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].alert_red_dark
+                                        : Colors[colorScheme].alert_red,
+                                    },
+                                ]}
+                                onPress={() => setRejectModalVisible(true)}
                             >
-                                Reject
-                            </ThemedText>
-                        </Pressable>
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
+                                >
+                                    Reject
+                                </ThemedText>
+                            </Pressable>
+                            </>
+                        )}
+
+                        {selectedRequest?.status === "approved" && (
+                            <>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.button,
+                                    {
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].caption
+                                        : Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() => router.back()}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
+                                >
+                                    Back
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={({ pressed }) => [
+                                    styles.button,
+                                    {
+                                        backgroundColor: pressed
+                                        ? Colors[colorScheme].alert_red_dark
+                                        : Colors[colorScheme].alert_red,
+                                    },
+                                ]}
+                                onPress={() => setRejectModalVisible(true)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
+                                >
+                                    Reject
+                                </ThemedText>
+                            </Pressable>
+                            </>
+                        )}
+
+                        {selectedRequest?.status === "rejected" && (
+                            <>
+                            <View
+                                style={{
+                                    flexDirection: "column",
+                                    width: "100%",
+                                }}>
+                                <View
+                                    style={{
+                                        height: 1,
+                                        backgroundColor: Colors[colorScheme].border,
+                                        marginBottom: 8,
+                                    }}
+                                />
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{
+                                        paddingBottom: 4,
+                                    }}
+                                >
+                                    Rejection reason:
+                                </ThemedText>
+                                {/* show rejection reason */}
+                                <View
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: "hsl(0,0%,90%)",
+                                        borderRadius: 8,
+                                        padding: 12,
+                                        marginBottom: 12,
+                                    }}
+                                >
+                                    <ThemedText>
+                                        {selectedRequest.rejection_reason ?? "No reason provided."}
+                                    </ThemedText>
+                                </View>
+                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            styles.button,
+                                            {
+                                                backgroundColor: pressed
+                                                ? Colors[colorScheme].caption
+                                                : Colors[colorScheme].text,
+                                            },
+                                        ]}
+                                        onPress={() => router.back()}
+                                    >
+                                        <ThemedText
+                                            type="defaultSemiBold"
+                                            style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
+                                        >
+                                            Back
+                                        </ThemedText>
+                                    </Pressable>
+                                    <Pressable
+                                        style={({ pressed }) => [
+                                            styles.button,
+                                            {
+                                                backgroundColor: pressed
+                                                ? Colors[colorScheme].secondary_dark
+                                                : Colors[colorScheme].secondary,
+                                            },
+                                        ]}
+                                        onPress={() => setApproveModalVisible(true)}
+                                    >
+                                        <ThemedText
+                                            type="defaultSemiBold"
+                                            style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
+                                        >
+                                            Approve
+                                        </ThemedText>
+                                    </Pressable>
+                                </View>
+                            </View>
+                            </>
+                        )}
                     </View>
                 </View>
             </ScrollView>
+
             {/* Approve Modal */}
             <Modal
                 animationType="slide"
                 visible={approveModalVisible}
+                onRequestClose={() => setApproveModalVisible(!approveModalVisible)}
                 backdropColor={"hsla(0, 0%, 50%, 0.1)"}
-                onRequestClose={() => {
-                    setApproveModalVisible(!approveModalVisible);
-                }}
             >
                 <View style={styles.centeredView}>
                     <View
                         style={[
                             styles.modalView,
-                            {
-                                backgroundColor:
-                                    Colors[colorScheme].bg_light,
-                            },
+                            { backgroundColor: Colors[colorScheme].bg_light },
                         ]}
                     >
                         <ThemedText
                             type="defaultSemiBold"
                             style={styles.modalText}
                         >
-                            Confirm approval?
+                            Confirm Approval
                         </ThemedText>
                         <ThemedText
                             type="caption"
-                            style={[
-                                styles.modalText,
-                                {
-                                    fontSize: 12,
-                                }
-                            ]}
+                            style={[styles.modalText, { fontSize: 12 }]}
                         >
                             Are you sure you want to approve this post?
                         </ThemedText>
                         <View style={{ flexDirection: "row", gap: 24 }}>
                             <Pressable
-                                style={ ({ pressed }) => [
+                                style={({ pressed }) => [
                                     styles.modalButton,
                                     {
                                         backgroundColor: pressed
-                                        ? Colors[colorScheme].caption
-                                        : Colors[colorScheme].text
+                                            ? Colors[colorScheme].caption
+                                            : Colors[colorScheme].text,
                                     },
                                 ]}
-                                onPress={() =>
-                                    setApproveModalVisible(!approveModalVisible)
-                                }
+                                onPress={() => setApproveModalVisible(!approveModalVisible)}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"
                                     style={[
                                         styles.textStyle,
                                         {
-                                            color: Colors[colorScheme]
-                                                .button_text,
+                                            color: Colors[colorScheme].button_text,
                                             textAlign: "center",
                                         },
                                     ]}
@@ -298,25 +376,23 @@ export default function ViewPostRequestPage() {
                                     Cancel
                                 </ThemedText>
                             </Pressable>
-
                             <Pressable
-                                style={ ({ pressed }) => [
+                                style={({ pressed }) => [
                                     styles.modalButton,
                                     {
                                         backgroundColor: pressed
-                                        ? Colors[colorScheme].secondary_dark
-                                        : Colors[colorScheme].secondary
+                                            ? Colors[colorScheme].secondary_dark
+                                            : Colors[colorScheme].secondary,
                                     },
                                 ]}
-                                //onPress={handleSignOut}
+                                onPress={() => handleApprove()}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"
                                     style={[
                                         styles.textStyle,
                                         {
-                                            color: Colors[colorScheme]
-                                                .button_text,
+                                            color: Colors[colorScheme].button_text,
                                             textAlign: "center",
                                         },
                                     ]}
@@ -328,24 +404,19 @@ export default function ViewPostRequestPage() {
                     </View>
                 </View>
             </Modal>
+
             {/* Reject Modal */}
             <Modal
                 animationType="slide"
                 visible={rejectModalVisible}
+                onRequestClose={() => setRejectModalVisible(!rejectModalVisible)}
                 backdropColor={"hsla(0, 0%, 50%, 0.1)"}
-                onRequestClose={() => {
-                    setRejectModalVisible(!rejectModalVisible);
-                }}
             >
                 <View style={styles.centeredView}>
                     <View
                         style={[
                             styles.modalView,
-                            {
-                                backgroundColor:
-                                    Colors[colorScheme].bg_light,
-                                height: 250,
-                            },
+                            { backgroundColor: Colors[colorScheme].bg_light, height: 250 },
                         ]}
                     >
                         <ThemedText
@@ -355,35 +426,29 @@ export default function ViewPostRequestPage() {
                             Enter a reason:
                         </ThemedText>
                         <TextInput
-                            multiline={true}
-                            style={[
-                                styles.input,
-                                {
-                                    textAlignVertical: "top",
-                                },
-                            ]}
+                            multiline
+                            value={rejectionReason}
+                            onChangeText={setRejectionReason}
+                            style={[styles.input, { textAlignVertical: "top" }]}
                         />
                         <View style={{ flexDirection: "row", gap: 24 }}>
                             <Pressable
-                                style={ ({ pressed }) => [
+                                style={({ pressed }) => [
                                     styles.modalButton,
                                     {
                                         backgroundColor: pressed
-                                        ? Colors[colorScheme].caption
-                                        : Colors[colorScheme].text
+                                            ? Colors[colorScheme].caption
+                                            : Colors[colorScheme].text,
                                     },
                                 ]}
-                                onPress={() =>
-                                    setRejectModalVisible(!rejectModalVisible)
-                                }
+                                onPress={() => setRejectModalVisible(!rejectModalVisible)}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"
                                     style={[
                                         styles.textStyle,
                                         {
-                                            color: Colors[colorScheme]
-                                                .button_text,
+                                            color: Colors[colorScheme].button_text,
                                             textAlign: "center",
                                         },
                                     ]}
@@ -391,25 +456,23 @@ export default function ViewPostRequestPage() {
                                     Cancel
                                 </ThemedText>
                             </Pressable>
-
                             <Pressable
-                                style={ ({ pressed }) => [
+                                style={({ pressed }) => [
                                     styles.modalButton,
                                     {
                                         backgroundColor: pressed
-                                        ? Colors[colorScheme].alert_red_dark
-                                        : Colors[colorScheme].alert_red
+                                            ? Colors[colorScheme].alert_red_dark
+                                            : Colors[colorScheme].alert_red,
                                     },
                                 ]}
-                                //onPress={}
+                                onPress={() => handleReject(rejectionReason)}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"
                                     style={[
                                         styles.textStyle,
                                         {
-                                            color: Colors[colorScheme]
-                                                .button_text,
+                                            color: Colors[colorScheme].button_text,
                                             textAlign: "center",
                                         },
                                     ]}
@@ -495,7 +558,6 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        //height: "100%",
         width: "100%",
         fontSize: 16,
         backgroundColor: "hsl(0 0% 90%)",

@@ -238,12 +238,12 @@ async def get_community_post_requests(supabase, community_id: str) -> list[Commu
     result = []
 
     for row in response.data or []:
-        author_name = row.get("author_name", {}).get("name", "")
-        reviewed_by = row.get("reviewed_by", {}).get("name", "") if row.get("reviewed_by") else "NULL"
-        image_url = row.get("news_posts", {}).get("image_url", "")
+        author_name = row.get("author_name", {}).get("name", "NULL")
+        reviewed_by = row.get("reviewed_by", {}).get("name", "NULL") if row.get("reviewed_by") else "NULL"
+        image_url = row.get("news_posts", {}).get("image_url", "NULL")
         title = row.get("news_posts", {}).get("title", "Untitled")
-        description = row.get("news_posts", {}).get("description", "")
-        created_at = datetime.fromisoformat(row.get("news_posts", {}).get("created_at", ""))
+        description = row.get("news_posts", {}).get("description", "NULL")
+        created_at = datetime.fromisoformat(row.get("news_posts", {}).get("created_at", "NULL"))
         formatted_created_at = created_at.strftime("%d/%m/%Y")
         reviewed_at = datetime.fromisoformat(row["reviewed_at"]) if row.get("reviewed_at") else None
         formatted_reviewed_at = reviewed_at.strftime("%d/%m/%Y") if reviewed_at else None
@@ -264,3 +264,33 @@ async def get_community_post_requests(supabase, community_id: str) -> list[Commu
         )
 
     return result
+
+async def update_community_post_request(
+    supabase: Client,
+    request_id: str,
+    status: str,
+    reviewed_by_user_id: str,
+    rejection_reason: str,
+):
+    reviewed_at = datetime.utcnow().isoformat() # current time
+
+    update_data = {
+        "status": status,
+        "reviewed_at": reviewed_at,
+        "reviewed_by_user_id": reviewed_by_user_id,
+    }
+
+    # rejection_reason if status is rejected
+    if status == "rejected":
+        update_data["rejection_reason"] = rejection_reason
+    else:
+        update_data["rejection_reason"] = ""
+
+    response = (
+        supabase.table("community_post_requests")
+        .update(update_data)
+        .eq("request_id", request_id)
+        .execute()
+    )
+
+    return response.data, None

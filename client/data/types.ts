@@ -71,6 +71,7 @@ export interface PostRequest {
 export interface CommunityPostRequest {
     request_id: string;
     author_name: string;
+    image_url: string;
     title: string;
     description: string;
     status: string;
