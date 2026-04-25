@@ -107,3 +107,23 @@ export interface CommunityCreationRequest {
 	reviewed_by_user_name: string | null;
 	rejection_reason: string | null;
 }
+
+export interface Institution {
+  id: string;
+  name: string;
+  domain: string;
+  phone: string | null;
+  plan: string | null;
+  status: string;
+  start_date: string | null;
+  end_date: string | null;
+}
+
+export interface InstitutionFormData {
+  name: string;
+  email: string;
+  phone: string;
+  plan: string;
+  startDate: string;
+  endDate: string;
+}

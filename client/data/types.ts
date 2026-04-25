@@ -1,63 +1,96 @@
 export interface News {
-    id: string;
-    title: string;
-    author: string;
-    author_id: string;
-    desc: string;
-    url: string;
-    image_url: string;
-    content: string | any; // needs changing
-    likes_count: number;
-    comments_count: number;
-    has_liked: boolean;
-    has_saved: boolean;
+	id: string;
+	title: string;
+	author: string;
+	author_id: string;
+	desc: string;
+	url: string;
+	image_url: string;
+	content: string | any; // needs changing
+	likes_count: number;
+	comments_count: number;
+	has_liked: boolean;
+	has_saved: boolean;
 }
 
 export interface Community {
-    id: string;
-    name: string;
-    description: string;
-    category: string;
-    public: boolean;
-    joined: boolean;
+	id: string;
+	name: string;
+	description: string;
+	category: string;
+	public: boolean;
+	joined: boolean;
 }
 
 export interface ModalProps {
-    onModalPress: () => void;
+	onModalPress: () => void;
 }
 
 export interface LiveStream {
-    id: string;
-    title: string;
-    community: string;
-    desc: string;
-    view_count: number;
+	id: string;
+	title: string;
+	community: string;
+	desc: string;
+	view_count: number;
 }
 
 // Temp
 export interface UserProfileDetails {
-    id: string;
-    name: string;
-    description: string;
+	id: string;
+	name: string;
+	description: string;
 }
 
 export interface Users {
-    id: string;
-    name: string;
-    email: string;
-    status: string;
-    created_at: string;
-    updated_at: string;
+	id: string;
+	name: string;
+	email: string;
+	status: string;
+	created_at: string;
+	updated_at: string;
 }
 
 // Comments
 export interface PostComment {
-    comment_id: string;
-    post_id: string;
-    commented_by_user_id: string;
-    commented_by_user_name: string;
-    comment_text: string;
-    parent_comment_id: string | null;
-    created_at: string;
-    updated_at: string | null;
+	comment_id: string;
+	post_id: string;
+	commented_by_user_id: string;
+	commented_by_user_name: string;
+	comment_text: string;
+	parent_comment_id: string | null;
+	created_at: string;
+	updated_at: string | null;
+}
+export interface UserFollowing {
+	followed_user_id: string;
+	name: string;
+}
+
+export interface UserFollowers {
+	follower_user_id: string;
+	name: string;
+}
+
+export interface PostRequest {
+	request_id: string;
+	requested_by_user_id: string;
+	community_name: string;
+	description: string;
+	status: string;
+	created_at: string;
+	reviewed_at: string;
+	reviewed_by_user_id: string;
+	rejection_reason: string;
+}
+
+export interface CommunityPostRequest {
+	request_id: string;
+	author_name: string;
+	title: string;
+	description: string;
+	status: string;
+	created_at: string;
+	reviewed_at?: string | null;
+	reviewed_by?: string | null;
+	rejection_reason?: string | null;
 }
