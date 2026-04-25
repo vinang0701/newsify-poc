@@ -51,6 +51,7 @@ export default function HomeScreen() {
     const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     const navigation = useNavigation();
+    const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
     const [refreshing, setRefreshing] = React.useState(false);
 
@@ -174,7 +175,7 @@ export default function HomeScreen() {
                                 style={{ marginBottom: 16 }}
                                 data={data}
                                 renderItem={({ item }) => (
-                                    <NewsPostCard news={item} key={item.id} />
+                                    <NewsPostCard news={item} inst_id={inst_id} />
                                 )}
                             />
                         </View>

@@ -98,8 +98,10 @@ export function useInvitations() {
         }
 
         setInvitations((prev) =>
-            prev.map((item) =>
-                item.id === invitationId ? { ...item, status: action } : item
+            action === "declined"
+                ? prev.filter((item) => item.id !== invitationId)
+                : prev.map((item) =>
+                    item.id === invitationId ? { ...item, status: action } : item
             )
         );
     };

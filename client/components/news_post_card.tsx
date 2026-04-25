@@ -4,25 +4,28 @@ import {
     StyleSheet,
     Pressable,
     useColorScheme,
+    Modal,
 } from "react-native";
 import React, { useState } from "react";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, useLocalSearchParams } from "expo-router";
 import { ThemedText } from "./themed-text";
-import { ModalProps, News } from "@/data/types";
+import { News } from "@/data/types";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 type NewsPostCardProps = {
     news: News;
+    inst_id: string;
 };
 
-function NewsPostCard({ news }: NewsPostCardProps) {
+function NewsPostCard({ news, inst_id }: NewsPostCardProps) {
     const colorScheme = useColorScheme() ?? "light";
     const [like, setLike] = useState(false);
     const [bookmark, setBookmark] = useState(false);
     const [likeCount, setLikeCount] = useState(20);
+    const [menuVisible, setMenuVisible] = useState(false);
     const router = useRouter();
 
     function handleNavigate(user_id: string) {
@@ -40,6 +43,20 @@ function NewsPostCard({ news }: NewsPostCardProps) {
         } else {
             setLikeCount(20);
         }
+    }
+
+    function handleReportPost() {
+        console.log("REPORT POST ID:", news.id);
+        console.log("REPORT INST ID:", inst_id);
+        setMenuVisible(false);
+
+        router.push({
+            pathname: "/report-post",
+            params: {
+                post_id: news.id,
+                inst_id: inst_id,
+            },
+        });
     }
 
     return (
@@ -71,6 +88,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                         </ThemedText>
                     </View>
                 </Pressable>
+
                 <ThemedText
                     type="default"
                     style={{
@@ -80,7 +98,11 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                 >
                     1d
                 </ThemedText>
-                <Pressable style={{ marginLeft: "auto" }}>
+
+                <Pressable
+                    style={{ marginLeft: "auto" }}
+                    onPress={() => setMenuVisible(true)}
+                >
                     <Feather
                         name="more-vertical"
                         size={20}
@@ -88,8 +110,8 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                     />
                 </Pressable>
             </View>
+
             <View>
-                {/* Content */}
                 <Image
                     alt="image"
                     source={{
@@ -101,6 +123,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                         resizeMode: "cover",
                     }}
                 />
+
                 <ThemedText
                     type="sub_heading"
                     style={{
@@ -111,6 +134,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                 >
                     {news.title}
                 </ThemedText>
+
                 <ThemedText
                     style={{
                         paddingVertical: 4,
@@ -124,7 +148,6 @@ function NewsPostCard({ news }: NewsPostCardProps) {
             </View>
 
             <View style={styles.iconsContainer}>
-                {/* Interaction */}
                 <View
                     style={{
                         flex: 1,
@@ -159,6 +182,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
 
                         <ThemedText>{likeCount}</ThemedText>
                     </Pressable>
+
                     <Link href="/comment" push asChild>
                         <Pressable
                             style={{
@@ -178,6 +202,7 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                         </Pressable>
                     </Link>
                 </View>
+
                 <Pressable onPress={() => setBookmark(!bookmark)}>
                     {bookmark ? (
                         <MaterialCommunityIcons
@@ -194,6 +219,50 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                     )}
                 </Pressable>
             </View>
+
+            <Modal
+                visible={menuVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setMenuVisible(false)}
+            >
+                <Pressable
+                    style={styles.modalOverlay}
+                    onPress={() => setMenuVisible(false)}
+                >
+                    <View
+                        style={[
+                            styles.menuContainer,
+                            {
+                                backgroundColor: Colors[colorScheme].bg_light,
+                            },
+                        ]}
+                    >
+                        <Pressable
+                            style={styles.menuItem}
+                            onPress={handleReportPost}
+                        >
+                            <Feather
+                                name="flag"
+                                size={18}
+                                color={Colors[colorScheme].alert_red || "#EF1238"}
+                            />
+                            <Text
+                                style={[
+                                    styles.menuText,
+                                    {
+                                        color:
+                                            Colors[colorScheme].alert_red ||
+                                            "#EF1238",
+                                    },
+                                ]}
+                            >
+                                Report post
+                            </Text>
+                        </Pressable>
+                    </View>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
@@ -224,6 +293,30 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingTop: 8,
         paddingHorizontal: 12,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.2)",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 24,
+    },
+    menuContainer: {
+        width: "100%",
+        borderRadius: 10,
+        paddingVertical: 8,
+        elevation: 5,
+    },
+    menuItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+    },
+    menuText: {
+        fontSize: 14,
+        fontWeight: "600",
     },
 });
 
