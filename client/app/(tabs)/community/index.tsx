@@ -331,7 +331,7 @@ export default function CommunitiesTab() {
                         <Link
                             href={{
                                 pathname: "/community/[communityId]",
-                                params: { communityId: item?.id },
+                                params: { communityId: item?.id, inst_id:inst_id},
                             }}
                             style={[
                                 styles.card,
