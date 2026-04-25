@@ -11,6 +11,7 @@ import {
     useReactTable,
     getCoreRowModel,
     flexRender,
+    getSortedRowModel,
 } from "@tanstack/react-table";
 
 export function DataTable<TData, TValue>({
@@ -21,7 +22,17 @@ export function DataTable<TData, TValue>({
         data: data ?? [],
         columns,
         getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
         enableHiding: true,
+        enableSorting: true,
+        initialState: {
+            sorting: [
+                {
+                    id: "created_at",
+                    desc: true,
+                },
+            ],
+        },
     });
 
     return (
@@ -32,7 +43,10 @@ export function DataTable<TData, TValue>({
                         {headerGroup.headers.map((header) => (
                             <TableHead
                                 key={header.id}
-                                className="bg-muted-foreground/10"
+                                className="bg-muted-foreground/10 last:w-0"
+                                style={{
+                                    minWidth: `${header.column.columnDef.minSize}px`,
+                                }}
                             >
                                 {header.isPlaceholder
                                     ? null
@@ -54,7 +68,13 @@ export function DataTable<TData, TValue>({
                             onClick={() => row.toggleSelected()}
                         >
                             {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id} className="bg-card">
+                                <TableCell
+                                    key={cell.id}
+                                    className="bg-card last:w-0"
+                                    style={{
+                                        minWidth: `${cell.column.columnDef.minSize}px`,
+                                    }}
+                                >
                                     {flexRender(
                                         cell.column.columnDef.cell,
                                         cell.getContext(),

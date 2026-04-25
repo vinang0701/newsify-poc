@@ -4,7 +4,7 @@ Newsify is a school-centric news platform that redefines how we consume news. It
 
 # Project overview
 
-1. Client (Mobile): React Native
+1. Client: Mobile - React Native, Web - React
 2. Server: FastAPI (Python)
 3. Database: Supabase
 
@@ -18,7 +18,7 @@ In your working directory, type this in the command line:
 git clone https://github.com/vinang0701/newsify-poc.git
 ```
 
-## Client
+## Client (Mobile)
 
 ### Requirements
 
@@ -59,12 +59,44 @@ You can either use Android Studio on your desktop, or Expo Go on your mobile to 
 3. If not, you could use:
 
 ```
-npx expo start --android
+npx expo run:android
 ```
 
 **Expo Go**
 
 1. Once the client server is running, scan the QR code on the EXPO Go app.
+
+## Client (Web)
+
+### Requirements
+
+Nodejs
+
+Guide: https://vite.dev/guide/
+
+### Installation
+
+After you have set up your environment, you may proceed with this part.
+
+Assuming you are in the "newsify-poc" directory, navigate to web/ directory. Eg, "C:\Users\john\Projects\newsify-poc\web".
+
+```
+cd web
+```
+
+Install the neccessary dependencies:
+
+```
+npm install
+```
+
+### Starting up
+
+In the web/ directory, paste this in the command line:
+
+```
+npm run dev
+```
 
 ## Server
 
