@@ -1,30 +1,29 @@
 import {
-    Text,
-    Pressable,
-    StyleSheet,
-    useColorScheme,
-    Image,
-    View,
-    ScrollView,
-    Modal,
-    ActivityIndicator,
-    Alert,
+	Text,
+	Pressable,
+	StyleSheet,
+	useColorScheme,
+	Image,
+	View,
+	ScrollView,
+	Modal,
+	ActivityIndicator,
+	Alert,
 } from "react-native";
 import BottomSheet, {
-    BottomSheetBackdrop,
-    BottomSheetView,
+	BottomSheetBackdrop,
+	BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
 import { Colors } from "@/constants/theme";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import Feather from "@expo/vector-icons/Feather";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemedText } from "@/components/themed-text";
@@ -32,96 +31,83 @@ import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
-import axios, { AxiosError } from "axios";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const user_id = "7369b0d7-3ba3-4a28-bfbe-0e7addaf3eec";
 
 interface UserCommunities {
-    community_id: string;
-    community_name: string;
-    role: string;
+	community_id: string;
+	community_name: string;
+	role: string;
 }
 
 export default function CommunityPage() {
-    const colorScheme = useColorScheme() ?? "light";
-    const { communityId } = useLocalSearchParams();
-    const router = useRouter();
-    const snapPoints = useMemo(() => ["20%"], []);
-    const [modalVisible, setModalVisible] = useState(false);
-    const queryClient = useQueryClient();
+	const colorScheme = useColorScheme() ?? "light";
+	const { communityId } = useLocalSearchParams();
+	const router = useRouter();
+	const snapPoints = useMemo(() => ["20%"], []);
+	const [modalVisible, setModalVisible] = useState(false);
+	const queryClient = useQueryClient();
 
-    const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-    // ref
-    const bottomSheetRef = useRef<BottomSheet>(null);
+	const { user, metadata } = useAuthStore();
+	if (!user || !metadata) {
+		throw new Error("Error occurred while retrieving user data");
+	}
 
-    const handleExpandSheet = () => bottomSheetRef.current?.expand();
+	const inst_id = metadata.inst_id;
+	const user_id = user.id;
 
-    const renderBackdrop = useCallback(
-        (props: any) => (
-            <BottomSheetBackdrop
-                appearsOnIndex={0}
-                disappearsOnIndex={-1}
-                {...props}
-            />
-        ),
-        [],
-    );
+	// ref
+	const bottomSheetRef = useRef<BottomSheet>(null);
 
-    function nameToAvatar(name: string) {
-        // 1. Split by whitespace and filter out any empty strings from extra spaces
-        // 2. Map to the first character and uppercase it
-        const initials = name
-            .trim()
-            .split(/\s+/)
-            .map((word) => word.charAt(0).toUpperCase())
-            .filter((char) => /^[A-Z0-9]$/.test(char)); // Ensure it's alphanumeric
+	const handleExpandSheet = () => bottomSheetRef.current?.expand();
 
-        // Grab the first two initials
-        const first = initials[0] || "";
-        const second = initials[1] || "";
+	const renderBackdrop = useCallback(
+		(props: any) => (
+			<BottomSheetBackdrop
+				appearsOnIndex={0}
+				disappearsOnIndex={-1}
+				{...props}
+			/>
+		),
+		[],
+	);
 
-        return [first, second];
-    }
+	function nameToAvatar(name: string) {
+		// 1. Split by whitespace and filter out any empty strings from extra spaces
+		// 2. Map to the first character and uppercase it
+		const initials = name
+			.trim()
+			.split(/\s+/)
+			.map((word) => word.charAt(0).toUpperCase())
+			.filter((char) => /^[A-Z0-9]$/.test(char)); // Ensure it's alphanumeric
 
-    async function fetchCommunity(): Promise<Community[]> {
-        try {
-            const response = await axios.get<Community[]>(
-                `http://10.0.2.2:8000/api/v1/${inst_id}/communities/${communityId}`,
-            );
-            console.log(response.data);
-            return response.data;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
-    }
+		// Grab the first two initials
+		const first = initials[0] || "";
+		const second = initials[1] || "";
 
-    async function fetchCommunityNews(inst_id: string): Promise<News[]> {
-        console.log("fetching in community");
-        try {
-            const response = await axios.get<News[]>(
-                `http://10.0.2.2:8000/api/v1/${inst_id}/communities/${communityId}/news`,
-            );
-            console.log("news", response.data);
-            return response.data;
-        } catch (error) {
-            // Re-throwing the error allows TanStack Query to "see" the failure
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
-    }
+		return [first, second];
+	}
 
-    {/*
+	async function fetchCommunity(): Promise<Community[]> {
+		const response = await api.get<Community[]>(
+			`/${inst_id}/communities/${communityId}`,
+		);
+		return response.data;
+	}
+
+	async function fetchCommunityNews(inst_id: string): Promise<News[]> {
+		const response = await api.get<News[]>(
+			`/${inst_id}/communities/${communityId}/news`,
+		);
+
+		return response.data;
+	}
+
+	{
+		/*
     async function fetchUserRole(communityId: string, user_id: string) {
         try {
             const response = await axios.get(
@@ -141,175 +127,209 @@ export default function CommunityPage() {
         queryKey: ["user_role", communityId, user_id],
         queryFn: () => fetchUserRole(communityId, user_id),
     });
-    */}
+    */
+	}
 
-    async function leaveCommunity() {
-        console.log("Leaving community");
-        try {
-            const response = await axios.delete(
-                `${BASE_URL}/${inst_id}/users/me/communities/${communityId}`,
-            );
+	async function leaveCommunity() {
+		console.log("Leaving community");
 
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
-            return response.data;
-        } catch (error) {
-            console.error("Failed to leave:", error);
-        }
-    }
+		const response = await api.delete(
+			`/${inst_id}/users/me/communities/${communityId}`,
+		);
 
-    const { mutate, isPending } = useMutation({
-        mutationKey: ["user_communities"],
-        mutationFn: leaveCommunity,
-        onError: (error) => {
-            Alert.alert("Error", "Something went wrong.");
-            console.error(error);
-        },
-    });
+		queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+		return response.data;
+	}
 
-    const joinComm = async (id: string) => {
-        try {
-            await axios.post(`${BASE_URL}/${inst_id}/users/me/communities`, {
-                community_id: id,
-                user_id: user_id,
-            });
+	const { mutate, isPending: isPendingLeave } = useMutation({
+		mutationKey: ["user_communities"],
+		mutationFn: leaveCommunity,
+		onError: (error) => {
+			Alert.alert("Error", "Something went wrong.");
+			console.error(error);
+		},
+	});
 
-            // Refresh the query so the button changes to "Leave"
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
-        } catch (err) {
-            console.error("Join failed", err);
-        }
-    };
+	const joinComm = async (id: string) => {
+		try {
+			await api.post(`/${inst_id}/users/me/communities`, {
+				community_id: id,
+				user_id: user_id,
+			});
 
-    const { mutate: mu_joinComm } = useMutation({
-        mutationFn: joinComm,
-    });
+			// Refresh the query so the button changes to "Leave"
+			queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+		} catch (err) {
+			console.error("Join failed", err);
+		}
+	};
 
-    function handleLeaveComm() {
-        setModalVisible(!modalVisible);
-        mutate();
-    }
+	const { mutate: mu_joinComm, isPending: isPendingJoin } = useMutation({
+		mutationFn: joinComm,
+	});
 
-    // Fetch data from server
-    const { isFetching, status, data, error } = useQuery({
-        queryKey: ["community_news", inst_id],
-        queryFn: () => fetchCommunityNews(inst_id),
-    });
+	function handleLeaveComm() {
+		setModalVisible(!modalVisible);
+		mutate();
+	}
 
-    const {
-        isFetching: commFetching,
-        status: commStatus,
-        data: commData,
-        error: commError,
-    } = useQuery({
-        queryKey: ["community", communityId],
-        queryFn: () => fetchCommunity(),
-    });
+	// Fetch data from server
+	const {
+		isFetching,
+		data: commNews,
+		error: commNewsError,
+	} = useQuery({
+		queryKey: ["community_news", inst_id],
+		queryFn: () => fetchCommunityNews(inst_id),
+	});
 
-    // Temp workaround
-    const {
-        data: comm_mem_data,
-        error: comm_mem_error,
-        refetch: comm_mem_refetch,
-    } = useQuery<UserCommunities[]>({
-        queryKey: ["user_communities", user_id],
-        queryFn: async () => {
-            // axios try catch
-            const response = await axios.get(
-                `${BASE_URL}/${inst_id}/users/me/communities`,
-            );
+	const {
+		isFetching: isFetchingComm,
+		data: commData,
+		error: commError,
+	} = useQuery({
+		queryKey: ["community", communityId],
+		queryFn: () => fetchCommunity(),
+	});
 
-            return response.data;
-        },
-    });
+	// Temp workaround
+	const {
+		data: comm_mem_data,
+		error: comm_mem_error,
+		refetch: comm_mem_refetch,
+	} = useQuery<UserCommunities[]>({
+		queryKey: ["user_communities", user_id],
+		queryFn: async () => {
+			// axios try catch
+			const response = await api.get(`/${inst_id}/users/me/communities`);
 
-    const isMember = comm_mem_data?.some(
-        (item) => item.community_id === communityId,
-    );
+			return response.data;
+		},
+	});
 
-    if (commData === undefined || commError) {
-        return (
-            <View>
-                <Text>Error</Text>
-            </View>
-        );
-    }
+	const isMember = comm_mem_data?.some(
+		(item) => item.community_id === communityId,
+	);
 
-    if (isFetching) {
-        return (
-            <SafeAreaView
-                style={{
-                    flex: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <ActivityIndicator
-                    size="large"
-                    color={Colors[colorScheme].tint}
-                />
-            </SafeAreaView>
-        );
-    }
+	if (isFetching || isFetchingComm) {
+		return (
+			<SafeAreaView
+				style={{
+					flex: 1,
+					alignItems: "center",
+					justifyContent: "center",
+				}}
+			>
+				<ActivityIndicator
+					size={"large"}
+					color={Colors[colorScheme].tint}
+				/>
+			</SafeAreaView>
+		);
+	}
 
-    return (
-        <GestureHandlerRootView>
-            {/* Header */}
-            <SafeAreaView>
-                <View
-                    style={[
-                        styles.headerContainer,
-                        {
-                            backgroundColor: Colors[colorScheme].tint,
-                        },
-                    ]}
-                >
-                    <Pressable onPress={() => router.back()}>
-                        <MaterialCommunityIcons
-                            name="arrow-left"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                            weight="bold"
-                        />
-                    </Pressable>
+	if (commData === undefined || commError || commNews === undefined) {
+		return (
+			<SafeAreaView>
+				<View
+					style={[
+						styles.headerContainer,
+						{
+							backgroundColor: Colors[colorScheme].tint,
+						},
+					]}
+				>
+					<Pressable onPress={() => router.back()}>
+						<MaterialCommunityIcons
+							name="arrow-left"
+							size={24}
+							color={Colors[colorScheme].button_text}
+							weight="bold"
+						/>
+					</Pressable>
 
-                    <Image
-                        source={require("@/assets/images/icon_light.png")}
-                        style={{ width: 42, height: 20, resizeMode: "contain" }}
-                    />
+					<Image
+						source={require("@/assets/images/icon_light.png")}
+						style={{ width: 42, height: 20, resizeMode: "contain" }}
+					/>
 
-                    <Pressable onPress={handleExpandSheet}>
-                        <MaterialCommunityIcons
-                            name="dots-vertical"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                        />
-                    </Pressable>
-                </View>
-            </SafeAreaView>
-            {/* Content Container */}
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={{ backgroundColor: Colors[colorScheme].bg }}
-            >
-                {/* Community Info */}
-                <View
-                    style={{
-                        backgroundColor: Colors[colorScheme].bg_light,
-                        paddingVertical: 12,
-                        paddingHorizontal: 16,
-                        gap: 8,
-                    }}
-                >
-                    <View
-                        style={[
-                            styles.flexRowContainer,
-                            {
-                                justifyContent: "space-between",
-                            },
-                        ]}
-                    >
-                        <View style={styles.flexRowContainer}>
-                            {/* <Image
+					<Pressable onPress={handleExpandSheet}>
+						<MaterialCommunityIcons
+							name="dots-vertical"
+							size={24}
+							color={Colors[colorScheme].button_text}
+						/>
+					</Pressable>
+				</View>
+				<View>
+					<ThemedText type="sub_heading">
+						This community does not exist.
+					</ThemedText>
+				</View>
+			</SafeAreaView>
+		);
+	}
+
+	return (
+		<GestureHandlerRootView>
+			{/* Header */}
+			<SafeAreaView>
+				{(isPendingJoin || isPendingLeave) && <Loading />}
+				<View
+					style={[
+						styles.headerContainer,
+						{
+							backgroundColor: Colors[colorScheme].tint,
+						},
+					]}
+				>
+					<Pressable onPress={() => router.back()}>
+						<MaterialCommunityIcons
+							name="arrow-left"
+							size={24}
+							color={Colors[colorScheme].button_text}
+							weight="bold"
+						/>
+					</Pressable>
+
+					<Image
+						source={require("@/assets/images/icon_light.png")}
+						style={{ width: 42, height: 20, resizeMode: "contain" }}
+					/>
+
+					<Pressable onPress={handleExpandSheet}>
+						<MaterialCommunityIcons
+							name="dots-vertical"
+							size={24}
+							color={Colors[colorScheme].button_text}
+						/>
+					</Pressable>
+				</View>
+			</SafeAreaView>
+			{/* Content Container */}
+			<ScrollView
+				showsVerticalScrollIndicator={false}
+				style={{ backgroundColor: Colors[colorScheme].bg }}
+			>
+				{/* Community Info */}
+				<View
+					style={{
+						backgroundColor: Colors[colorScheme].bg_light,
+						paddingVertical: 12,
+						paddingHorizontal: 16,
+						gap: 8,
+					}}
+				>
+					<View
+						style={[
+							styles.flexRowContainer,
+							{
+								justifyContent: "space-between",
+							},
+						]}
+					>
+						<View style={styles.flexRowContainer}>
+							{/* <Image
                                 source={require("@/assets/images/icon.png")}
                                 style={{
                                     width: 36,
@@ -319,105 +339,105 @@ export default function CommunityPage() {
                                     borderRadius: 100,
                                 }}
                             /> */}
-                            <View
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 20,
-                                    backgroundColor: "hsl(54, 81%, 43%)",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderWidth: 1,
-                                    borderColor: "rgba(0,0,0,0.1)", // Subtle border
-                                }}
-                            >
-                                <ThemedText
-                                    type="body_medium"
-                                    emphasized
-                                    style={{
-                                        color: Colors[colorScheme].button_text, // White text usually pops best on colors
-                                    }}
-                                >
-                                    {nameToAvatar(commData[0].name)[0]}
-                                    {nameToAvatar(commData[0].name)[1]}
-                                </ThemedText>
-                            </View>
-                            {/* Community name and Member Count */}
-                            <Link
-                                href={{
-                                    pathname:
-                                        "/community/[communityId]/members",
-                                    params: { communityId: commData[0].id },
-                                }}
-                            >
-                                <View>
-                                    <ThemedText type="defaultSemiBold">
-                                        {/* Chess Club */}
-                                        {commData[0]?.name}
-                                    </ThemedText>
-                                    <ThemedText
-                                        type="caption"
-                                        style={{
-                                            color: Colors[colorScheme].caption,
-                                        }}
-                                    >
-                                        20 members
-                                    </ThemedText>
-                                </View>
-                            </Link>
-                        </View>
-                        {/* Join Button */}
+							<View
+								style={{
+									width: 36,
+									height: 36,
+									borderRadius: 20,
+									backgroundColor: "hsl(54, 81%, 43%)",
+									alignItems: "center",
+									justifyContent: "center",
+									borderWidth: 1,
+									borderColor: "rgba(0,0,0,0.1)", // Subtle border
+								}}
+							>
+								<ThemedText
+									type="body_medium"
+									emphasized
+									style={{
+										color: Colors[colorScheme].button_text, // White text usually pops best on colors
+									}}
+								>
+									{nameToAvatar(commData[0].name)[0]}
+									{nameToAvatar(commData[0].name)[1]}
+								</ThemedText>
+							</View>
+							{/* Community name and Member Count */}
+							<Link
+								href={{
+									pathname:
+										"/community/[communityId]/members",
+									params: { communityId: commData[0].id },
+								}}
+							>
+								<View>
+									<ThemedText type="defaultSemiBold">
+										{/* Chess Club */}
+										{commData[0]?.name}
+									</ThemedText>
+									<ThemedText
+										type="caption"
+										style={{
+											color: Colors[colorScheme].caption,
+										}}
+									>
+										20 members
+									</ThemedText>
+								</View>
+							</Link>
+						</View>
+						{/* Join Button */}
 
-                        <Pressable
-                            style={{
-                                paddingVertical: 8,
-                                paddingHorizontal: 12,
-                                backgroundColor: isMember
-                                    ? Colors[colorScheme].alert_red
-                                    : Colors[colorScheme].bg_light,
-                                borderRadius: 20,
-                                borderWidth: 2,
-                                borderColor: isMember
-                                    ? "transparent"
-                                    : Colors[colorScheme].tint,
-                            }}
-                            onPress={() => {
-                                isMember && setModalVisible(true);
-                                !isMember && mu_joinComm(commData[0].id);
-                            }}
-                        >
-                            <ThemedText
-                                type="body_small"
-                                emphasized
-                                style={{
-                                    color: isMember
-                                        ? Colors[colorScheme].button_text
-                                        : Colors[colorScheme].tint,
+						<Pressable
+							style={{
+								paddingVertical: 8,
+								paddingHorizontal: 12,
+								backgroundColor: isMember
+									? Colors[colorScheme].alert_red
+									: Colors[colorScheme].bg_light,
+								borderRadius: 20,
+								borderWidth: 2,
+								borderColor: isMember
+									? "transparent"
+									: Colors[colorScheme].tint,
+							}}
+							onPress={() => {
+								isMember && setModalVisible(true);
+								!isMember && mu_joinComm(commData[0].id);
+							}}
+						>
+							<ThemedText
+								type="body_small"
+								emphasized
+								style={{
+									color: isMember
+										? Colors[colorScheme].button_text
+										: Colors[colorScheme].tint,
 
-                                    fontWeight: "semibold",
-                                }}
-                            >
-                                {isMember ? "Leave" : "Join"}
-                            </ThemedText>
-                        </Pressable>
-                    </View>
-                    <ThemedText
-                        type="caption"
-                        style={{
-                            color: Colors[colorScheme].caption,
-                        }}
-                    >
-                        {commData[0]?.description}
-                    </ThemedText>
-                </View>
+									fontWeight: "semibold",
+								}}
+							>
+								{isMember ? "Leave" : "Join"}
+							</ThemedText>
+						</Pressable>
+					</View>
+					<ThemedText
+						type="caption"
+						style={{
+							color: Colors[colorScheme].caption,
+						}}
+					>
+						{commData[0]?.description}
+					</ThemedText>
+				</View>
 
-                <View
-                    style={{
-                        backgroundColor: Colors[colorScheme].bg,
-                        paddingHorizontal: 16,
-                    }}
-                >
-                    {/* <View
+				<View
+					style={{
+						backgroundColor: Colors[colorScheme].bg,
+						paddingHorizontal: 16,
+					}}
+				>
+					{/* <View
                         style={[
                             styles.sortButtonContainer,
                             {
@@ -433,271 +453,302 @@ export default function CommunityPage() {
                             color={Colors[colorScheme].text}
                         />
                     </View> */}
-                    {status === "error" || data?.length === 0 ? (
-                        <View
-                            style={{
-                                justifyContent: "center",
-                                alignItems: "center",
-                            }}
-                        >
-                            <ThemedText
-                                style={{ color: Colors[colorScheme].caption }}
-                            >
-                                No results found!
-                            </ThemedText>
-                        </View>
-                    ) : (
-                        <View>
-                            <FlashList
-                                nestedScrollEnabled={false}
-                                data={data}
-                                renderItem={({ item, index }) => (
-                                    <NewsPostCard news={item} key={index} />
-                                )}
-                            />
-                        </View>
-                    )}
-                </View>
-            </ScrollView>
-            <BottomSheet
-                ref={bottomSheetRef}
-                index={-1}
-                snapPoints={snapPoints}
-                backdropComponent={renderBackdrop}
-                enablePanDownToClose
-            >
-                <BottomSheetView style={styles.bottomSheet}>
-                    {/*{userRole === "admin" && (*/}
-                        <Pressable
-                            style={styles.modalActionButtonCtn}
-                            onPress={() => {
-                                bottomSheetRef.current?.close();
-                                router.push({
-                                    pathname: "community/[communityId]/post_requests",
-                                    params: { communityId: communityId, inst_id:  inst_id},
-                                });
-                            }}
-                        >
-                            <Feather
-                                name="file-text"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                            <ThemedText type="defaultSemiBold">
-                                View post requests
-                            </ThemedText>
-                        </Pressable>
+					{commNewsError ? (
+						<View
+							style={{
+								justifyContent: "center",
+								alignItems: "center",
+							}}
+						>
+							<ThemedText
+								style={{ color: Colors[colorScheme].caption }}
+							>
+								{commNewsError.message}
+							</ThemedText>
+						</View>
+					) : (
+						<View>
+							<FlashList
+								nestedScrollEnabled={false}
+								data={commNews}
+								ListEmptyComponent={
+									<View
+										style={{
+											marginTop: "50%",
+											flexDirection: "column",
+											justifyContent: "center",
+											alignItems: "center",
+										}}
+									>
+										<ThemedText
+											type="sub_heading"
+											style={{
+												color: Colors[colorScheme].text,
+											}}
+										>
+											No news has been posted yet.
+										</ThemedText>
+										<ThemedText
+											type="body_medium"
+											style={{
+												color: Colors[colorScheme].text,
+											}}
+										>
+											Be the first to post here!
+										</ThemedText>
+									</View>
+								}
+								renderItem={({ item, index }) => (
+									<NewsPostCard news={item} key={index} />
+								)}
+							/>
+						</View>
+					)}
+				</View>
+			</ScrollView>
+			<BottomSheet
+				ref={bottomSheetRef}
+				index={-1}
+				snapPoints={snapPoints}
+				backdropComponent={renderBackdrop}
+				enablePanDownToClose
+			>
+				<BottomSheetView style={styles.bottomSheet}>
+					{/*{userRole === "admin" && (*/}
+					<Pressable
+						style={styles.modalActionButtonCtn}
+						onPress={() => {
+							bottomSheetRef.current?.close();
+							router.push({
+								pathname:
+									"community/[communityId]/post_requests",
+								params: {
+									communityId: communityId,
+									inst_id: inst_id,
+								},
+							});
+						}}
+					>
+						<Feather
+							name="file-text"
+							size={24}
+							color={Colors[colorScheme].text}
+						/>
+						<ThemedText type="defaultSemiBold">
+							View post requests
+						</ThemedText>
+					</Pressable>
 
-                    <Pressable style={styles.modalActionButtonCtn}>
-                        <MaterialCommunityIcons
-                            name="help-circle-outline"
-                            size={24}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText type="defaultSemiBold">About</ThemedText>
-                    </Pressable>
-                    <Pressable style={styles.modalActionButtonCtn}>
-                        <MaterialCommunityIcons
-                            name="alert-circle-outline"
-                            size={24}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText type="defaultSemiBold">Report</ThemedText>
-                    </Pressable>
-                    <Pressable style={styles.modalActionButtonCtn}>
-                        <MaterialCommunityIcons
-                            name="plus"
-                            size={24}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText type="defaultSemiBold">Join</ThemedText>
-                    </Pressable>
-                </BottomSheetView>
-            </BottomSheet>
-            {/* Join/Leave button Action*/}
-            <Modal
-                animationType="slide"
-                visible={modalVisible}
-                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
-                onRequestClose={() => {
-                    setModalVisible(!modalVisible);
-                }}
-            >
-                <View style={styles.centeredView}>
-                    <View
-                        style={[
-                            styles.modalView,
-                            { backgroundColor: Colors[colorScheme].bg_light },
-                        ]}
-                    >
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={styles.modalText}
-                        >
-                            Leave group?
-                        </ThemedText>
-                        <View style={{ flexDirection: "row", gap: 24 }}>
-                            <Pressable
-                                style={[
-                                    styles.button,
-                                    {
-                                        backgroundColor:
-                                            Colors[colorScheme].text,
-                                    },
-                                ]}
-                                onPress={() => setModalVisible(!modalVisible)}
-                            >
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={[
-                                        styles.textStyle,
-                                        {
-                                            color: Colors[colorScheme]
-                                                .button_text,
-                                        },
-                                    ]}
-                                >
-                                    Cancel
-                                </ThemedText>
-                            </Pressable>
-                            <Pressable
-                                style={[
-                                    styles.button,
-                                    {
-                                        backgroundColor:
-                                            Colors[colorScheme].alert_red,
-                                    },
-                                ]}
-                                onPress={() => handleLeaveComm()}
-                            >
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={[
-                                        styles.textStyle,
-                                        {
-                                            color: Colors[colorScheme]
-                                                .button_text,
-                                        },
-                                    ]}
-                                >
-                                    Leave
-                                </ThemedText>
-                            </Pressable>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-        </GestureHandlerRootView>
-    );
+					<Pressable style={styles.modalActionButtonCtn}>
+						<MaterialCommunityIcons
+							name="help-circle-outline"
+							size={24}
+							color={Colors[colorScheme].text}
+						/>
+						<ThemedText type="defaultSemiBold">About</ThemedText>
+					</Pressable>
+					<Pressable style={styles.modalActionButtonCtn}>
+						<MaterialCommunityIcons
+							name="alert-circle-outline"
+							size={24}
+							color={Colors[colorScheme].text}
+						/>
+						<ThemedText type="defaultSemiBold">Report</ThemedText>
+					</Pressable>
+					<Pressable style={styles.modalActionButtonCtn}>
+						<MaterialCommunityIcons
+							name="plus"
+							size={24}
+							color={Colors[colorScheme].text}
+						/>
+						<ThemedText type="defaultSemiBold">Join</ThemedText>
+					</Pressable>
+				</BottomSheetView>
+			</BottomSheet>
+			{/* Join/Leave button Action*/}
+			<Modal
+				animationType="slide"
+				visible={modalVisible}
+				backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+				onRequestClose={() => {
+					setModalVisible(!modalVisible);
+				}}
+			>
+				<View style={styles.centeredView}>
+					<View
+						style={[
+							styles.modalView,
+							{ backgroundColor: Colors[colorScheme].bg_light },
+						]}
+					>
+						<ThemedText
+							type="defaultSemiBold"
+							style={styles.modalText}
+						>
+							Leave group?
+						</ThemedText>
+						<View style={{ flexDirection: "row", gap: 24 }}>
+							<Pressable
+								style={[
+									styles.button,
+									{
+										backgroundColor:
+											Colors[colorScheme].text,
+									},
+								]}
+								onPress={() => setModalVisible(!modalVisible)}
+							>
+								<ThemedText
+									type="defaultSemiBold"
+									style={[
+										styles.textStyle,
+										{
+											color: Colors[colorScheme]
+												.button_text,
+										},
+									]}
+								>
+									Cancel
+								</ThemedText>
+							</Pressable>
+							<Pressable
+								style={[
+									styles.button,
+									{
+										backgroundColor:
+											Colors[colorScheme].alert_red,
+									},
+								]}
+								onPress={() => handleLeaveComm()}
+							>
+								<ThemedText
+									type="defaultSemiBold"
+									style={[
+										styles.textStyle,
+										{
+											color: Colors[colorScheme]
+												.button_text,
+										},
+									]}
+								>
+									Leave
+								</ThemedText>
+							</Pressable>
+						</View>
+					</View>
+				</View>
+			</Modal>
+		</GestureHandlerRootView>
+	);
 }
 
 const styles = StyleSheet.create({
-    header: {
-        height: HEADER_HEIGHT,
-        overflow: "hidden",
-    },
-    headerContainer: {
-        flex: 0,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        alignItems: "center",
-    },
-    flexRowContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    card: {
-        flex: 1,
-        gap: 8,
-        alignContent: "flex-start",
-        borderRadius: 8,
-        paddingVertical: 12,
-        marginBottom: 4,
-        minHeight: 200,
-    },
-    cardInfoContainer: {
-        flex: 1,
-        gap: 8,
-        marginBottom: 4,
-        alignItems: "center",
-        flexDirection: "row",
-        paddingHorizontal: 12,
-    },
+	header: {
+		height: HEADER_HEIGHT,
+		overflow: "hidden",
+	},
+	headerContainer: {
+		flex: 0,
+		flexDirection: "row",
+		justifyContent: "space-between",
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		alignItems: "center",
+	},
+	flexRowContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	card: {
+		flex: 1,
+		gap: 8,
+		alignContent: "flex-start",
+		borderRadius: 8,
+		paddingVertical: 12,
+		marginBottom: 4,
+		minHeight: 200,
+	},
+	cardInfoContainer: {
+		flex: 1,
+		gap: 8,
+		marginBottom: 4,
+		alignItems: "center",
+		flexDirection: "row",
+		paddingHorizontal: 12,
+	},
 
-    titleContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    stepContainer: {
-        gap: 8,
-        marginBottom: 8,
-    },
-    iconsContainer: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingTop: 8,
-        paddingHorizontal: 12,
-    },
-    bottomSheet: {
-        flex: 0,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        gap: 24,
-    },
-    modalActionButtonCtn: {
-        flex: 0,
-        flexDirection: "row",
-        gap: 8,
-    },
-    modalView: {
-        width: "100%",
-        gap: 16,
+	titleContainer: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 8,
+	},
+	stepContainer: {
+		gap: 8,
+		marginBottom: 8,
+	},
+	iconsContainer: {
+		flex: 1,
+		flexDirection: "row",
+		alignItems: "center",
+		paddingTop: 8,
+		paddingHorizontal: 12,
+	},
+	bottomSheet: {
+		flex: 0,
+		paddingVertical: 12,
+		paddingHorizontal: 16,
+		gap: 24,
+	},
+	modalActionButtonCtn: {
+		flex: 0,
+		flexDirection: "row",
+		gap: 8,
+	},
+	modalView: {
+		width: "100%",
+		gap: 16,
 
-        borderRadius: 8,
-        paddingHorizontal: 24,
-        paddingVertical: 16,
-        alignItems: "flex-start",
-        shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    sortButtonContainer: {
-        alignSelf: "flex-start",
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        borderWidth: 1,
-        marginVertical: 12,
-    },
-    button: {
-        flex: 1,
-        borderRadius: 20,
-        paddingHorizontal: 20,
-        paddingVertical: 8,
-        elevation: 2,
-    },
-    textStyle: {
-        textAlign: "center",
-    },
-    modalText: {
-        fontWeight: "bold",
-    },
-    centeredView: {
-        flex: 1,
-        paddingHorizontal: 16,
-        justifyContent: "center",
-        alignItems: "center",
-    },
+		borderRadius: 8,
+		paddingHorizontal: 24,
+		paddingVertical: 16,
+		alignItems: "flex-start",
+		shadowColor: "#000",
+		shadowOffset: {
+			width: 0,
+			height: 2,
+		},
+		shadowOpacity: 0.25,
+		shadowRadius: 4,
+		elevation: 5,
+	},
+	sortButtonContainer: {
+		alignSelf: "flex-start",
+		flexDirection: "row",
+		alignItems: "center",
+		paddingHorizontal: 8,
+		paddingVertical: 4,
+		borderRadius: 4,
+		borderWidth: 1,
+		marginVertical: 12,
+	},
+	button: {
+		flex: 1,
+		borderRadius: 20,
+		paddingHorizontal: 20,
+		paddingVertical: 8,
+		elevation: 2,
+	},
+	textStyle: {
+		textAlign: "center",
+	},
+	modalText: {
+		fontWeight: "bold",
+	},
+	centeredView: {
+		flex: 1,
+		paddingHorizontal: 16,
+		justifyContent: "center",
+		alignItems: "center",
+	},
 });

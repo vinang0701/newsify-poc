@@ -13,33 +13,95 @@ import { Link, useRouter } from "expo-router";
 import { ThemedText } from "./themed-text";
 import { ModalProps, News } from "@/data/types";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/utils/authStore";
+import api from "@/lib/axios";
+import { z } from "zod";
 
 type NewsPostCardProps = {
     news: News;
 };
 
+const ToggleLikeSchema = z.object({
+    status: z.string(),
+    data: z.object({
+        new_likes_count: z.number(),
+        is_liked: z.boolean(),
+    }),
+});
+
+type ToggleLikeResponse = z.infer<typeof ToggleLikeSchema>;
+
 function NewsPostCard({ news }: NewsPostCardProps) {
     const colorScheme = useColorScheme() ?? "light";
-    const [like, setLike] = useState(false);
-    const [bookmark, setBookmark] = useState(false);
-    const [likeCount, setLikeCount] = useState(20);
+    // const [like, setLike] = useState(news.has_liked);
+    const [bookmark, setBookmark] = useState(news.has_saved);
+    // const [likeCount, setLikeCount] = useState(news.likes_count);
     const router = useRouter();
+    const queryClient = useQueryClient();
+    const { user, metadata } = useAuthStore();
+
+    if (!user || !metadata) {
+        throw new Error("Error occurred when retrieving user data.");
+    }
+
+    // Toggle Like Mutation Function
+    async function toggleLikePost(post_id: string) {
+        const response = await api.post(
+            `${metadata?.inst_id}/news/${post_id}/likes`,
+        );
+
+        return response.data;
+    }
+
+    const { mutate: mu_toggleLikePost, isPending: isPendingToggleLikePost } =
+        useMutation({
+            mutationFn: toggleLikePost,
+            onMutate: async (post_id: string) => {
+                // Stop outgoing fetches for "news" so they don't overwrite our optimistic update
+                await queryClient.cancelQueries({ queryKey: ["news"] });
+
+                // Snapshot current cache state
+                const previousNews = queryClient.getQueryData<News[]>(["news"]);
+
+                // Optimistically update the "news" list
+                queryClient.setQueryData<News[]>(["news"], (old) => {
+                    if (!old) return [];
+                    return old.map((post) => {
+                        if (post.id === post_id) {
+                            const isLiking = !post.has_liked;
+                            return {
+                                ...post,
+                                has_liked: isLiking,
+                                likes_count: isLiking
+                                    ? post.likes_count + 1
+                                    : Math.max(0, post.likes_count - 1),
+                            };
+                        }
+                        return post;
+                    });
+                });
+
+                // Return snapshot to context for rollback
+                return { previousNews };
+            },
+
+            onError: (err, post_id, context) => {
+                // Rollback to the exact state before the click
+                if (context?.previousNews) {
+                    queryClient.setQueryData(["news"], context.previousNews);
+                }
+                console.error(`Like failed for ${post_id}:`, err);
+            },
+        });
 
     function handleNavigate(user_id: string) {
         console.log(user_id);
         router.push({
-            pathname: "/(tabs)/profile_page/[user_id]",
+            // pathname: "/(tabs)/profile_page/[user_id]",
+            pathname: "/[user_id]",
             params: { user_id: user_id },
         });
-    }
-
-    function handleLike() {
-        setLike(!like);
-        if (!like) {
-            setLikeCount(likeCount + 1);
-        } else {
-            setLikeCount(20);
-        }
     }
 
     return (
@@ -141,9 +203,9 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                             alignItems: "center",
                             justifyContent: "flex-start",
                         }}
-                        onPress={() => handleLike()}
+                        onPress={() => mu_toggleLikePost(news.id)}
                     >
-                        {like ? (
+                        {news.has_liked ? (
                             <MaterialCommunityIcons
                                 name="heart"
                                 size={24}
@@ -157,26 +219,32 @@ function NewsPostCard({ news }: NewsPostCardProps) {
                             />
                         )}
 
-                        <ThemedText>{likeCount}</ThemedText>
+                        <ThemedText>{news.likes_count}</ThemedText>
                     </Pressable>
-                    <Link href="/comment" push asChild>
-                        <Pressable
-                            style={{
-                                flex: 0,
-                                flexDirection: "row",
-                                gap: 4,
-                                justifyContent: "flex-start",
-                                alignItems: "center",
-                            }}
-                        >
-                            <Feather
-                                name="message-square"
-                                size={24}
-                                color="black"
-                            />
-                            <ThemedText>3</ThemedText>
-                        </Pressable>
-                    </Link>
+                    {/* <Link href="/comment" push asChild> */}
+                    <Pressable
+                        style={{
+                            flex: 0,
+                            flexDirection: "row",
+                            gap: 4,
+                            justifyContent: "flex-start",
+                            alignItems: "center",
+                        }}
+                        onPress={() =>
+                            router.push({
+                                pathname: "/comment",
+                                params: { post_id: news.id },
+                            })
+                        }
+                    >
+                        <Feather
+                            name="message-square"
+                            size={24}
+                            color="black"
+                        />
+                        <ThemedText>{news.comments_count}</ThemedText>
+                    </Pressable>
+                    {/* </Link> */}
                 </View>
                 <Pressable onPress={() => setBookmark(!bookmark)}>
                     {bookmark ? (

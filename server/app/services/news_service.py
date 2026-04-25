@@ -1,12 +1,19 @@
 from supabase import Client
 from typing import List
-from app.models.news_post import NewsPost, Draft
+from app.models.news_post import (
+    NewsPost,
+    Draft,
+    LikeToggleResponse,
+    LikeToggleResponseData,
+)
 from app.core.db import supabase
 import uuid
 from fastapi import File, UploadFile
 
 
-async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
+async def get_institution_news(
+    supabase: Client, inst_id: str, user_id: str
+) -> List[dict]:
     # Logic: Fetch all news where the tenant matches
     response = (
         supabase.table("news_posts")
@@ -18,8 +25,14 @@ async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
             description, 
             image_url,
             content,
-            users!news_posts_author_fkey!inner(name, image_url)
-        """
+            users!news_posts_author_fkey!inner(name, image_url),
+            likes_count:post_likes(count),
+            comments_count:post_comments(count),
+            user_liked:post_likes(count).eq(user_id, {user_id}),
+            user_saved:saved_post(count).eq(user_id, {user_id})
+            """.format(
+                user_id=f"'{user_id}'"
+            )
         )
         .eq("inst_id", inst_id)
         .order("created_at", desc=True)
@@ -27,19 +40,46 @@ async def get_institution_news(supabase: Client, inst_id: str) -> List[dict]:
     )
 
     # Map the list of dicts to a list of NewsPost objects
-    return [
-        NewsPost(
-            id=post["id"],
-            author_id=post["author"],
-            author=post["users"]["name"],  # Map snake_case to camelCase
-            title=post["title"],
-            description=post["description"] or "",
-            image_url=post["image_url"] or "",
-            content=post["content"]
-            or {},  # Pydantic handles JSONB to Dict[str, Any] automatically
+    # return [
+    #     NewsPost(
+    #         id=post["id"],
+    #         author_id=post["author"],
+    #         author=post["users"]["name"],  # Map snake_case to camelCase
+    #         title=post["title"],
+    #         description=post["description"] or "",
+    #         image_url=post["image_url"] or "",
+    #         content=post["content"]
+    #         or {},  # Pydantic handles JSONB to Dict[str, Any] automatically
+    #     )
+    #     for post in response.data
+    # ]
+    posts = []
+    for post in response.data:
+        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
+        likes = post.get("likes_count", [{}])[0].get("count", 0)
+        comments = post.get("comments_count", [{}])[0].get("count", 0)
+
+        # 3. Boolean check: if count > 0, the user has interacted with it
+        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
+        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
+
+        posts.append(
+            NewsPost(
+                id=post["id"],
+                author_id=post["author"],
+                author=post["users"]["name"],
+                title=post["title"],
+                description=post["description"] or "",
+                image_url=post["image_url"] or "",
+                content=post["content"] or {},
+                likes_count=likes,
+                comments_count=comments,
+                has_liked=has_liked,
+                has_saved=has_saved,
+            )
         )
-        for post in response.data
-    ]
+
+    return posts
 
 
 # Check where has this been posted to
@@ -274,3 +314,24 @@ async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:
             for draft in response.data
         ]
     return []
+
+
+# ----------------------------
+# MY LIKES
+# ----------------------------
+async def toggle_post_like(post_id: uuid.UUID, user_id: uuid.UUID):
+    try:
+
+        response = supabase.rpc(
+            "toggle_post_like", {"p_post_id": str(post_id), "p_user_id": str(user_id)}
+        ).execute()
+
+        if not response.data:
+            raise HTTPException(
+                status_code=404, detail="Post not found or update failed"
+            )
+
+        return LikeToggleResponseData(**response.data[0])
+    except APIError as e:
+        # Log the error and raise a clean message
+        raise HTTPException(status_code=400, detail=f"Database error: {e.message}")

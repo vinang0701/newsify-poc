@@ -15,7 +15,6 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Authorization format",
         )
-
     token = authorization.split(" ")[1]
 
     try:

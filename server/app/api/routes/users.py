@@ -24,8 +24,9 @@ from app.schemas.notifications import (
     InvitationActionRequest,
 )
 from app.dependencies.auth import get_current_user
+from app.core import auth
 
-router = APIRouter(tags=["users"])
+router = APIRouter(tags=["users"], dependencies=[Depends(auth.get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
@@ -75,6 +76,7 @@ async def create_post_preview(item: UserPublishPostBody):
 # ----------------------------
 # SELF / AUTHENTICATED USER ROUTES
 # ----------------------------
+
 
 @router.get("/users/me/requests", response_model=UserRequestsResponse)
 async def get_my_requests(
@@ -190,17 +192,17 @@ async def respond_to_my_invitation(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/users/me/communities")
+@router.get("/{inst_id}/users/me/communities")
 async def get_my_communities(
-    inst_id: str = Query(...),
-    current_user=Depends(get_current_user),
+    inst_id: str,
+    current_user=Depends(auth.get_current_user),
 ):
     user_id = current_user.id
     user_communities = await users_service.get_user_communities(
         supabase, inst_id, user_id
     )
 
-    if user_communities is None or len(user_communities) == 0:
+    if user_communities is None:
         raise HTTPException(status_code=404, detail="No communities found")
     return user_communities
 
@@ -321,10 +323,10 @@ async def unfollow_user(
         raise HTTPException(status_code=500, detail="Could not unfollow")
 
 
-@router.delete("/users/me/communities/{community_id}")
+@router.delete("/{inst_id}/users/me/communities/{community_id}")
 async def leave_community(
     community_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(auth.get_current_user),
 ):
     try:
         result = await communities_service.leave_community(
@@ -340,10 +342,10 @@ async def leave_community(
         raise HTTPException(status_code=500, detail="Could not leave community")
 
 
-@router.post("/users/me/communities")
+@router.post("/{inst_id}/users/me/communities")
 async def join_community(
     body: JoinCommunityRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(auth.get_current_user),
 ):
     try:
         result = await communities_service.join_community(
@@ -362,10 +364,16 @@ async def join_community(
         raise HTTPException(status_code=500, detail="Failed to join community")
 
 
+@router.post("/users/me/bookmarks")
+async def save_post(
+    body, current_user: auth.UserPayload = Depends(auth.get_current_user)
+):
+    return []
+
+
 # ----------------------------
 # INSTITUTION-SCOPED / OTHER USER ROUTES
 # ----------------------------
-
 @router.get("/{inst_id}/users/{user_id}/news")
 async def get_user_news(inst_id: str, user_id: str):
     my_news = await news_service.get_user_news(supabase, user_id)
