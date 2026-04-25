@@ -24,7 +24,6 @@ import React, {
 import { Colors } from "@/constants/theme";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import Feather from "@expo/vector-icons/Feather";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemedText } from "@/components/themed-text";
@@ -32,13 +31,11 @@ import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
-import axios, { AxiosError } from "axios";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
 
 interface UserCommunities {
     community_id: string;
@@ -54,7 +51,14 @@ export default function CommunityPage() {
     const [modalVisible, setModalVisible] = useState(false);
     const queryClient = useQueryClient();
 
-    const tenantId = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+    const { user, metadata } = useAuthStore();
+    if (!user || !metadata) {
+        throw new Error("Error occurred while retrieving user data");
+    }
+
+    const inst_id = metadata.inst_id;
+    const user_id = user.id;
+
     // ref
     const bottomSheetRef = useRef<BottomSheet>(null);
 
@@ -88,54 +92,32 @@ export default function CommunityPage() {
     }
 
     async function fetchCommunity(): Promise<Community[]> {
-        try {
-            const response = await axios.get<Community[]>(
-                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}`,
-            );
-            console.log(response.data);
-            return response.data;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
+        const response = await api.get<Community[]>(
+            `/${inst_id}/communities/${communityId}`,
+        );
+        return response.data;
     }
 
-    async function fetchCommunityNews(tenantId: string): Promise<News[]> {
-        console.log("fetching in community");
-        try {
-            const response = await axios.get<News[]>(
-                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}/news`,
-            );
-            console.log("news", response.data);
-            return response.data;
-        } catch (error) {
-            // Re-throwing the error allows TanStack Query to "see" the failure
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
+    async function fetchCommunityNews(inst_id: string): Promise<News[]> {
+        const response = await api.get<News[]>(
+            `/${inst_id}/communities/${communityId}/news`,
+        );
+
+        return response.data;
     }
 
     async function leaveCommunity() {
         console.log("Leaving community");
-        try {
-            const response = await axios.delete(
-                `${BASE_URL}/${inst_id}/users/me/communities/${communityId}`,
-            );
 
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
-            return response.data;
-        } catch (error) {
-            console.error("Failed to leave:", error);
-        }
+        const response = await api.delete(
+            `/${inst_id}/users/me/communities/${communityId}`,
+        );
+
+        queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+        return response.data;
     }
 
-    const { mutate, isPending } = useMutation({
+    const { mutate, isPending: isPendingLeave } = useMutation({
         mutationKey: ["user_communities"],
         mutationFn: leaveCommunity,
         onError: (error) => {
@@ -146,7 +128,7 @@ export default function CommunityPage() {
 
     const joinComm = async (id: string) => {
         try {
-            await axios.post(`${BASE_URL}/${inst_id}/users/me/communities`, {
+            await api.post(`/${inst_id}/users/me/communities`, {
                 community_id: id,
                 user_id: user_id,
             });
@@ -158,7 +140,7 @@ export default function CommunityPage() {
         }
     };
 
-    const { mutate: mu_joinComm } = useMutation({
+    const { mutate: mu_joinComm, isPending: isPendingJoin } = useMutation({
         mutationFn: joinComm,
     });
 
@@ -168,14 +150,17 @@ export default function CommunityPage() {
     }
 
     // Fetch data from server
-    const { isFetching, status, data, error } = useQuery({
-        queryKey: ["community_news", tenantId],
-        queryFn: () => fetchCommunityNews(tenantId),
+    const {
+        isFetching,
+        data: commNews,
+        error: commNewsError,
+    } = useQuery({
+        queryKey: ["community_news", inst_id],
+        queryFn: () => fetchCommunityNews(inst_id),
     });
 
     const {
-        isFetching: commFetching,
-        status: commStatus,
+        isFetching: isFetchingComm,
         data: commData,
         error: commError,
     } = useQuery({
@@ -192,9 +177,7 @@ export default function CommunityPage() {
         queryKey: ["user_communities", user_id],
         queryFn: async () => {
             // axios try catch
-            const response = await axios.get(
-                `${BASE_URL}/${inst_id}/users/me/communities`,
-            );
+            const response = await api.get(`/${inst_id}/users/me/communities`);
 
             return response.data;
         },
@@ -204,15 +187,7 @@ export default function CommunityPage() {
         (item) => item.community_id === communityId,
     );
 
-    if (commData === undefined || commError) {
-        return (
-            <View>
-                <Text>Error</Text>
-            </View>
-        );
-    }
-
-    if (isFetching) {
+    if (isFetching || isFetchingComm) {
         return (
             <SafeAreaView
                 style={{
@@ -222,9 +197,51 @@ export default function CommunityPage() {
                 }}
             >
                 <ActivityIndicator
-                    size="large"
+                    size={"large"}
                     color={Colors[colorScheme].tint}
                 />
+            </SafeAreaView>
+        );
+    }
+
+    if (commData === undefined || commError || commNews === undefined) {
+        return (
+            <SafeAreaView>
+                <View
+                    style={[
+                        styles.headerContainer,
+                        {
+                            backgroundColor: Colors[colorScheme].tint,
+                        },
+                    ]}
+                >
+                    <Pressable onPress={() => router.back()}>
+                        <MaterialCommunityIcons
+                            name="arrow-left"
+                            size={24}
+                            color={Colors[colorScheme].button_text}
+                            weight="bold"
+                        />
+                    </Pressable>
+
+                    <Image
+                        source={require("@/assets/images/icon_light.png")}
+                        style={{ width: 42, height: 20, resizeMode: "contain" }}
+                    />
+
+                    <Pressable onPress={handleExpandSheet}>
+                        <MaterialCommunityIcons
+                            name="dots-vertical"
+                            size={24}
+                            color={Colors[colorScheme].button_text}
+                        />
+                    </Pressable>
+                </View>
+                <View>
+                    <ThemedText type="sub_heading">
+                        This community does not exist.
+                    </ThemedText>
+                </View>
             </SafeAreaView>
         );
     }
@@ -233,6 +250,7 @@ export default function CommunityPage() {
         <GestureHandlerRootView>
             {/* Header */}
             <SafeAreaView>
+                {(isPendingJoin || isPendingLeave) && <Loading />}
                 <View
                     style={[
                         styles.headerContainer,
@@ -411,7 +429,7 @@ export default function CommunityPage() {
                             color={Colors[colorScheme].text}
                         />
                     </View> */}
-                    {status === "error" || data?.length === 0 ? (
+                    {commNewsError ? (
                         <View
                             style={{
                                 justifyContent: "center",
@@ -421,14 +439,41 @@ export default function CommunityPage() {
                             <ThemedText
                                 style={{ color: Colors[colorScheme].caption }}
                             >
-                                No results found!
+                                {commNewsError.message}
                             </ThemedText>
                         </View>
                     ) : (
                         <View>
                             <FlashList
                                 nestedScrollEnabled={false}
-                                data={data}
+                                data={commNews}
+                                ListEmptyComponent={
+                                    <View
+                                        style={{
+                                            marginTop: "50%",
+                                            flexDirection: "column",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <ThemedText
+                                            type="sub_heading"
+                                            style={{
+                                                color: Colors[colorScheme].text,
+                                            }}
+                                        >
+                                            No news has been posted yet.
+                                        </ThemedText>
+                                        <ThemedText
+                                            type="body_medium"
+                                            style={{
+                                                color: Colors[colorScheme].text,
+                                            }}
+                                        >
+                                            Be the first to post here!
+                                        </ThemedText>
+                                    </View>
+                                }
                                 renderItem={({ item, index }) => (
                                     <NewsPostCard news={item} key={index} />
                                 )}

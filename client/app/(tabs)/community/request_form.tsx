@@ -7,6 +7,7 @@ import {
     Pressable,
     TextInput,
     Alert,
+    ActivityIndicator,
 } from "react-native";
 import {
     SafeAreaView,
@@ -19,8 +20,8 @@ import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
-import Loading from "@/components/loading";
 import { useRouter } from "expo-router";
+import Loading from "@/components/loading";
 
 // Define the shape of your form data
 interface CommunityRequest {

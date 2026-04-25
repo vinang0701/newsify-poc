@@ -42,8 +42,8 @@ async def get_community(community_id: str):
 @router.get("/{community_id}/news")
 async def get_community_news(community_id: str):
     community_news = await news_service.get_community_news(supabase, community_id)
-    if community_news is None or len(community_news) == 0:
-        raise HTTPException(status_code=404, detail="No news found")
+    if community_news is None:
+        raise HTTPException(status_code=404, detail="This community does not exist.")
 
     return community_news
 

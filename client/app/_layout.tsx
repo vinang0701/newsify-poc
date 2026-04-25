@@ -80,6 +80,12 @@ export default function RootLayout() {
                                     headerShown: false,
                                 }}
                             />
+                            <Stack.Screen
+                                name="update_password"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
                         </Stack.Protected>
                         <Stack.Protected guard={!session || session === null}>
                             <Stack.Screen
@@ -90,6 +96,12 @@ export default function RootLayout() {
                             />
                             <Stack.Screen
                                 name="forgot_password"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="verify_otp"
                                 options={{
                                     headerShown: false,
                                 }}

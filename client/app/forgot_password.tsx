@@ -37,22 +37,28 @@ const ForgotPassword = () => {
         },
     });
 
-    const onSubmit = async (data: z.infer<typeof ForgotPasswordSchema>) => {
+    const onSubmit = async (formData: z.infer<typeof ForgotPasswordSchema>) => {
         setIsLoading(true);
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(
-                data.email,
+            const { data, error } = await supabase.auth.resetPasswordForEmail(
+                formData.email,
             );
 
             if (error) {
                 // You could use form.setError here to show server errors on the input
                 console.error(error.message);
+            } else if (!data) {
+                console.error("No data from Supabase Auth.");
             } else {
                 router.push({
                     pathname: "/verify_otp",
-                    params: { email: data.email },
+                    params: { email: formData.email },
                 });
             }
+            // router.push({
+            //     pathname: "/verify_otp",
+            //     params: { email: formData.email },
+            // });
         } finally {
             setIsLoading(false);
         }
@@ -75,13 +81,13 @@ const ForgotPassword = () => {
                 resizeMode="cover"
             >
                 {/* Header */}
-                <View>
+                <Pressable onPress={() => router.back()}>
                     <Feather
                         name="arrow-left"
                         size={24}
                         color={Colors[colorScheme].button_text}
                     />
-                </View>
+                </Pressable>
                 {/* Prompt and Input */}
                 <View
                     style={{
