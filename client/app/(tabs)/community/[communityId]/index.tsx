@@ -34,6 +34,7 @@ import NewsPostCard from "@/components/news_post_card";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
+import { supabase } from "@/lib/supabase";
 
 const HEADER_HEIGHT = 250;
 
@@ -227,6 +228,23 @@ export default function CommunityPage() {
 			</SafeAreaView>
 		);
 	}
+	if (commData === undefined || commError) {
+		return (
+			<View>
+				<Text>Error</Text>
+			</View>
+		);
+	}
+
+	const { data: currentUser } = useQuery({
+		queryKey: ["current_user"],
+		queryFn: async () => {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			return user;
+		},
+	});
 
 	if (commData === undefined || commError || commNews === undefined) {
 		return (
@@ -499,7 +517,11 @@ export default function CommunityPage() {
 									</View>
 								}
 								renderItem={({ item, index }) => (
-									<NewsPostCard news={item} key={index} />
+									<NewsPostCard
+										news={item}
+										key={index}
+										currentUserId={currentUser?.id}
+									/>
 								)}
 							/>
 						</View>

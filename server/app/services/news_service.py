@@ -35,6 +35,7 @@ async def get_institution_news(
             )
         )
         .eq("inst_id", inst_id)
+        .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -118,6 +119,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
         """
         )
         .eq("community_id", community_id)
+        .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -146,6 +148,7 @@ async def create_post(
     content: str,
     school: str,
     communities: List[str],
+    category_id: str | None = None,
 ) -> List[dict]:
     try:
 
@@ -177,6 +180,7 @@ async def create_post(
                     "description": content[:100],
                     "content": {"text": content},
                     "status": "PUBLISHED",
+                    "category_id": category_id,
                 }
             )
             .execute()
@@ -266,6 +270,7 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
         """
         )
         .eq("author", user_id)
+        .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -314,6 +319,150 @@ async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:
             for draft in response.data
         ]
     return []
+
+
+async def get_personalised_news(
+    supabase: Client, inst_id: str, user_id: str
+) -> List[dict]:
+
+    # Step 1: Get this user's preferred category_ids from user_preferences table
+    prefs_response = (
+        supabase.table("user_preferences")
+        .select("category_id")
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    # Turn the list of dicts into a flat list of ids
+    # e.g. [{"category_id": "abc"}] → ["abc"]
+    preferred_ids = [row["category_id"] for row in prefs_response.data]
+
+    # If user has no preferences, return the normal feed so screen isnt empty
+    if not preferred_ids:
+        return await get_institution_news(supabase, inst_id)
+
+    # Step 2: Fetch posts where category_id matches user's preferences
+    # category_id is now directly on news_posts so no joining needed!
+    response = (
+        supabase.table("news_posts")
+        .select(
+            """
+            id,
+            author,
+            title,
+            description,
+            image_url,
+            content,
+            users!news_posts_author_fkey!inner(name, image_url)
+            """
+        )
+        .eq("inst_id", inst_id)  # only this institution
+        .in_("category_id", preferred_ids)  # only matching categories
+        .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
+        .order("created_at", desc=True)  # newest first
+        .execute()
+    )
+
+    # Return empty list if no matching posts found
+    if not response.data:
+        return []
+
+    # Map to NewsPost objects — same pattern as get_institution_news
+    return [
+        NewsPost(
+            id=post["id"],
+            author_id=post["author"],
+            author=post["users"]["name"],
+            title=post["title"],
+            description=post["description"] or "",
+            image_url=post["image_url"] or "",
+            content=post["content"] or {},
+        )
+        for post in response.data
+    ]
+
+
+async def save_post(supabase: Client, user_id: str, post_id: str) -> dict:
+    # Insert a new row into saved_post table
+    response = (
+        supabase.table("saved_post")
+        .insert(
+            {
+                "user_id": user_id,
+                "post_id": post_id,
+            }
+        )
+        .execute()
+    )
+    return response.data
+
+
+async def unsave_post(supabase: Client, user_id: str, post_id: str) -> dict:
+    # Delete the row from saved_post table
+    response = (
+        supabase.table("saved_post")
+        .delete()
+        .eq("user_id", user_id)
+        .eq("post_id", post_id)
+        .execute()
+    )
+    return response.data
+
+
+async def get_saved_posts(supabase: Client, user_id: str) -> List[dict]:
+    # Fetch all posts saved by this user
+    response = (
+        supabase.table("saved_post")
+        .select(
+            """
+            post_id,
+            news_posts!inner(
+                id,
+                author,
+                title,
+                description,
+                image_url,
+                content,
+                status,
+                users!news_posts_author_fkey!inner(name, image_url)
+            )
+            """
+        )
+        .eq("user_id", user_id)  # only this user's saved posts
+        .eq("news_posts.status", "PUBLISHED")  # only published posts
+        .order("saved_at", desc=True)  # most recently saved first
+        .execute()
+    )
+
+    if not response.data:
+        return []
+
+    return [
+        NewsPost(
+            id=row["news_posts"]["id"],
+            author_id=row["news_posts"]["author"],
+            author=row["news_posts"]["users"]["name"],
+            title=row["news_posts"]["title"],
+            description=row["news_posts"]["description"] or "",
+            image_url=row["news_posts"]["image_url"] or "",
+            content=row["news_posts"]["content"] or {},
+        )
+        for row in response.data
+    ]
+
+
+async def is_post_saved(supabase: Client, user_id: str, post_id: str) -> bool:
+    # Check if a specific post is already saved by this user
+    response = (
+        supabase.table("saved_post")
+        .select("post_id")
+        .eq("user_id", user_id)
+        .eq("post_id", post_id)
+        .limit(1)
+        .execute()
+    )
+    # Returns True if a row exists, False if not
+    return len(response.data) > 0
 
 
 # ----------------------------

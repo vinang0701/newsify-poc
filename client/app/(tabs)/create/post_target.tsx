@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import {supabase} from "@/lib/supabase";
 import {
     Pressable,
     StyleSheet,
@@ -20,7 +21,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { Colors } from "@/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import DraftsTab from "@/components/drafts";
 import { Checkbox } from "expo-checkbox";
@@ -67,6 +68,12 @@ export default function PostTargetForm() {
 
     const [searchQuery, setSearchQuery] = useState("");
 
+    // Stores the category_id the user picks for this post
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
+    // Stores the list of categories fetched from Supabase
+    const [categories, setCategories] = useState<{ category_id: string; category_name: string }[]>([]);
+
     const handleSearch = (text: string) => {
         setSearchQuery(text);
         console.log("Searching for:", text);
@@ -91,6 +98,18 @@ export default function PostTargetForm() {
         },
     });
 
+    // Fetch all active categories from Supabase when the screen loads
+    useEffect(() => {
+        const fetchCategories = async () => {
+            const { data } = await supabase
+                .from("categories")
+                .select("category_id, category_name")
+                .eq("status", "active"); // only show active categories
+            setCategories(data || []);
+        };
+        fetchCategories();
+    }, []); // [] means run once when screen loads
+
     // temp publish post
     const uploadPost = async () => {
         const formData = new FormData();
@@ -101,6 +120,11 @@ export default function PostTargetForm() {
 
         // Is school checked?
         formData.append("school", isSchoolChecked ? "true" : "false");
+
+        
+        if (selectedCategoryId) {
+            formData.append("category_id", selectedCategoryId);
+}
 
         // need to add selected community id
         selectedIds.forEach((id) => formData.append("communities", id));
@@ -235,6 +259,43 @@ export default function PostTargetForm() {
                         />
                         <ThemedText emphasized>School</ThemedText>
                     </View>
+
+                    {/* Category Picker */}
+                    <View style={{ width: "100%", gap: 8 }}>
+                        <ThemedText type="defaultSemiBold">Select a Category</ThemedText>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                            {categories.map((cat) => (
+                                <Pressable
+                                    key={cat.category_id}
+                                    onPress={() => setSelectedCategoryId(cat.category_id)}
+                                    style={{
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 8,
+                                        borderRadius: 20,
+                                        borderWidth: 1.5,
+                                        // filled if selected, transparent if not
+                                        borderColor: Colors[colorScheme].tint,
+                                        backgroundColor:
+                                            selectedCategoryId === cat.category_id
+                                                ? Colors[colorScheme].tint
+                                                : "transparent",
+                                    }}
+                                >
+                                    <ThemedText
+                                        style={{
+                                            color:
+                                                selectedCategoryId === cat.category_id
+                                                    ? Colors[colorScheme].button_text
+                                                    : Colors[colorScheme].text,
+                                        }}
+                                    >
+                                        {cat.category_name}
+                                    </ThemedText>
+                                </Pressable>
+                            ))}
+                        </View>
+                    </View>
+
                     {/* Communities */}
                     <View
                         style={{

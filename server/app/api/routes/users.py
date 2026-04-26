@@ -224,6 +224,7 @@ async def create_news_post(
     school: str = Form(...),
     communities: list[str] = Form(...),
     image: UploadFile = File(...),
+    category_id: str | None = Form(None),
     current_user=Depends(get_current_user),
 ):
     try:
@@ -231,7 +232,15 @@ async def create_news_post(
         isSchool = school == "true"
 
         await news_service.create_post(
-            supabase, inst_id, user_id, image, title, content, isSchool, communities
+            supabase,
+            inst_id,
+            user_id,
+            image,
+            title,
+            content,
+            isSchool,
+            communities,
+            category_id,
         )
 
         return {
@@ -286,9 +295,7 @@ async def follow_user(
 ):
     try:
         result = await users_service.follow_user(
-            supabase,
-            str(current_user.id),
-            body.followed_user_id
+            supabase, str(current_user.id), body.followed_user_id
         )
 
         return {
@@ -301,7 +308,6 @@ async def follow_user(
             raise HTTPException(status_code=400, detail="Already following user.")
 
         raise HTTPException(status_code=500, detail="Failed to follow user")
-
 
 
 @router.delete("/users/me/following/{user_id}")
@@ -384,7 +390,9 @@ async def get_user_news(inst_id: str, user_id: str):
 
 @router.get("/{inst_id}/users/me/following")
 async def get_my_following(inst_id: str, current_user=Depends(get_current_user)):
-    my_following = await users_service.get_user_following(supabase, inst_id, str(current_user.id))
+    my_following = await users_service.get_user_following(
+        supabase, inst_id, str(current_user.id)
+    )
     return my_following
 
 
@@ -431,3 +439,61 @@ async def search_users(
     except Exception as e:
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail="Error searching users")
+
+
+# Check if a post is saved by the current user
+@router.get("/users/me/saved/{post_id}")
+async def check_saved_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        is_saved = await news_service.is_post_saved(supabase, str(user_id), post_id)
+        return {"is_saved": is_saved}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not check saved status")
+
+
+# Save a post
+@router.post("/users/me/saved/{post_id}")
+async def save_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.save_post(supabase, str(user_id), post_id)
+        return {"status": "success", "message": "Post saved successfully"}
+    except Exception as e:
+        # If already saved, duplicate key error will be thrown
+        if "duplicate key" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Post already saved")
+        raise HTTPException(status_code=500, detail="Could not save post")
+
+
+# Unsave a post
+@router.delete("/users/me/saved/{post_id}")
+async def unsave_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.unsave_post(supabase, str(user_id), post_id)
+        return {"status": "success", "message": "Post unsaved successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not unsave post")
+
+
+# Get all saved posts for current user
+@router.get("/users/me/saved")
+async def get_saved_posts(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        saved_posts = await news_service.get_saved_posts(supabase, str(user_id))
+        return saved_posts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch saved posts")

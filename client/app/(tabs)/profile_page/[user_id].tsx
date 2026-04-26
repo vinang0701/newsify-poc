@@ -31,6 +31,7 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuthStore } from "@/utils/authStore";
+import { supabase } from "@/lib/supabase";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -183,6 +184,14 @@ export default function Profile() {
         queryKey: ["user_news", user_id],
         queryFn: fetchUserNews,
         enabled: !!user_id,
+    });
+
+    const { data: currentUser } = useQuery({
+        queryKey: ["current_user"],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            return user;
+        },
     });
 
     return (
@@ -414,7 +423,7 @@ export default function Profile() {
                                 }
                                 data={data}
                                 renderItem={({ item }) => (
-                                    <NewsPostCard news={item} />
+                                    <NewsPostCard news={item} currentUserId={currentUser?.id} />
                                 )}
                             />
                         )}
@@ -459,15 +468,34 @@ export default function Profile() {
                                 </ThemedText>
                             </Pressable>
 
-                            <Pressable style={styles.modalActionButtonCtn}>
+                            <Pressable
+                                style={styles.modalActionButtonCtn}
+                                onPress={() => {
+                                    bottomSheetRef.current?.close();
+                                    router.push("/(tabs)/profile_page/bookmarks");
+                                }}
+                            >
                                 <Feather
-                                    name="settings"
+                                    name="bookmark"
                                     size={24}
                                     color={Colors[colorScheme].text}
                                 />
                                 <ThemedText type="defaultSemiBold">
-                                    Change preference
+                                    View bookmarks
                                 </ThemedText>
+                            </Pressable>
+
+                            <Pressable style={styles.modalActionButtonCtn}
+                                onPress={() => {
+                                    bottomSheetRef.current?.close(); // close the bottom sheet first
+                                    router.push({
+                                        pathname: "/(tabs)/profile_page/preferences",
+                                        params: { inst_id: inst_id }, // pass inst_id like your other routes do
+                                    });
+                                }}
+                                >
+                                <Feather name="settings" size={24} color={Colors[colorScheme].text} />
+                                <ThemedText type="defaultSemiBold">Change preference</ThemedText>
                             </Pressable>
 
                             <Pressable

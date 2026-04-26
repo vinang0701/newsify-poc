@@ -43,6 +43,19 @@ async def get_feed(
     return posts
 
 
+# Add this below your existing /feed route
+@router.get("/feed/personalised")
+async def get_personalised_feed(inst_id: str, user_id: str):
+    # user_id comes as query param: /feed/personalised?user_id=abc123
+    # inst_id comes from the URL prefix: /{inst_id}/news/feed/personalised
+
+    posts = await news_service.get_personalised_news(supabase, inst_id, user_id)
+
+    if posts is None:
+        raise HTTPException(status_code=404, detail="Could not fetch personalised feed")
+    return posts
+
+
 @router.get("/{post_id}/comments")
 async def get_post_comments(
     post_id: uuid.UUID, current_user: UserPayload = Depends(get_current_user)
