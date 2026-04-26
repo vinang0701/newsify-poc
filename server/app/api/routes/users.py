@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, List
-
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File, Query
 from pydantic import BaseModel
 from openai import OpenAI
@@ -12,6 +12,7 @@ from app.services import (
     requests_service,
     users_notifications_service,
     users_invitations_service,
+    users_preferences_service,
 )
 from app.core.db import supabase
 from app.core.config import settings
@@ -25,6 +26,7 @@ from app.schemas.notifications import (
 )
 from app.dependencies.auth import get_current_user
 from app.core import auth
+from app.models.registeredUsers import SavePreferencesRequest
 
 router = APIRouter(tags=["users"], dependencies=[Depends(auth.get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -497,3 +499,38 @@ async def get_saved_posts(
         return saved_posts
     except Exception as e:
         raise HTTPException(status_code=500, detail="Could not fetch saved posts")
+
+
+@router.get("/{inst_id}/users/me/preferences")
+async def get_user_preferences(
+    inst_id: str, current_user: auth.UserPayload = Depends(auth.get_current_user)
+):
+    user_id = current_user.id
+    user_preferences = await users_preferences_service.get_user_preferences(
+        supabase=supabase, user_id=user_id
+    )
+    return user_preferences
+
+
+@router.post("/{inst_id}/users/me/preferences")
+async def update_preferences(
+    inst_id: str,
+    payload: SavePreferencesRequest,
+    current_user: auth.UserPayload = Depends(auth.get_current_user),
+):
+    try:
+        user_id = current_user.id
+        success = await users_preferences_service.save_user_preferences(
+            supabase=supabase,
+            user_id=user_id,
+            preferences=payload.preferences,  # Passing the list of objects
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to save preferences")
+
+        return {"message": "Preferences synchronized successfully"}
+
+    except Exception as e:
+        print(f"Error saving preferences: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
