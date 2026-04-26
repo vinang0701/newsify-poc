@@ -43,7 +43,7 @@ export function Header() {
                 },
             ]}
         >
-            <TouchableOpacity>
+            <TouchableOpacity onPress = {() => router.push ('/notifications')}>
                 <Feather
                     name="bell"
                     size={24}

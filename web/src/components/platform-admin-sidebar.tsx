@@ -1,3 +1,7 @@
+// ADD this import at the top
+import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router";
+import { LogOut } from "lucide-react";
 import {
 	Sidebar,
 	SidebarContent,
@@ -26,6 +30,7 @@ import { Link, useLocation } from "react-router";
 
 export function PlatformAdminSidebar() {
 	const { pathname } = useLocation();
+	const navigate = useNavigate();
 
 	return (
 		<Sidebar side={"left"} className="">
@@ -67,7 +72,22 @@ export function PlatformAdminSidebar() {
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarContent>
-			<SidebarFooter />
+			<SidebarFooter>
+  				<SidebarMenu>
+    				<SidebarMenuItem className="px-2">
+      					<SidebarMenuButton
+        					className="text-base h-10 text-red-500 hover:text-red-600"
+        					onClick={async () => {
+          					await supabase.auth.signOut();
+          					navigate("/login");
+        				}}
+     				 >
+        				<LogOut size={16} />
+        				<span>Log out</span>
+      				</SidebarMenuButton>
+    				</SidebarMenuItem>
+  				</SidebarMenu>
+			</SidebarFooter>
 		</Sidebar>
 	);
 }

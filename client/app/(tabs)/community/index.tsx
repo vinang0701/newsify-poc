@@ -28,6 +28,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import axios from "axios";
+import api from "@/lib/axios";
 
 const HEADER_HEIGHT = 250;
 
@@ -99,7 +100,7 @@ export default function CommunitiesTab() {
 
     const joinComm = async (id: string) => {
         try {
-            await axios.post(`${BASE_URL}/${inst_id}/users/me/communities`, {
+            await api.post(`/${inst_id}/users/me/communities`, {
                 community_id: id,
                 user_id: user_id,
             });
@@ -128,11 +129,9 @@ export default function CommunitiesTab() {
     const { status, data, error, isFetching, refetch } = useQuery<Community[]>({
         queryKey: ["communities"],
         queryFn: async (): Promise<Community[]> => {
-            const response = await fetch(`${BASE_URL}/${inst_id}/communities`);
-            if (!response.ok) {
-                throw new Error("Network response was not ok");
-            }
-            return await response.json();
+            const response = await api(`/${inst_id}/communities`);
+
+            return await response.data;
         },
     });
 
@@ -144,9 +143,7 @@ export default function CommunitiesTab() {
         queryKey: ["user_communities", user_id],
         queryFn: async () => {
             // axios try catch
-            const response = await axios.get(
-                `${BASE_URL}/${inst_id}/users/me/communities`,
-            );
+            const response = await api.get(`${inst_id}/users/me/communities`);
 
             return response.data;
         },
@@ -155,7 +152,7 @@ export default function CommunitiesTab() {
     async function leaveCommunity(community_id: string) {
         console.log("Leaving community");
         try {
-            const response = await axios.delete(
+            const response = await api.delete(
                 `${BASE_URL}/${inst_id}/users/me/communities/${community_id}`,
             );
 
@@ -325,13 +322,39 @@ export default function CommunitiesTab() {
                 />
 
                 <FlashList
-                    style={{ paddingBottom: 16 }}
+                    contentContainerStyle={{
+                        height: "100%",
+                        marginBottom: 16,
+                    }}
                     data={filteredCommunities}
+                    ListEmptyComponent={
+                        <View
+                            style={{
+                                flexDirection: "column",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                marginTop: "50%",
+                            }}
+                        >
+                            <ThemedText
+                                type="sub_heading"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                No communities yet
+                            </ThemedText>
+                            <ThemedText
+                                type="body_medium"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                You can request to create a community.
+                            </ThemedText>
+                        </View>
+                    }
                     renderItem={({ item }) => (
                         <Link
                             href={{
                                 pathname: "/community/[communityId]",
-                                params: { communityId: item?.id },
+                                params: { communityId: item?.id, inst_id:inst_id},
                             }}
                             style={[
                                 styles.card,
