@@ -5,11 +5,11 @@
 		"version": "1.0.0",
 		"orientation": "portrait",
 		"icon": "./assets/images/icon.png",
-		"scheme": "com.newsify",
+		"scheme": "com.anonymous.client",
 		"userInterfaceStyle": "automatic",
 		"ios": {
 			"supportsTablet": true,
-			"bundleIdentifier": "com.newsify",
+			"bundleIdentifier": "com.anonymous.client",
 			"infoPlist": {
 				"ITSAppUsesNonExemptEncryption": false
 			}
@@ -26,7 +26,7 @@
 				"android.permission.CAMERA",
 				"android.permission.RECORD_AUDIO"
 			],
-			"package": "com.newsify"
+			"package": "com.anonymous.client"
 		},
 		"web": {
 			"output": "static",
