@@ -50,7 +50,6 @@ export function useCommunityPostRequests(inst_id: string, communityId: string) {
             );
 
             const data = await res.json();
-            console.log("API Response:", data);
 
             if (!res.ok) {
                 throw new Error(data?.detail || "Failed to fetch post requests");

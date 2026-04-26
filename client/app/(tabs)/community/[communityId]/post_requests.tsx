@@ -18,7 +18,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 import { Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
@@ -57,6 +57,12 @@ export default function PostRequestPage() {
         error: postRequestsError,
         refresh: postRequestsRefresh
     } = useCommunityPostRequests(inst_id, communityId);
+
+    useFocusEffect(
+        useCallback(() => {
+            postRequestsRefresh();
+        }, [])
+    );
 
     const filteredRequests = postRequests.filter((request) => {
         return request.status.toLowerCase() === activeFilter.toLowerCase();

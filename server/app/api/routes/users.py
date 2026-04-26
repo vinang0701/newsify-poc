@@ -192,17 +192,14 @@ async def respond_to_my_invitation(
 
 @router.get("/users/me/communities")
 async def get_my_communities(
-    inst_id: str = Query(...),
     current_user=Depends(get_current_user),
 ):
     user_id = current_user.id
     user_communities = await users_service.get_user_communities(
-        supabase, inst_id, user_id
+        supabase, user_id
     )
 
-    if user_communities is None or len(user_communities) == 0:
-        raise HTTPException(status_code=404, detail="No communities found")
-    return user_communities
+    return user_communities or []
 
 
 @router.get("/users/me/news")

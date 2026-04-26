@@ -48,10 +48,8 @@ async def get_community(community_id: str):
 @router.get("/{community_id}/news")
 async def get_community_news(community_id: str):
     community_news = await news_service.get_community_news(supabase, community_id)
-    if community_news is None or len(community_news) == 0:
-        raise HTTPException(status_code=404, detail="No news found")
 
-    return community_news
+    return community_news or []
 
 
 @router.post("/requests")
@@ -109,7 +107,7 @@ async def get_community_role(
         )
         return {"role": role}
     except Exception as e:
-        print(f"Error fetching members: {e}")
+        print(f"Error fetching role: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community role")
 
 

@@ -45,11 +45,7 @@ export default function ViewPostRequestPage() {
     const handleApprove = async () => {
         try {
             await updatePostRequestStatus(selectedRequest.request_id, "approved");
-            router.push({
-                pathname: "community/[communityId]/post_requests",
-                params: { communityId: params.communityId, inst_id:  params.inst_id},
-            });
-            setApproveModalVisible(false);
+            router.back()
         } catch (err) {
             console.error(err);
             alert("Failed to approve post.");
@@ -59,11 +55,7 @@ export default function ViewPostRequestPage() {
     const handleReject = async (reason: string) => {
         try {
             await updatePostRequestStatus(selectedRequest.request_id, "rejected", reason);
-            router.push({
-                pathname: "community/[communityId]/post_requests",
-                params: { communityId: params.communityId, inst_id:  params.inst_id},
-            });
-            setRejectModalVisible(false);
+            router.back()
         } catch (err) {
             console.error(err);
             alert("Failed to reject post.");
@@ -273,12 +265,26 @@ export default function ViewPostRequestPage() {
                                         backgroundColor: "hsl(0,0%,90%)",
                                         borderRadius: 8,
                                         padding: 12,
-                                        marginBottom: 12,
+                                        marginBottom: 8,
                                     }}
                                 >
-                                    <ThemedText>
-                                        {selectedRequest.rejection_reason ?? "No reason provided."}
+                                    <ThemedText type="caption"
+                                        style={{
+                                            fontSize: 14,
+                                        }}
+                                    >
+                                        {selectedRequest.rejection_reason ?? ""}
                                     </ThemedText>
+                                </View>
+                                <View
+                                    style={{
+                                        flexDirection: "column",
+                                        paddingBottom: 8,
+                                        justifyContent: "space-between",
+                                        gap: 4,
+                                    }}>
+                                    <ThemedText type="caption" style={{ fontSize: 14 }}>Reviewed by: {selectedRequest.reviewed_by}</ThemedText>
+                                    <ThemedText type="caption" style={{ fontSize: 14 }}>Reviewed at: {selectedRequest.reviewed_at}</ThemedText>
                                 </View>
                                 <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                                     <Pressable
@@ -457,12 +463,14 @@ export default function ViewPostRequestPage() {
                                 </ThemedText>
                             </Pressable>
                             <Pressable
+                                disabled={(rejectionReason.length === 0)}
                                 style={({ pressed }) => [
                                     styles.modalButton,
                                     {
                                         backgroundColor: pressed
                                             ? Colors[colorScheme].alert_red_dark
                                             : Colors[colorScheme].alert_red,
+                                        opacity: rejectionReason.length == 0 ? 0.5 : 1,
                                     },
                                 ]}
                                 onPress={() => handleReject(rejectionReason)}
