@@ -51,7 +51,7 @@ function PaginationLink({
 	return (
 		<Button
 			asChild
-			variant={isActive ? "default" : "outline"}
+			variant={isActive ? "black" : "outline"}
 			size={size}
 			className={
 				isActive ? cn("bg-foreground", className) : cn(className)

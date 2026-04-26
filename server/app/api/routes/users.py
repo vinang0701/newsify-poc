@@ -24,8 +24,9 @@ from app.schemas.notifications import (
     InvitationActionRequest,
 )
 from app.dependencies.auth import get_current_user
+from app.core import auth
 
-router = APIRouter(tags=["users"])
+router = APIRouter(tags=["users"], dependencies=[Depends(auth.get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
@@ -46,8 +47,7 @@ class JoinCommunityRequest(BaseModel):
     user_id: uuid.UUID | None = None
 
 
-class FollowUserRequest(BaseModel):
-    user_id: uuid.UUID | None = None
+class FollowRequest(BaseModel):
     followed_user_id: uuid.UUID
 
 
@@ -76,6 +76,7 @@ async def create_post_preview(item: UserPublishPostBody):
 # ----------------------------
 # SELF / AUTHENTICATED USER ROUTES
 # ----------------------------
+
 
 @router.get("/users/me/requests", response_model=UserRequestsResponse)
 async def get_my_requests(
@@ -191,17 +192,17 @@ async def respond_to_my_invitation(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/users/me/communities")
+@router.get("/{inst_id}/users/me/communities")
 async def get_my_communities(
-    inst_id: str = Query(...),
-    current_user=Depends(get_current_user),
+    inst_id: str,
+    current_user=Depends(auth.get_current_user),
 ):
     user_id = current_user.id
     user_communities = await users_service.get_user_communities(
         supabase, inst_id, user_id
     )
 
-    if user_communities is None or len(user_communities) == 0:
+    if user_communities is None:
         raise HTTPException(status_code=404, detail="No communities found")
     return user_communities
 
@@ -231,7 +232,15 @@ async def create_news_post(
         isSchool = school == "true"
 
         await news_service.create_post(
-            supabase, inst_id, user_id, image, title, content, isSchool, communities, category_id
+            supabase,
+            inst_id,
+            user_id,
+            image,
+            title,
+            content,
+            isSchool,
+            communities,
+            category_id,
         )
 
         return {
@@ -281,12 +290,12 @@ async def get_user_drafts(current_user=Depends(get_current_user)):
 
 @router.post("/users/me/following")
 async def follow_user(
-    body: FollowUserRequest,
+    body: FollowRequest,
     current_user=Depends(get_current_user),
 ):
     try:
         result = await users_service.follow_user(
-            supabase, str(current_user.id), str(body.followed_user_id)
+            supabase, str(current_user.id), body.followed_user_id
         )
 
         return {
@@ -320,10 +329,10 @@ async def unfollow_user(
         raise HTTPException(status_code=500, detail="Could not unfollow")
 
 
-@router.delete("/users/me/communities/{community_id}")
+@router.delete("/{inst_id}/users/me/communities/{community_id}")
 async def leave_community(
     community_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(auth.get_current_user),
 ):
     try:
         result = await communities_service.leave_community(
@@ -339,10 +348,10 @@ async def leave_community(
         raise HTTPException(status_code=500, detail="Could not leave community")
 
 
-@router.post("/users/me/communities")
+@router.post("/{inst_id}/users/me/communities")
 async def join_community(
     body: JoinCommunityRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(auth.get_current_user),
 ):
     try:
         result = await communities_service.join_community(
@@ -361,16 +370,30 @@ async def join_community(
         raise HTTPException(status_code=500, detail="Failed to join community")
 
 
+@router.post("/users/me/bookmarks")
+async def save_post(
+    body, current_user: auth.UserPayload = Depends(auth.get_current_user)
+):
+    return []
+
+
 # ----------------------------
 # INSTITUTION-SCOPED / OTHER USER ROUTES
 # ----------------------------
-
 @router.get("/{inst_id}/users/{user_id}/news")
 async def get_user_news(inst_id: str, user_id: str):
     my_news = await news_service.get_user_news(supabase, user_id)
     if my_news is None or len(my_news) == 0:
         raise HTTPException(status_code=404, detail="No news found")
     return my_news
+
+
+@router.get("/{inst_id}/users/me/following")
+async def get_my_following(inst_id: str, current_user=Depends(get_current_user)):
+    my_following = await users_service.get_user_following(
+        supabase, inst_id, str(current_user.id)
+    )
+    return my_following
 
 
 @router.get("/{inst_id}/users/{user_id}/following")
@@ -416,7 +439,7 @@ async def search_users(
     except Exception as e:
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail="Error searching users")
-    
+
 
 # Check if a post is saved by the current user
 @router.get("/users/me/saved/{post_id}")
@@ -427,7 +450,7 @@ async def check_saved_post(
     try:
         user_id = current_user.id
         is_saved = await news_service.is_post_saved(supabase, str(user_id), post_id)
-        return { "is_saved": is_saved }
+        return {"is_saved": is_saved}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Could not check saved status")
 
@@ -441,7 +464,7 @@ async def save_post(
     try:
         user_id = current_user.id
         await news_service.save_post(supabase, str(user_id), post_id)
-        return { "status": "success", "message": "Post saved successfully" }
+        return {"status": "success", "message": "Post saved successfully"}
     except Exception as e:
         # If already saved, duplicate key error will be thrown
         if "duplicate key" in str(e).lower():
@@ -458,7 +481,7 @@ async def unsave_post(
     try:
         user_id = current_user.id
         await news_service.unsave_post(supabase, str(user_id), post_id)
-        return { "status": "success", "message": "Post unsaved successfully" }
+        return {"status": "success", "message": "Post unsaved successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Could not unsave post")
 

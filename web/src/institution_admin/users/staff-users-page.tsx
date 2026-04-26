@@ -1,4 +1,4 @@
-import { Button } from "../components/ui/button";
+import { Button } from "../../components/ui/button";
 import { ChevronDown, Plus } from "lucide-react";
 import {
     Pagination,
@@ -29,17 +29,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { ButtonGroup } from "@/components/ui/button-group";
-import type { Users } from "@/types";
-import { UserMgmtColumns } from "./users/columns";
+import type { User } from "@/types";
+import { UserMgmtColumns } from "./columns";
 import { DataTable } from "./data-table";
 
-const DATA: Users[] = [
+const DATA: User[] = [
     {
         id: "1",
         name: "Bob",
         email: "bob@email.com",
-        role: "student",
-        is_active: true,
+        role: "staff",
+        status: "active",
         created_at: "08/08/2026",
         updated_at: "08/08/2026",
     },
@@ -47,8 +47,8 @@ const DATA: Users[] = [
         id: "2",
         name: "Sally",
         email: "sally@email.com",
-        role: "student",
-        is_active: true,
+        role: "staff",
+        status: "active",
         created_at: "08/08/2026",
         updated_at: "08/08/2026",
     },
@@ -56,8 +56,8 @@ const DATA: Users[] = [
         id: "3",
         name: "John",
         email: "john@email.com",
-        role: "student",
-        is_active: true,
+        role: "staff",
+        status: "active",
         created_at: "08/08/2026",
         updated_at: "08/08/2026",
     },
@@ -65,8 +65,8 @@ const DATA: Users[] = [
         id: "4",
         name: "James",
         email: "james@email.com",
-        role: "student",
-        is_active: true,
+        role: "staff",
+        status: "active",
         created_at: "08/08/2026",
         updated_at: "08/08/2026",
     },
@@ -74,8 +74,8 @@ const DATA: Users[] = [
         id: "5",
         name: "Sam",
         email: "sam@email.com",
-        role: "student",
-        is_active: true,
+        role: "staff",
+        status: "active",
         created_at: "08/08/2026",
         updated_at: "08/08/2026",
     },

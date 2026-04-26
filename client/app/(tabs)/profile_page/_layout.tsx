@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useNavigation } from "expo-router";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function UserProfileTabLayout() {
-    const current_user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+    const current_user_id = "7369b0d7-3ba3-4a28-bfbe-0e7addaf3eec";
     return (
         <SafeAreaProvider>
             <Stack

@@ -1,0 +1,19 @@
+services:
+    antmedia:
+        build:
+            context: ./
+            dockerfile: ./Dockerfile
+        container_name: antmedia
+        restart: unless-stopped
+        entrypoint: /usr/local/antmedia/start.sh
+        ports:
+            - "5080:5080"
+            - "1935:1935"
+
+        volumes:
+            - antmedia_vol:/usr/local/antmedia/
+
+volumes:
+    antmedia_vol:
+        external: true
+        name: antmedia_vol

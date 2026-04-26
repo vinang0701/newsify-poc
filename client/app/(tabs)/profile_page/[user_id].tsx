@@ -9,12 +9,7 @@ import {
     ActivityIndicator,
     Modal,
 } from "react-native";
-import React, {
-    useCallback,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Link, useLocalSearchParams, useRouter } from "expo-router";
@@ -42,18 +37,16 @@ const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 export default function Profile() {
+    const { user, session, metadata } = useAuthStore();
+    console.log(session?.access_token);
+
     const snapPoints = useMemo(() => ["20%"], []);
     const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? "light";
 
-    const params = useLocalSearchParams<{
-        user_id?: string;
-        inst_id?: string;
-    }>();
-
-    const user_id = params.user_id ?? "";
-    const inst_id = params.inst_id ?? FALLBACK_INST_ID;
+    const user_id = user?.id ?? "";
+    const inst_id = metadata?.inst_id ?? "";
 
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
