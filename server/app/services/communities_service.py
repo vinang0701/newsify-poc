@@ -1,6 +1,12 @@
 from supabase import Client
 from typing import List
-from app.models.community import Community, CommunityMembership, CommunityMember, CommunityApplication, CommunityPostRequest
+from app.models.community import (
+    Community,
+    CommunityMembership,
+    CommunityMember,
+    CommunityApplication,
+    CommunityPostRequest,
+)
 from app.core.db import supabase
 import uuid
 from datetime import datetime
@@ -78,7 +84,7 @@ async def get_community(supabase: Client, community_id: str):
 # For now, insert in both communities_requests table and communities table
 async def create_community_application(
     supabase: Client, formData: CommunityApplication
-    ):
+):
     req_res = (
         supabase.table("community_requests")
         .insert(
@@ -144,6 +150,7 @@ async def get_community_membership(supabase, user_id: str):
         for comm in res.data
     ]
 
+
 async def get_community_role(supabase, community_id: str, user_id: str):
     res = (
         supabase.table("community_members")
@@ -160,8 +167,6 @@ async def get_community_role(supabase, community_id: str, user_id: str):
 
 
 async def leave_community(supabase: Client, community_id: str, user_id: str):
-    print(user_id)
-    print(community_id)
     response = (
         supabase.table("community_members")
         .delete()
@@ -216,7 +221,9 @@ async def get_members_by_community(supabase: Client, community_id: str):
     return members
 
 
-async def get_community_post_requests(supabase, community_id: str) -> list[CommunityPostRequest]:
+async def get_community_post_requests(
+    supabase, community_id: str
+) -> list[CommunityPostRequest]:
     response = (
         supabase.table("community_post_requests")
         .select(
@@ -238,28 +245,40 @@ async def get_community_post_requests(supabase, community_id: str) -> list[Commu
     result = []
 
     for row in response.data or []:
-        author_name = row.get("author_name", {}).get("name", "NULL")
-        reviewed_by = row.get("reviewed_by", {}).get("name", "NULL") if row.get("reviewed_by") else "NULL"
-        image_url = row.get("news_posts", {}).get("image_url", "NULL")
+        author_name = row.get("author_name", {}).get("name", "")
+        reviewed_by = (
+            row.get("reviewed_by", {}).get("name", "")
+            if row.get("reviewed_by")
+            else "NULL"
+        )
+        image_url = row.get("news_posts", {}).get("image_url", "")
         title = row.get("news_posts", {}).get("title", "Untitled")
-        description = row.get("news_posts", {}).get("description", "NULL")
-        created_at = datetime.fromisoformat(row.get("news_posts", {}).get("created_at", "NULL"))
+        description = row.get("news_posts", {}).get("description", "")
+        created_at = datetime.fromisoformat(
+            row.get("news_posts", {}).get("created_at", "")
+        )
         formatted_created_at = created_at.strftime("%d/%m/%Y")
-        reviewed_at = datetime.fromisoformat(row["reviewed_at"]) if row.get("reviewed_at") else None
-        formatted_reviewed_at = reviewed_at.strftime("%d/%m/%Y") if reviewed_at else None
+        reviewed_at = (
+            datetime.fromisoformat(row["reviewed_at"])
+            if row.get("reviewed_at")
+            else None
+        )
+        formatted_reviewed_at = (
+            reviewed_at.strftime("%d/%m/%Y") if reviewed_at else None
+        )
 
         result.append(
             CommunityPostRequest(
-                request_id = row["request_id"],
-                author_name = author_name,
-                image_url = image_url,
-                title = title,
-                description = description,
-                status = row["status"],
-                created_at = formatted_created_at,
-                reviewed_at = formatted_reviewed_at,
-                reviewed_by = reviewed_by,
-                rejection_reason = row.get("rejection_reason"),
+                request_id=row["request_id"],
+                author_name=author_name,
+                image_url=image_url,
+                title=title,
+                description=description,
+                status=row["status"],
+                created_at=formatted_created_at,
+                reviewed_at=formatted_reviewed_at,
+                reviewed_by=reviewed_by,
+                rejection_reason=row.get("rejection_reason"),
             )
         )
 

@@ -50,6 +50,7 @@ const Login = () => {
             const role = payload.app_metadata.user_role;
 
             router.push("/(tabs)");
+
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred");
         } finally {
@@ -186,7 +187,7 @@ const Login = () => {
                             </ThemedText>
                         </View>
                     )}
-                    <Link href={"/"}>
+                    <Link href={"/forgot_password"} push asChild>
                         <ThemedText
                             type="body_medium"
                             style={{

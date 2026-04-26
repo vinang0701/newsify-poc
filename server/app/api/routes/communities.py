@@ -39,8 +39,6 @@ async def get_communities(inst_id: str):
 @router.get("/{community_id}")
 async def get_community(community_id: str):
     community = await communities_service.get_community(supabase, community_id)
-    if community is None:
-        raise HTTPException(status_code=404, detail="Community cannot be found")
 
     return community
 
@@ -48,6 +46,8 @@ async def get_community(community_id: str):
 @router.get("/{community_id}/news")
 async def get_community_news(community_id: str):
     community_news = await news_service.get_community_news(supabase, community_id)
+    if community_news is None:
+        raise HTTPException(status_code=404, detail="This community does not exist.")
 
     return community_news or []
 

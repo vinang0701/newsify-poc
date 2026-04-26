@@ -1,30 +1,29 @@
 import {
-    Text,
-    Pressable,
-    StyleSheet,
-    useColorScheme,
-    Image,
-    View,
-    ScrollView,
-    Modal,
-    ActivityIndicator,
-    Alert,
+	Text,
+	Pressable,
+	StyleSheet,
+	useColorScheme,
+	Image,
+	View,
+	ScrollView,
+	Modal,
+	ActivityIndicator,
+	Alert,
 } from "react-native";
 import BottomSheet, {
-    BottomSheetBackdrop,
-    BottomSheetView,
+	BottomSheetBackdrop,
+	BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
 import { Colors } from "@/constants/theme";
 import { Link, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import Feather from "@expo/vector-icons/Feather";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemedText } from "@/components/themed-text";
@@ -32,7 +31,8 @@ import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
-import axios, { AxiosError } from "axios";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
 import { useCommunity } from "@/hooks/useCommunity";
 

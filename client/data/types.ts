@@ -7,6 +7,10 @@ export interface News {
     url: string;
     image_url: string;
     content: string | any; // needs changing
+    likes_count: number;
+    comments_count: number;
+    has_liked: boolean;
+    has_saved: boolean;
 }
 
 export interface Community {
@@ -46,14 +50,25 @@ export interface Users {
     updated_at: string;
 }
 
+// Comments
+export interface PostComment {
+    comment_id: string;
+    post_id: string;
+    commented_by_user_id: string;
+    commented_by_user_name: string;
+    comment_text: string;
+    parent_comment_id: string | null;
+    created_at: string;
+    updated_at: string | null;
+}
 export interface UserFollowing {
-    followed_user_id: string,
-    name: string,
+    followed_user_id: string;
+    name: string;
 }
 
 export interface UserFollowers {
-    follower_user_id: string,
-    name: string,
+    follower_user_id: string;
+    name: string;
 }
 
 export interface PostRequest {
@@ -66,7 +81,7 @@ export interface PostRequest {
     reviewed_at: string;
     reviewed_by_user_id: string;
     rejection_reason: string;
-};
+}
 
 export interface CommunityPostRequest {
     request_id: string;
@@ -79,4 +94,16 @@ export interface CommunityPostRequest {
     reviewed_at?: string | null;
     reviewed_by?: string | null;
     rejection_reason?: string | null;
+}
+
+// User Preference
+export interface UserPreference {
+    user_id: string;
+    category: {
+        category_id: string;
+        category_name: string;
+        category_status: string;
+    };
+    preference_type: string;
+    created_at: string;
 }
