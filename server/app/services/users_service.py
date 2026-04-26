@@ -11,7 +11,7 @@ from app.core.db import supabase
 
 # join table between communities and community_members
 async def get_user_communities(
-    supabase: Client, inst_id: str, user_id: str
+    supabase: Client, user_id: str
 ) -> List[dict]:
     response = (
         supabase.table("communities")
@@ -90,7 +90,7 @@ async def follow_user(supabase: Client, user_id: str, followed_user_id: str):
             {
                 "follower_user_id": user_id,
                 "followed_user_id": followed_user_id,
-                "followed_at": "now()",
+                "followed_at": datetime.utcnow().isoformat(),
             }
         )
         .execute()

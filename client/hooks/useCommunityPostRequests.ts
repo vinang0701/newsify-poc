@@ -50,7 +50,6 @@ export function useCommunityPostRequests(inst_id: string, communityId: string) {
             );
 
             const data = await res.json();
-            console.log("API Response:", data);
 
             if (!res.ok) {
                 throw new Error(data?.detail || "Failed to fetch post requests");
@@ -67,6 +66,41 @@ export function useCommunityPostRequests(inst_id: string, communityId: string) {
         }
     }, [communityId]);
 
+    const updatePostRequestStatus = useCallback(
+        async (request_id: string, status: "approved" | "rejected", rejection_reason?: string) => {
+            try {
+                const token = await getAccessToken();
+
+                if (!token) throw new Error("No active session");
+
+                const res = await fetch(
+                    `${API_BASE_URL}/${inst_id}/communities/${communityId}/post_requests/${request_id}`,
+                    {
+                        method: "POST",
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            status,
+                            rejection_reason,
+                        }),
+                    }
+                );
+
+                const data = await res.json();
+
+                if (!res.ok) throw new Error(data?.detail || "Failed to update post request");
+
+                return data;
+            } catch (err: any) {
+                console.error("updatePostRequestStatus error:", err);
+                throw err;
+            }
+        },
+        [communityId, inst_id]
+    );
+
     const refresh = async () => {
         setRefreshing(true);
         await fetchRequests();
@@ -82,5 +116,6 @@ export function useCommunityPostRequests(inst_id: string, communityId: string) {
         refreshing,
         error,
         refresh,
+        updatePostRequestStatus,
     };
 }

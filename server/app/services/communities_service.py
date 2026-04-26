@@ -45,7 +45,7 @@ async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
     ]
 
 
-async def get_community(supabase: Client, community_id: str) -> List[dict]:
+async def get_community(supabase: Client, community_id: str):
     response = (
         supabase.table("communities")
         .select(
@@ -62,17 +62,19 @@ async def get_community(supabase: Client, community_id: str) -> List[dict]:
         .execute()
     )
 
-    return [
-        Community(
-            id=comm["id"],
-            created_by_user_id=comm["created_by_user_id"],
-            name=comm["name"],
-            description=comm["description"] or "",
-            status=comm["status"],
-            image_url=comm["image_url"] or "",
-        )
-        for comm in response.data
-    ]
+    if not response.data:
+        return None
+
+    comm = response.data[0]
+
+    return Community(
+        id=comm["id"],
+        created_by_user_id=comm["created_by_user_id"],
+        name=comm["name"],
+        description=comm["description"] or "",
+        status=comm["status"],
+        image_url=comm["image_url"] or "",
+    )
 
 
 # Function to insert new community application into communities_requests
@@ -159,7 +161,7 @@ async def get_community_role(supabase, community_id: str, user_id: str):
     )
 
     if res.data:
-        return res.data["role"]
+        return res.data[0]["role"]
 
     return None
 
@@ -182,7 +184,7 @@ async def join_community(supabase: Client, community_id: str, user_id: str):
             {
                 "community_id": community_id,
                 "user_id": user_id,
-                "joined_at": "now()",
+                "joined_at": datetime.utcnow().isoformat(),
                 "role": "member",
             }
         )
@@ -205,7 +207,7 @@ async def get_members_by_community(supabase: Client, community_id: str):
     )
 
     # Supabase returns nested objects, so we flatten them for easier UI use
-    memberships = [
+    members = [
         CommunityMember(
             community_id=community_id,
             user_id=member["users"]["id"],
@@ -216,7 +218,7 @@ async def get_members_by_community(supabase: Client, community_id: str):
         if member.get("users")
     ]
 
-    return memberships
+    return members
 
 
 async def get_community_post_requests(
@@ -239,8 +241,6 @@ async def get_community_post_requests(
         .order("news_posts(created_at)", desc=True)
         .execute()
     )
-    print(f"Fetching post requests for community_id: {community_id}")
-    print("Response:", response)
 
     result = []
 
@@ -283,3 +283,33 @@ async def get_community_post_requests(
         )
 
     return result
+
+async def update_community_post_request(
+    supabase: Client,
+    request_id: str,
+    status: str,
+    reviewed_by_user_id: str,
+    rejection_reason: str,
+):
+    reviewed_at = datetime.utcnow().isoformat() # current time
+
+    update_data = {
+        "status": status,
+        "reviewed_at": reviewed_at,
+        "reviewed_by_user_id": reviewed_by_user_id,
+    }
+
+    # rejection_reason if status is rejected
+    if status == "rejected":
+        update_data["rejection_reason"] = rejection_reason
+    else:
+        update_data["rejection_reason"] = ""
+
+    response = (
+        supabase.table("community_post_requests")
+        .update(update_data)
+        .eq("request_id", request_id)
+        .execute()
+    )
+
+    return response.data, None

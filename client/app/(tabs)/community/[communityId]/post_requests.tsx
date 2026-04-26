@@ -18,7 +18,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 import { Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
@@ -27,9 +27,6 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useCommunityPostRequests } from "@/hooks/useCommunityPostRequests";
 
 const filterTag = [
-    {
-        filter: "All",
-    },
     {
         filter: "Pending",
     },
@@ -44,7 +41,7 @@ const filterTag = [
 export default function PostRequestPage() {
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
-    const [activeFilter, setActiveFilter] = useState("All");
+    const [activeFilter, setActiveFilter] = useState("Pending");
 
     const params = useLocalSearchParams<{
         inst_id?: string;
@@ -61,8 +58,13 @@ export default function PostRequestPage() {
         refresh: postRequestsRefresh
     } = useCommunityPostRequests(inst_id, communityId);
 
+    useFocusEffect(
+        useCallback(() => {
+            postRequestsRefresh();
+        }, [])
+    );
+
     const filteredRequests = postRequests.filter((request) => {
-        if (activeFilter === "All") return true; // show all requests
         return request.status.toLowerCase() === activeFilter.toLowerCase();
     });
 
