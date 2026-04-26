@@ -138,6 +138,11 @@ export function useCommunity(communityId?: string) {
         return new Set(myCommunities.map((c) => c.community_id));
     }, [myCommunities]);
 
+    const isMember = useMemo(() => {
+        if (loading) return false;
+        return myCommunityIds.has(communityId ?? "");
+    }, [loading, myCommunityIds, communityId]);
+
     const memberCount = useMemo(() => members.length, [members]);
 
     useEffect(() => {
@@ -150,7 +155,7 @@ export function useCommunity(communityId?: string) {
         memberCount,
         myCommunities,
         myCommunityIds,
-        isMember: communityId ? myCommunityIds.has(communityId) : false,
+        isMember,
         userRole,
         loading,
         refreshing,
