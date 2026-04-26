@@ -5,9 +5,15 @@ import { supabase } from "@/lib/supabase";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { useQuery } from "@tanstack/react-query";
+import { UserPreference } from "@/data/types";
 
 export function usePreferences() {
     const { user, session, metadata } = useAuthStore();
+    if (!user || !metadata) {
+        throw new Error("Error occurred while retrieving user data.");
+    }
+    const inst_id = metadata.inst_id;
+    const userId = user.id;
 
     //list of all categories from DB
     const [categories, setCategories] = useState<any[]>([]);
@@ -18,49 +24,47 @@ export function usePreferences() {
     //loading = true while we are still fetching from DB. false when done
     const [loading, setLoading] = useState(true);
 
-    //userID = logged in user id. we need this to save/fetch their preferences
-    const [userId, setUserId] = useState<string | null>(null);
-
-    //ask supabase who is currently logged in and save their id
-    useEffect(() => {
-        const getUser = async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            if (user) setUserId(user.id);
-        };
-        getUser();
-    }, []); //[] only run once on load
-
-    const fetchCategories = async () => {
-        const response = await api.get(`/${metadata?.inst_id}/categories`);
-        setCategories(response.data);
-        setLoading(false);
-    };
-
     //fetch all active categories from the categories table
     //these are the buttons the user can tap to select
     useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await api.get(`/${inst_id}/categories`);
+                setCategories(response.data);
+            } catch (error) {
+                console.error("Error fetching categories:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         fetchCategories();
-    }, []); // [] only run once on load
+    }, [inst_id]); // [] only run once on load
 
     //fetch the current users already saved preferences from user_preferences table
     //this runs after we get the userid
+
     useEffect(() => {
         if (!userId) return; // dont run if no userid yet
+        setLoading(true);
         const fetchPreferences = async () => {
-            const { data } = await supabase
-                .from("user_preferences")
-                .select("category_id")
-                .eq("user_id", userId)
-                .eq("preference_type", "include"); //only pre-select included categories
-
-            //extract just the category_id values into a flat array like:
-            //["uuid-1", "uuid-2"]
-            setSelected(data?.map((p) => p.category_id) || []);
+            try {
+                const response = await api.get(
+                    `${inst_id}/users/me/preferences`,
+                );
+                const initialSelected =
+                    response.data?.map(
+                        (p: UserPreference) => p.category.category_id,
+                    ) || [];
+                setSelected(initialSelected);
+                setLoading(false);
+            } catch (error) {
+                setLoading(false);
+                console.error("Error fetching preferences:", error);
+            }
         };
         fetchPreferences();
-    }, [userId]); //re-run whenever userId changes (i.e once we get it)
+    }, [userId, inst_id]); //re-run whenever userId changes (i.e once we get it)
 
     //called when a user selects a category
     //if already selected -> remove, if not add
@@ -77,23 +81,18 @@ export function usePreferences() {
     //deletes old preferences, inserts new ones
     const savePreferences = async () => {
         if (!userId) return false;
-
-        //step1: delete all existing preference for the user
-        //avoid duplications instead of checking what changed
-        await supabase.from("user_preferences").delete().eq("user_id", userId);
-
-        //step2: build an array of rows to insert
-        //each selected category becomes one row in user_preferences
-        const rows = selected.map((category_id) => ({
-            user_id: userId,
-            category_id,
-            preference_type: "category",
-        }));
-
-        //step3: insert all new rows at once
-        const { error } = await supabase.from("user_preferences").insert(rows);
-
-        return !error; //return true if no error, false if something went wrong
+        try {
+            const response = await api.post(
+                `/${inst_id}/users/me/preferences`,
+                {
+                    category_ids: selected,
+                },
+            );
+            return response.data;
+        } catch (error) {
+            console.error("Error saving preferences:", error);
+            return false;
+        }
     };
 
     //return everything the screen needs to use

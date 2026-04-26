@@ -69,7 +69,11 @@ export default function HomeScreen() {
     // const snapPoints = useMemo(() => ["100%"], []);
     const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
-    // const navigation = useNavigation();
+    // Pull categories from the hook — we reuse this for both steps of the modal
+    const { categories, selected, toggleCategory, loading } = usePreferences();
+    if (categories === undefined) {
+        throw new Error("Error occurred while fetching categories.");
+    }
 
     const [refreshing, setRefreshing] = React.useState(false);
 
@@ -168,16 +172,13 @@ export default function HomeScreen() {
     useEffect(() => {
         const checkPreferences = async () => {
             if (!currentUser?.id) return;
+            if (!loading) {
+                const data = selected;
 
-            const { data } = await supabase
-                .from("user_preferences")
-                .select("category_id")
-                .eq("user_id", currentUser.id)
-                .limit(1); // only need to know if at least one exists
-
-            if (!data || data.length === 0) {
-                // No preferences found → first time user → show modal
-                setShowPrefsModal(true);
+                if (!data || data.length === 0) {
+                    // No preferences found → first time user → show modal
+                    setShowPrefsModal(true);
+                }
             }
         };
         checkPreferences();
@@ -186,47 +187,39 @@ export default function HomeScreen() {
     // Called when user taps Save on Step 2
     const handleSavePreferences = async () => {
         if (!currentUser?.id) return;
-        setSavingPrefs(true);
-
         try {
-            // Delete any existing preferences first
-            await supabase
-                .from("user_preferences")
-                .delete()
-                .eq("user_id", currentUser.id);
+            setSavingPrefs(true);
 
             // Build rows for include and exclude
-            const includeRows = includeIds.map((category_id) => ({
-                user_id: currentUser.id,
-                category_id,
+            const includeRows = includeIds.map((id) => ({
+                category_id: id,
                 preference_type: "include",
             }));
 
-            const excludeRows = excludeIds.map((category_id) => ({
-                user_id: currentUser.id,
-                category_id,
+            const excludeRows = excludeIds.map((id) => ({
+                category_id: id,
                 preference_type: "exclude",
             }));
 
             // Insert both lists together
-            await supabase
-                .from("user_preferences")
-                .insert([...includeRows, ...excludeRows]);
+            const combinedPreferences = [...includeRows, ...excludeRows];
+
+            const response = await api.post(
+                `/${inst_id}/users/me/preferences`,
+                {
+                    preferences: combinedPreferences,
+                },
+            );
 
             // Close the modal
             setShowPrefsModal(false);
+            return response.data;
         } catch (err) {
             Alert.alert("Error", "Something went wrong. Please try again.");
         } finally {
             setSavingPrefs(false);
         }
     };
-
-    // Pull categories from the hook — we reuse this for both steps of the modal
-    const { categories } = usePreferences();
-    if (categories === undefined) {
-        throw new Error("Error occurred while fetching categories.");
-    }
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
