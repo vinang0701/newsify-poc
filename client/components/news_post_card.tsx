@@ -10,11 +10,12 @@ import React, { useState } from "react";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
-import { Link, useRouter, useLocalSearchParams } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { ThemedText } from "./themed-text";
 import { News } from "@/data/types";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
+//UPDATE: inst_id is pased from HomeScreen using authStore metadata.
 type NewsPostCardProps = {
     news: News;
     inst_id: string;
@@ -29,7 +30,6 @@ function NewsPostCard({ news, inst_id }: NewsPostCardProps) {
     const router = useRouter();
 
     function handleNavigate(user_id: string) {
-        console.log(user_id);
         router.push({
             pathname: "/(tabs)/profile_page/[user_id]",
             params: { user_id: user_id },
@@ -38,16 +38,10 @@ function NewsPostCard({ news, inst_id }: NewsPostCardProps) {
 
     function handleLike() {
         setLike(!like);
-        if (!like) {
-            setLikeCount(likeCount + 1);
-        } else {
-            setLikeCount(20);
-        }
+        setLikeCount(!like ? likeCount + 1 : 20);
     }
 
     function handleReportPost() {
-        console.log("REPORT POST ID:", news.id);
-        console.log("REPORT INST ID:", inst_id);
         setMenuVisible(false);
 
         router.push({
@@ -114,9 +108,7 @@ function NewsPostCard({ news, inst_id }: NewsPostCardProps) {
             <View>
                 <Image
                     alt="image"
-                    source={{
-                        uri: news.image_url,
-                    }}
+                    source={{ uri: news.image_url }}
                     style={{
                         width: "100%",
                         height: 200,
@@ -164,7 +156,7 @@ function NewsPostCard({ news, inst_id }: NewsPostCardProps) {
                             alignItems: "center",
                             justifyContent: "flex-start",
                         }}
-                        onPress={() => handleLike()}
+                        onPress={handleLike}
                     >
                         {like ? (
                             <MaterialCommunityIcons
@@ -223,44 +215,38 @@ function NewsPostCard({ news, inst_id }: NewsPostCardProps) {
             <Modal
                 visible={menuVisible}
                 transparent
-                animationType="fade"
+                animationType="slide"
                 onRequestClose={() => setMenuVisible(false)}
             >
                 <Pressable
-                    style={styles.modalOverlay}
+                    style={styles.bottomSheetOverlay}
                     onPress={() => setMenuVisible(false)}
                 >
-                    <View
-                        style={[
-                            styles.menuContainer,
-                            {
-                                backgroundColor: Colors[colorScheme].bg_light,
-                            },
-                        ]}
-                    >
+                    <Pressable style={styles.bottomSheetContainer}>
+                        <View style={styles.dragHandle} />
+
+                        <Pressable style={styles.menuItem}>
+                            <Feather name="bookmark" size={18} color="#111111" />
+                            <Text style={styles.menuText}>Save to bookmarks</Text>
+                        </Pressable>
+
+                        <Pressable style={styles.menuItem}>
+                            <Feather name="user-plus" size={18} color="#111111" />
+                            <Text style={styles.menuText}>Follow</Text>
+                        </Pressable>
+
                         <Pressable
                             style={styles.menuItem}
                             onPress={handleReportPost}
                         >
                             <Feather
-                                name="flag"
+                                name="alert-circle"
                                 size={18}
-                                color={Colors[colorScheme].alert_red || "#EF1238"}
+                                color="#111111"
                             />
-                            <Text
-                                style={[
-                                    styles.menuText,
-                                    {
-                                        color:
-                                            Colors[colorScheme].alert_red ||
-                                            "#EF1238",
-                                    },
-                                ]}
-                            >
-                                Report post
-                            </Text>
+                            <Text style={styles.menuText}>Report post</Text>
                         </Pressable>
-                    </View>
+                    </Pressable>
                 </Pressable>
             </Modal>
         </View>
@@ -294,29 +280,37 @@ const styles = StyleSheet.create({
         paddingTop: 8,
         paddingHorizontal: 12,
     },
-    modalOverlay: {
+    bottomSheetOverlay: {
         flex: 1,
-        backgroundColor: "rgba(0,0,0,0.2)",
-        justifyContent: "center",
-        alignItems: "center",
-        paddingHorizontal: 24,
+        backgroundColor: "rgba(0,0,0,0.25)",
+        justifyContent: "flex-end",
     },
-    menuContainer: {
-        width: "100%",
-        borderRadius: 10,
-        paddingVertical: 8,
-        elevation: 5,
+    bottomSheetContainer: {
+        backgroundColor: "#FFFFFF",
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+        paddingHorizontal: 18,
+        paddingTop: 10,
+        paddingBottom: 28,
+    },
+    dragHandle: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: "#111111",
+        alignSelf: "center",
+        marginBottom: 10,
     },
     menuItem: {
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+        paddingVertical: 10,
     },
     menuText: {
-        fontSize: 14,
-        fontWeight: "600",
+        fontSize: 13,
+        fontWeight: "700",
+        color: "#111111",
     },
 });
 

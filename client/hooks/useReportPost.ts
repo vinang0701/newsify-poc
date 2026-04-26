@@ -2,7 +2,7 @@ import { API_BASE_URL } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
 
 export async function reportPost(
-    instId: string,
+    instId: String,
     postId: string,
     reason: string,
     description?: string

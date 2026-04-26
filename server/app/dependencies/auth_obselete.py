@@ -1,7 +1,6 @@
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, status, Depends
 from typing import Optional
 from app.core.db import supabase
-
 
 async def get_current_user(authorization: Optional[str] = Header(None)):
     if not authorization:
@@ -37,3 +36,13 @@ async def get_current_user(authorization: Optional[str] = Header(None)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication failed",
         )
+    async def get_current_user_inst_id(current_user=Depends(get_current_user)) -> str:
+        inst_id = current_user.user_metadata.get("inst_id")
+
+        if not inst_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                details="Institution ID not found for current user",
+            )
+        
+        return inst_id

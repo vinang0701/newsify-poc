@@ -18,9 +18,23 @@ async def create_post_report(
     reason: str,
     description: str | None = None,
 ) -> list[dict]:
+
+    # ✅ ADDED: validate reason
     if reason not in VALID_REPORT_REASONS:
         raise ValueError("Invalid report reason")
 
+    # ✅ ADDED: CHECK IF POST EXISTS (VERY IMPORTANT)
+    post_check = (
+        supabase.table("news_posts")  # <-- change to your actual table if needed
+        .select("id")
+        .eq("id", post_id)
+        .execute()
+    )
+
+    if not post_check.data:
+        raise ValueError("Post not found")
+
+    # ✅ EXISTING: check duplicate report
     existing_report = (
         supabase.table("post_reports")
         .select("report_id")
@@ -32,6 +46,7 @@ async def create_post_report(
     if existing_report.data:
         raise ValueError("You have already reported this post")
 
+    # ✅ INSERT
     response = (
         supabase.table("post_reports")
         .insert(

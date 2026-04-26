@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.core.db import supabase
 from app.models.admin import Community, CommunityCreationReqBody
 from app.core.auth import verify_admin
-from app.dependencies.auth import get_current_user
+from app.core.auth import get_current_user
 
 router = APIRouter(
     prefix="/{inst_id}/admin/communities",
