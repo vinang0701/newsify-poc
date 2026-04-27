@@ -194,7 +194,7 @@ async def respond_to_my_invitation(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{inst_id}/users/me/communities")
+@router.get("/users/me/communities")
 async def get_my_communities(
     current_user=Depends(auth.get_current_user),
 ):

@@ -106,6 +106,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
         .select(
             """
                 community_id,
+                created_at,
                 news_posts!inner(id, title,
                 description,
                 image_url,
@@ -119,7 +120,6 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
         """
         )
         .eq("community_id", community_id)
-        .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -127,6 +127,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
     return [
         NewsPost(
             id=post["news_posts"]["id"],
+            created_at=post["created_at"],
             author_id=post["news_posts"]["author"]["id"],
             author=post["news_posts"]["author"]["name"],  # Map snake_case to camelCase
             title=post["news_posts"]["title"],

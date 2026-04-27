@@ -154,6 +154,33 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 			},
 		});
 
+    function timeAgo(createdAt?: string | Date | null) {
+        if (!createdAt) return "";
+
+        const date =
+            createdAt instanceof Date
+                ? createdAt
+                : new Date(createdAt);
+
+        if (isNaN(date.getTime())) return "";
+
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+        const diffWeek = Math.floor(diffDay / 7);
+
+        if (diffWeek >= 1) return `${diffWeek}w`;
+        if (diffDay >= 1) return `${diffDay}d`;
+        if (diffHour >= 1) return `${diffHour}h`;
+        if (diffMin >= 1) return `${diffMin}m`;
+
+        return `${diffSec}s`;
+    }
+
 	function handleNavigate(user_id: string) {
 		console.log(user_id);
 		router.push({
@@ -273,7 +300,7 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 							color: "hsl(0, 0%, 5%)",
 						}}
 					>
-						1d
+						{timeAgo(news.created_at)}
 					</ThemedText>
 					<Pressable
 						style={{ marginLeft: "auto" }}
@@ -322,125 +349,88 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 						) || ""}
 					</ThemedText>
 				</View>
+                <View style={styles.iconsContainer}>
+                    {/* Interaction */}
+                    <View
+                        style={{
+                            flex: 1,
+                            flexDirection: "row",
+                            justifyContent: "flex-start",
+                            gap: 24,
+                        }}
+                    >
+                        <Pressable
+                            style={{
+                                flex: 0,
+                                flexDirection: "row",
+                                gap: 4,
+                                alignItems: "center",
+                                justifyContent: "flex-start",
+                            }}
+                            onPress={() => mu_toggleLikePost(news.id)}
+                        >
+                            {news.has_liked ? (
+                                <MaterialCommunityIcons
+                                    name="heart"
+                                    size={24}
+                                    color="red"
+                                />
+                            ) : (
+                                <MaterialCommunityIcons
+                                    name="heart-outline"
+                                    size={24}
+                                    color="black"
+                                />
+                            )}
 
-				<View style={styles.iconsContainer}>
-					{/* Interaction */}
-					<View
-						style={{
-							flex: 1,
-							flexDirection: "row",
-							justifyContent: "flex-start",
-							gap: 24,
-						}}
-					>
-						<Pressable
-							style={{
-								flex: 0,
-								flexDirection: "row",
-								gap: 4,
-								alignItems: "center",
-								justifyContent: "flex-start",
-							}}
-							onPress={() => mu_toggleLikePost(news.id)}
-						>
-							{news.has_liked ? (
-								<MaterialCommunityIcons
-									name="heart"
-									size={24}
-									color="red"
-								/>
-							) : (
-								<MaterialCommunityIcons
-									name="heart-outline"
-									size={24}
-									color="black"
-								/>
-							)}
-						</Pressable>
-						<View style={styles.iconsContainer}>
-							{/* Interaction */}
-							<View
-								style={{
-									flex: 1,
-									flexDirection: "row",
-									justifyContent: "flex-start",
-									gap: 24,
-								}}
-							>
-								<Pressable
-									style={{
-										flex: 0,
-										flexDirection: "row",
-										gap: 4,
-										alignItems: "center",
-										justifyContent: "flex-start",
-									}}
-									onPress={() => mu_toggleLikePost(news.id)}
-								>
-									{news.has_liked ? (
-										<MaterialCommunityIcons
-											name="heart"
-											size={24}
-											color="red"
-										/>
-									) : (
-										<MaterialCommunityIcons
-											name="heart-outline"
-											size={24}
-											color="black"
-										/>
-									)}
-
-									<ThemedText>{news.likes_count}</ThemedText>
-								</Pressable>
-								{/* <Link href="/comment" push asChild> */}
-								<Pressable
-									style={{
-										flex: 0,
-										flexDirection: "row",
-										gap: 4,
-										justifyContent: "flex-start",
-										alignItems: "center",
-									}}
-									onPress={() =>
-										router.push({
-											pathname: "/comment",
-											params: { post_id: news.id },
-										})
-									}
-								>
-									<Feather
-										name="message-square"
-										size={24}
-										color="black"
-									/>
-									<ThemedText>
-										{news.comments_count}
-									</ThemedText>
-								</Pressable>
-								{/* </Link> */}
-							</View>
-							<Pressable
-								onPress={handleBookmark}
-								disabled={bookmarkLoading}
-							>
-								{bookmark ? (
-									<MaterialCommunityIcons
-										name="bookmark"
-										size={24}
-										color={Colors[colorScheme].tint}
-									/>
-								) : (
-									<MaterialCommunityIcons
-										name="bookmark-outline"
-										size={24}
-										color="black"
-									/>
-								)}
-							</Pressable>
-						</View>
-					</View>
-				</View>
+                            <ThemedText>{news.likes_count}</ThemedText>
+                        </Pressable>
+                        {/* <Link href="/comment" push asChild> */}
+                        <Pressable
+                            style={{
+                                flex: 0,
+                                flexDirection: "row",
+                                gap: 4,
+                                justifyContent: "flex-start",
+                                alignItems: "center",
+                            }}
+                            onPress={() =>
+                                router.push({
+                                    pathname: "/comment",
+                                    params: { post_id: news.id },
+                                })
+                            }
+                        >
+                            <Feather
+                                name="message-square"
+                                size={24}
+                                color="black"
+                            />
+                            <ThemedText>
+                                {news.comments_count}
+                            </ThemedText>
+                        </Pressable>
+                        {/* </Link> */}
+                    </View>
+                    <Pressable
+                        onPress={handleBookmark}
+                        disabled={bookmarkLoading}
+                    >
+                        {bookmark ? (
+                            <MaterialCommunityIcons
+                                name="bookmark"
+                                size={24}
+                                color={Colors[colorScheme].tint}
+                            />
+                        ) : (
+                            <MaterialCommunityIcons
+                                name="bookmark-outline"
+                                size={24}
+                                color="black"
+                            />
+                        )}
+                    </Pressable>
+                </View>
 			</View>
 
 			{/* Bottom sheet — shows options when 3 dots is tapped */}
