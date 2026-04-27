@@ -86,9 +86,9 @@ const styles = StyleSheet.create({
         backgroundColor: "#F3F4F6",
     },
     avatar: {
-        width: 26,
-        height: 26,
-        borderRadius: 13,
+        width: 35,
+        height: 35,
+        borderRadius: 15,
         backgroundColor: "#D1D5DB",
         marginTop: 1,
         marginRight: 8,
@@ -98,15 +98,15 @@ const styles = StyleSheet.create({
         paddingRight: 8,
     },
     messageText: {
-        fontSize: 9.5,
-        lineHeight: 13,
+        fontSize: 14,
+        lineHeight: 15,
         color: "#111827",
     },
     boldText: {
         fontWeight: "700",
     },
     timeText: {
-        fontSize: 8.5,
+        fontSize: 11,
         color: "#6B7280",
         marginTop: 1,
         minWidth: 18,

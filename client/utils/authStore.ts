@@ -14,8 +14,18 @@ const SecureStorageAdapter = {
 };
 
 interface AppMetadata {
+    // UPDATED: Extracted from JWT app_metadata.
+    // This should represent public.users.id.
+    user_id: string;
+
+    // Existing: Extracted from JWT app_metadata.
     inst_id: string;
+
+    // Existing: Extracted from JWT app_metadata.
     user_role: string;
+
+    // UPDATED: Optional name if your custom hook injects it.
+    name?: string;
 }
 
 type AuthState = {
@@ -26,21 +36,28 @@ type AuthState = {
     setAuth: (session: Session | null) => void;
     signOut: () => Promise<void>;
 };
+
+// UPDATED: Decode JWT and extract user_id, inst_id, user_role, and optional name.
+// These values come from the Supabase custom access token hook.
 function extractAppMetadata(token: string | undefined): AppMetadata | null {
     if (!token) {
         return null;
     }
+
     try {
         const decoded = jwtDecode<JwtPayload & { app_metadata?: AppMetadata }>(
             token,
         );
+
         if (!decoded || !decoded.app_metadata) {
             return null;
         }
 
         return {
+            user_id: decoded.app_metadata.user_id,
             inst_id: decoded.app_metadata.inst_id,
             user_role: decoded.app_metadata.user_role,
+            name: decoded.app_metadata.name,
         };
     } catch (error) {
         console.error("JWT Extraction Error:", error);
@@ -55,10 +72,12 @@ export const useAuthStore = create<AuthState>()(
             session: null,
             metadata: null,
             initialized: false, // Useful to prevent "flicker" on app load
+
             setAuth: (session) => {
                 const appMetadata = session?.access_token
                     ? extractAppMetadata(session.access_token)
                     : null;
+
                 set({
                     session,
                     metadata: appMetadata,
@@ -66,9 +85,17 @@ export const useAuthStore = create<AuthState>()(
                     initialized: true,
                 });
             },
+
             signOut: async () => {
                 await supabase.auth.signOut();
-                set({ user: null, session: null });
+
+                // UPDATED: Clear metadata as well during sign out.
+                set({
+                    user: null,
+                    session: null,
+                    metadata: null,
+                    initialized: true,
+                });
             },
         }),
         {

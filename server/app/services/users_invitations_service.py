@@ -101,14 +101,26 @@ async def respond_to_invitation(user_id: str, invitation_id: str, action: str) -
                 }
             ).execute()
 
-    (
-        supabase.table("community_invitations")
-        .update(
-            {
-                "status": action,
-                "responded_at": now,
-            }
+        (
+            supabase.table("community_invitations")
+            .update(
+                {
+                    "status": "accepted",
+                    "responded_at": now,
+                }
+            )
+            .eq("invitation_id", invitation_id)
+            .execute()
         )
-        .eq("invitation_id", invitation_id)
-        .execute()
-    )
+
+        return
+
+    if action == "declined":
+        (
+            supabase.table("community_invitations")
+            .delete()
+            .eq("invitation_id", invitation_id)
+            .execute()
+        )
+
+        return

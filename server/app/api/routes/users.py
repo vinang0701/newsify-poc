@@ -24,11 +24,10 @@ from app.schemas.notifications import (
     GenericMessageResponse,
     InvitationActionRequest,
 )
-from app.dependencies.auth import get_current_user
-from app.core import auth
+from app.core.auth import get_current_user, get_current_app_user
 from app.models.registeredUsers import SavePreferencesRequest
 
-router = APIRouter(tags=["users"], dependencies=[Depends(auth.get_current_user)])
+router = APIRouter(tags=["users"], dependencies=[Depends(get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
@@ -82,10 +81,10 @@ async def create_post_preview(item: UserPublishPostBody):
 
 @router.get("/users/me/requests", response_model=UserRequestsResponse)
 async def get_my_requests(
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         requests = await requests_service.get_all_user_requests(user_id)
         return {"requests": requests}
     except Exception as e:
@@ -95,10 +94,10 @@ async def get_my_requests(
 
 @router.get("/users/me/notifications", response_model=NotificationsListResponse)
 async def get_my_notifications(
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         rows = await users_notifications_service.get_user_notifications(user_id)
         return {"items": users_notifications_service.map_notifications(rows)}
     except Exception as e:
@@ -108,10 +107,10 @@ async def get_my_notifications(
 
 @router.get("/users/me/notifications/unread-count", response_model=UnreadCountResponse)
 async def get_my_notifications_unread_count(
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         unread_count = await users_notifications_service.get_unread_notification_count(
             user_id
         )
@@ -127,10 +126,10 @@ async def get_my_notifications_unread_count(
 )
 async def mark_my_notification_as_read(
     notification_id: str,
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         await users_notifications_service.mark_notification_as_read(
             user_id, notification_id
         )
@@ -146,10 +145,10 @@ async def mark_my_notification_as_read(
 
 @router.post("/users/me/notifications/read-all", response_model=GenericMessageResponse)
 async def mark_all_my_notifications_as_read(
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         await users_notifications_service.mark_all_notifications_as_read(user_id)
         return {"message": "All notifications marked as read"}
     except Exception as e:
@@ -159,10 +158,10 @@ async def mark_all_my_notifications_as_read(
 
 @router.get("/users/me/invitations", response_model=InvitationsListResponse)
 async def get_my_invitations(
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         rows = await users_invitations_service.get_user_invitations(user_id)
         return {"items": users_invitations_service.map_invitations(rows)}
     except Exception as e:
@@ -177,10 +176,10 @@ async def get_my_invitations(
 async def respond_to_my_invitation(
     invitation_id: str,
     payload: InvitationActionRequest,
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         await users_invitations_service.respond_to_invitation(
             user_id, invitation_id, payload.action
         )
@@ -196,19 +195,18 @@ async def respond_to_my_invitation(
 
 @router.get("/users/me/communities")
 async def get_my_communities(
-    current_user=Depends(auth.get_current_user),
+    inst_id: str = Query(...),
+    app_user=Depends(get_current_app_user),
 ):
-    user_id = current_user.id
-    user_communities = await users_service.get_user_communities(
-        supabase, user_id
-    )
+    user_id = app_user["id"]
+    user_communities = await users_service.get_user_communities(supabase, user_id)
 
     return user_communities or []
 
 
 @router.get("/users/me/news")
-async def get_my_news(current_user=Depends(get_current_user)):
-    user_id = current_user.id
+async def get_my_news(app_user=Depends(get_current_app_user)):
+    user_id = app_user["id"]
     my_news = await news_service.get_user_news(supabase, user_id)
     if my_news is None or len(my_news) == 0:
         raise HTTPException(status_code=404, detail="No news found")
@@ -223,11 +221,11 @@ async def create_news_post(
     school: str = Form(...),
     communities: list[str] = Form(...),
     image: UploadFile = File(...),
+    app_user=Depends(get_current_app_user),
     category_id: str | None = Form(None),
-    current_user=Depends(get_current_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         isSchool = school == "true"
 
         await news_service.create_post(
@@ -256,10 +254,10 @@ async def save_draft(
     title: str | None = Form(None),
     content: str | None = Form(None),
     image: UploadFile | None = File(None),
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = app_user["id"]
         response = await news_service.save_draft(
             supabase, user_id, image, title, content
         )
@@ -279,8 +277,8 @@ async def save_draft(
 
 
 @router.get("/users/me/drafts")
-async def get_user_drafts(current_user=Depends(get_current_user)):
-    user_id = current_user.id
+async def get_user_drafts(app_user=Depends(get_current_app_user)):
+    user_id = app_user["id"]
     user_drafts = await news_service.get_user_drafts(supabase, user_id)
     if user_drafts is None or len(user_drafts) == 0:
         raise HTTPException(status_code=404, detail="No drafts found")
@@ -290,11 +288,13 @@ async def get_user_drafts(current_user=Depends(get_current_user)):
 @router.post("/users/me/following")
 async def follow_user(
     body: FollowRequest,
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
+        user_id = app_user["id"]
+
         result = await users_service.follow_user(
-            supabase, str(current_user.id), body.followed_user_id
+            supabase, str(user_id), str(body.followed_user_id)
         )
 
         return {
@@ -312,11 +312,13 @@ async def follow_user(
 @router.delete("/users/me/following/{user_id}")
 async def unfollow_user(
     user_id: str,
-    current_user=Depends(get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
+        current_user_id = app_user["id"]
+
         result = await users_service.unfollow_user(
-            supabase, str(current_user.id), user_id
+            supabase, str(current_user_id), user_id
         )
         return {
             "status": "success",
@@ -331,11 +333,13 @@ async def unfollow_user(
 @router.delete("/{inst_id}/users/me/communities/{community_id}")
 async def leave_community(
     community_id: str,
-    current_user=Depends(auth.get_current_user),
+    app_user=Depends(get_current_app_user),
 ):
     try:
+        user_id = app_user["id"]
+
         result = await communities_service.leave_community(
-            supabase, community_id, str(current_user.id)
+            supabase, community_id, str(user_id)
         )
         return {
             "status": "success",
@@ -350,11 +354,11 @@ async def leave_community(
 @router.post("/{inst_id}/users/me/communities")
 async def join_community(
     body: JoinCommunityRequest,
-    current_user=Depends(auth.get_current_user),
+    current_user=Depends(get_current_app_user),
 ):
     try:
         result = await communities_service.join_community(
-            supabase, str(body.community_id), str(current_user.id)
+            supabase, str(body.community_id), str(current_user["id"])
         )
 
         return {
@@ -370,9 +374,7 @@ async def join_community(
 
 
 @router.post("/users/me/bookmarks")
-async def save_post(
-    body, current_user: auth.UserPayload = Depends(auth.get_current_user)
-):
+async def save_post(body, current_user: UserPayload = Depends(get_current_app_user)):
     return []
 
 
@@ -388,9 +390,9 @@ async def get_user_news(inst_id: str, user_id: str):
 
 
 @router.get("/{inst_id}/users/me/following")
-async def get_my_following(inst_id: str, current_user=Depends(get_current_user)):
+async def get_my_following(inst_id: str, current_user=Depends(get_current_app_user)):
     my_following = await users_service.get_user_following(
-        supabase, inst_id, str(current_user.id)
+        supabase, inst_id, str(current_user["id"])
     )
     return my_following
 
@@ -444,10 +446,10 @@ async def search_users(
 @router.get("/users/me/saved/{post_id}")
 async def check_saved_post(
     post_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = current_user["id"]
         is_saved = await news_service.is_post_saved(supabase, str(user_id), post_id)
         return {"is_saved": is_saved}
     except Exception as e:
@@ -458,10 +460,10 @@ async def check_saved_post(
 @router.post("/users/me/saved/{post_id}")
 async def save_post(
     post_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = current_user["id"]
         await news_service.save_post(supabase, str(user_id), post_id)
         return {"status": "success", "message": "Post saved successfully"}
     except Exception as e:
@@ -475,10 +477,10 @@ async def save_post(
 @router.delete("/users/me/saved/{post_id}")
 async def unsave_post(
     post_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = current_user["id"]
         await news_service.unsave_post(supabase, str(user_id), post_id)
         return {"status": "success", "message": "Post unsaved successfully"}
     except Exception as e:
@@ -488,10 +490,10 @@ async def unsave_post(
 # Get all saved posts for current user
 @router.get("/users/me/saved")
 async def get_saved_posts(
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = current_user["id"]
         saved_posts = await news_service.get_saved_posts(supabase, str(user_id))
         return saved_posts
     except Exception as e:
@@ -500,9 +502,9 @@ async def get_saved_posts(
 
 @router.get("/{inst_id}/users/me/preferences")
 async def get_user_preferences(
-    inst_id: str, current_user: auth.UserPayload = Depends(auth.get_current_user)
+    inst_id: str, current_user: UserPayload = Depends(get_current_app_user)
 ):
-    user_id = current_user.id
+    user_id = current_user["id"]
     user_preferences = await users_preferences_service.get_user_preferences(
         supabase=supabase, user_id=user_id
     )
@@ -513,10 +515,10 @@ async def get_user_preferences(
 async def update_preferences(
     inst_id: str,
     payload: SavePreferencesRequest,
-    current_user: auth.UserPayload = Depends(auth.get_current_user),
+    current_user: UserPayload = Depends(get_current_app_user),
 ):
     try:
-        user_id = current_user.id
+        user_id = current_user["id"]
         success = await users_preferences_service.save_user_preferences(
             supabase=supabase,
             user_id=user_id,
