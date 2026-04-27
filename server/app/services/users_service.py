@@ -84,13 +84,7 @@ async def get_user_following(
 async def follow_user(supabase: Client, user_id: str, followed_user_id: str):
     response = (
         supabase.table("user_follows")
-        .insert(
-            {
-                "follower_user_id": user_id,
-                "followed_user_id": followed_user_id,
-                "followed_at": datetime.utcnow().isoformat(),
-            }
-        )
+        .insert({"follower_user_id": user_id, "followed_user_id": followed_user_id})
         .execute()
     )
 

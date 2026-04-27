@@ -16,10 +16,9 @@ import Feather from "@expo/vector-icons/Feather"; // icon library
 
 export default function PreferencesScreen() {
     const colorScheme = useColorScheme() ?? "light"; // get light/dark mode
-    
+
     // Pull everything we need from our custom hook
-    const { categories, selected, toggleCategory, loading } =
-        usePreferences();
+    const { categories, selected, toggleCategory, loading } = usePreferences();
 
     // Runs when user taps "Save Preferences"
     const handleNext = () => {
@@ -33,7 +32,6 @@ export default function PreferencesScreen() {
                 includeIds: JSON.stringify(selected),
             },
         });
-        
     };
 
     // Show a loading state while fetching from DB
@@ -48,12 +46,24 @@ export default function PreferencesScreen() {
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
             {/* Header bar at the top */}
-            <View style={[styles.headerContainer, { backgroundColor: Colors[colorScheme].tint }]}>
+            <View
+                style={[
+                    styles.headerContainer,
+                    { backgroundColor: Colors[colorScheme].tint },
+                ]}
+            >
                 {/* Back button - goes to previous screen */}
                 <Pressable onPress={() => router.back()}>
-                    <Feather name="arrow-left" size={24} color={Colors[colorScheme].button_text} />
+                    <Feather
+                        name="arrow-left"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                    />
                 </Pressable>
-                <ThemedText type="defaultSemiBold" style={{ color: Colors[colorScheme].button_text }}>
+                <ThemedText
+                    type="defaultSemiBold"
+                    style={{ color: Colors[colorScheme].button_text }}
+                >
                     Select Preferred Catergories
                 </ThemedText>
                 {/* Empty view to center the title (balances the back button) */}
@@ -80,7 +90,9 @@ export default function PreferencesScreen() {
                                     borderColor: Colors[colorScheme].tint,
                                     // if this category is selected → fill with tint color
                                     // if not selected → transparent background
-                                    backgroundColor: selected.includes(cat.category_id)
+                                    backgroundColor: selected.includes(
+                                        cat.category_id,
+                                    )
                                         ? Colors[colorScheme].tint
                                         : "transparent",
                                 },
@@ -103,11 +115,16 @@ export default function PreferencesScreen() {
 
                 {/* Save button - disabled if nothing is selected */}
                 <Pressable
-                    style={[styles.saveBtn, { backgroundColor: Colors[colorScheme].tint }]}
+                    style={[
+                        styles.saveBtn,
+                        { backgroundColor: Colors[colorScheme].tint },
+                    ]}
                     onPress={handleNext}
                     disabled={selected.length === 0} // cant save if nothing selected
                 >
-                    <ThemedText style={{ color: Colors[colorScheme].button_text }}>
+                    <ThemedText
+                        style={{ color: Colors[colorScheme].button_text }}
+                    >
                         Next
                     </ThemedText>
                 </Pressable>
@@ -119,27 +136,27 @@ export default function PreferencesScreen() {
 // Styles - similar to CSS but written as a JS object
 const styles = StyleSheet.create({
     headerContainer: {
-        flexDirection: "row",        // lay children left to right
+        flexDirection: "row", // lay children left to right
         justifyContent: "space-between", // spread them apart
         paddingHorizontal: 16,
         paddingVertical: 12,
-        alignItems: "center",        // vertically center them
+        alignItems: "center", // vertically center them
     },
     container: {
         padding: 20,
-        gap: 12,                     // space between children
+        gap: 12, // space between children
     },
     title: { fontSize: 20, marginBottom: 4 },
     subtitle: { fontSize: 14, marginBottom: 16, opacity: 0.6 },
     grid: {
-        flexDirection: "row",        // lay chips left to right
-        flexWrap: "wrap",            // wrap to next line when row is full
+        flexDirection: "row", // lay chips left to right
+        flexWrap: "wrap", // wrap to next line when row is full
         gap: 10,
     },
     chip: {
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,            // makes it pill shaped
+        borderRadius: 20, // makes it pill shaped
         borderWidth: 1.5,
     },
     saveBtn: {
