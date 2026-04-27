@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.core.db import supabase
 from app.models.admin import Community, CommunityCreationReqBody
 from app.core.auth import verify_admin
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_current_app_user
 
 router = APIRouter(
     prefix="/{inst_id}/admin/communities",
@@ -54,10 +54,10 @@ async def get_community_creation_requests(inst_id: str):
 async def respond_to_community_creation_request(
     inst_id: str,
     payload: CommunityCreationReqBody,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_app_user),
 ):
     try:
-        reviewed_by_user_id = current_user.id
+        reviewed_by_user_id = current_user["id"]
 
         response = await communities_service.respond_to_community_creation_request(
             supabase,

@@ -20,6 +20,7 @@ async def get_institution_news(
         .select(
             """
             id,
+            created_at,
             author,
             title, 
             description, 
@@ -67,6 +68,7 @@ async def get_institution_news(
         posts.append(
             NewsPost(
                 id=post["id"],
+                created_at=post["created_at"],
                 author_id=post["author"],
                 author=post["users"]["name"],
                 title=post["title"],
@@ -340,7 +342,7 @@ async def get_personalised_news(
 
     # If user has no preferences, return the normal feed so screen isnt empty
     if not preferred_ids:
-        return await get_institution_news(supabase, inst_id)
+        return await get_institution_news(supabase, str(inst_id))
 
     # Step 2: Fetch posts where category_id matches user's preferences
     # category_id is now directly on news_posts so no joining needed!
@@ -349,6 +351,7 @@ async def get_personalised_news(
         .select(
             """
             id,
+            created_at,
             author,
             title,
             description,
@@ -372,6 +375,7 @@ async def get_personalised_news(
     return [
         NewsPost(
             id=post["id"],
+            created_at=post["created_at"],
             author_id=post["author"],
             author=post["users"]["name"],
             title=post["title"],
@@ -469,11 +473,11 @@ async def is_post_saved(supabase: Client, user_id: str, post_id: str) -> bool:
 # ----------------------------
 # MY LIKES
 # ----------------------------
-async def toggle_post_like(post_id: uuid.UUID, user_id: uuid.UUID):
+async def toggle_post_like(post_id: uuid.UUID, user_id: str):
     try:
 
         response = supabase.rpc(
-            "toggle_post_like", {"p_post_id": str(post_id), "p_user_id": str(user_id)}
+            "toggle_post_like", {"p_post_id": str(post_id), "p_user_id": user_id}
         ).execute()
 
         if not response.data:

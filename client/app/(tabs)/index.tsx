@@ -143,11 +143,11 @@ export default function HomeScreen() {
     >({
         queryKey: ["personalised_news", currentUser?.id],
         queryFn: async (): Promise<News[]> => {
-            const response = await fetch(
-                `http://10.0.2.2:8000/api/v1/391848ae-e6c6-43ec-a34c-e6ce06f0d842/news/feed/personalised?user_id=${currentUser?.id}`,
+            const response = await api.get(
+                `/${metadata.inst_id}/news/feed/personalised?user_id=${currentUser?.id}`,
             );
-            if (!response.ok) throw new Error("Network response was not ok");
-            return await response.json();
+            // if (!response.ok) throw new Error("Network response was not ok");
+            return await response.data;
         },
         enabled: !!currentUser?.id, // only fetch once we have the user id
     });
