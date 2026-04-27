@@ -195,21 +195,30 @@ async def respond_to_my_invitation(
 
 @router.get("/users/me/communities")
 async def get_my_communities(
-    inst_id: str = Query(...),
     app_user=Depends(get_current_app_user),
 ):
-    user_id = app_user["id"]
-    user_communities = await users_service.get_user_communities(supabase, user_id)
+    try:
+        user_id = app_user["id"]
+        user_communities = await users_service.get_user_communities(supabase, user_id)
+        if not user_communities:
+            raise HTTPException(
+                status_code=404, detail="No commmunity membership data found."
+            )
 
-    return user_communities or []
+        return user_communities
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"Error while fetching user's communities membership: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/users/me/news")
 async def get_my_news(app_user=Depends(get_current_app_user)):
     user_id = app_user["id"]
     my_news = await news_service.get_user_news(supabase, user_id)
-    if my_news is None or len(my_news) == 0:
-        raise HTTPException(status_code=404, detail="No news found")
+    if my_news is None:
+        raise HTTPException(status_code=404, detail="No news found for this user")
     return my_news
 
 
@@ -330,7 +339,7 @@ async def unfollow_user(
         raise HTTPException(status_code=500, detail="Could not unfollow")
 
 
-@router.delete("/{inst_id}/users/me/communities/{community_id}")
+@router.delete("/users/me/communities/{community_id}")
 async def leave_community(
     community_id: str,
     app_user=Depends(get_current_app_user),
@@ -351,7 +360,7 @@ async def leave_community(
         raise HTTPException(status_code=500, detail="Could not leave community")
 
 
-@router.post("/{inst_id}/users/me/communities")
+@router.post("/users/me/communities")
 async def join_community(
     body: JoinCommunityRequest,
     current_user=Depends(get_current_app_user),
@@ -384,7 +393,7 @@ async def save_post(body, current_user: UserPayload = Depends(get_current_app_us
 @router.get("/{inst_id}/users/{user_id}/news")
 async def get_user_news(inst_id: str, user_id: str):
     my_news = await news_service.get_user_news(supabase, user_id)
-    if my_news is None or len(my_news) == 0:
+    if my_news is None:
         raise HTTPException(status_code=404, detail="No news found")
     return my_news
 
@@ -497,6 +506,7 @@ async def get_saved_posts(
         saved_posts = await news_service.get_saved_posts(supabase, str(user_id))
         return saved_posts
     except Exception as e:
+        print(f"Could not fetch saved posts: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch saved posts")
 
 

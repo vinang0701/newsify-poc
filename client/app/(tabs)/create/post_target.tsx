@@ -1,5 +1,5 @@
 import { Image } from "expo-image";
-import {supabase} from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import {
     Pressable,
     StyleSheet,
@@ -29,6 +29,7 @@ import SearchBar from "@/components/search_bar";
 import Feather from "@expo/vector-icons/Feather";
 import { FlashList } from "@shopify/flash-list";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import api from "@/lib/axios";
 
 type ModerationResponse = {
     content: string;
@@ -69,10 +70,14 @@ export default function PostTargetForm() {
     const [searchQuery, setSearchQuery] = useState("");
 
     // Stores the category_id the user picks for this post
-    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+        null,
+    );
 
     // Stores the list of categories fetched from Supabase
-    const [categories, setCategories] = useState<{ category_id: string; category_name: string }[]>([]);
+    const [categories, setCategories] = useState<
+        { category_id: string; category_name: string }[]
+    >([]);
 
     const handleSearch = (text: string) => {
         setSearchQuery(text);
@@ -89,9 +94,7 @@ export default function PostTargetForm() {
         queryKey: ["user_communities", user_id],
         queryFn: async () => {
             // axios try catch
-            const response = await axios.get(
-                `${BASE_URL}/${inst_id}/users/me/communities`,
-            );
+            const response = await api.get(`/users/me/communities`);
             if (response.data.length > 0) {
                 return response.data;
             }
@@ -121,10 +124,9 @@ export default function PostTargetForm() {
         // Is school checked?
         formData.append("school", isSchoolChecked ? "true" : "false");
 
-        
         if (selectedCategoryId) {
             formData.append("category_id", selectedCategoryId);
-}
+        }
 
         // need to add selected community id
         selectedIds.forEach((id) => formData.append("communities", id));
@@ -262,12 +264,22 @@ export default function PostTargetForm() {
 
                     {/* Category Picker */}
                     <View style={{ width: "100%", gap: 8 }}>
-                        <ThemedText type="defaultSemiBold">Select a Category</ThemedText>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                        <ThemedText type="defaultSemiBold">
+                            Select a Category
+                        </ThemedText>
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                flexWrap: "wrap",
+                                gap: 8,
+                            }}
+                        >
                             {categories.map((cat) => (
                                 <Pressable
                                     key={cat.category_id}
-                                    onPress={() => setSelectedCategoryId(cat.category_id)}
+                                    onPress={() =>
+                                        setSelectedCategoryId(cat.category_id)
+                                    }
                                     style={{
                                         paddingHorizontal: 16,
                                         paddingVertical: 8,
@@ -276,7 +288,8 @@ export default function PostTargetForm() {
                                         // filled if selected, transparent if not
                                         borderColor: Colors[colorScheme].tint,
                                         backgroundColor:
-                                            selectedCategoryId === cat.category_id
+                                            selectedCategoryId ===
+                                            cat.category_id
                                                 ? Colors[colorScheme].tint
                                                 : "transparent",
                                     }}
@@ -284,8 +297,10 @@ export default function PostTargetForm() {
                                     <ThemedText
                                         style={{
                                             color:
-                                                selectedCategoryId === cat.category_id
-                                                    ? Colors[colorScheme].button_text
+                                                selectedCategoryId ===
+                                                cat.category_id
+                                                    ? Colors[colorScheme]
+                                                          .button_text
                                                     : Colors[colorScheme].text,
                                         }}
                                     >

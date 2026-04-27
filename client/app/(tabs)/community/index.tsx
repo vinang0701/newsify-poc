@@ -29,6 +29,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import axios from "axios";
 import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
+import { useCommunity } from "@/hooks/useCommunity";
 
 const HEADER_HEIGHT = 250;
 
@@ -58,8 +60,8 @@ interface UserCommunities {
 }
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+// const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+// const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
 
 export default function CommunitiesTab() {
     const colorScheme = useColorScheme() ?? "light";
@@ -70,6 +72,11 @@ export default function CommunitiesTab() {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const queryClient = useQueryClient();
+
+    const { session, metadata } = useAuthStore();
+    const inst_id = metadata?.inst_id;
+    const user_id = metadata?.user_id;
+    // console.log(session?.access_token);
 
     function formatMemberCount(count: number) {
         if (count < 1000) {
@@ -100,7 +107,7 @@ export default function CommunitiesTab() {
 
     const joinComm = async (id: string) => {
         try {
-            await api.post(`/${inst_id}/users/me/communities`, {
+            await api.post(`/users/me/communities`, {
                 community_id: id,
                 user_id: user_id,
             });
@@ -143,7 +150,7 @@ export default function CommunitiesTab() {
         queryKey: ["user_communities", user_id],
         queryFn: async () => {
             // axios try catch
-            const response = await api.get(`${inst_id}/users/me/communities`);
+            const response = await api.get(`/users/me/communities`);
 
             return response.data;
         },
@@ -153,7 +160,7 @@ export default function CommunitiesTab() {
         console.log("Leaving community");
         try {
             const response = await api.delete(
-                `${BASE_URL}/${inst_id}/users/me/communities/${community_id}`,
+                `/users/me/communities/${community_id}`,
             );
 
             queryClient.invalidateQueries({ queryKey: ["user_communities"] });
@@ -354,7 +361,10 @@ export default function CommunitiesTab() {
                         <Link
                             href={{
                                 pathname: "/community/[communityId]",
-                                params: { communityId: item?.id, inst_id:inst_id},
+                                params: {
+                                    communityId: item?.id,
+                                    inst_id: inst_id,
+                                },
                             }}
                             style={[
                                 styles.card,

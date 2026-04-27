@@ -1,28 +1,33 @@
 import {
-	Text,
-	Pressable,
-	StyleSheet,
-	useColorScheme,
-	Image,
-	View,
-	ScrollView,
-	Modal,
-	ActivityIndicator,
-	Alert,
+    Text,
+    Pressable,
+    StyleSheet,
+    useColorScheme,
+    Image,
+    View,
+    ScrollView,
+    Modal,
+    ActivityIndicator,
+    Alert,
 } from "react-native";
 import BottomSheet, {
-	BottomSheetBackdrop,
-	BottomSheetView,
+    BottomSheetBackdrop,
+    BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import React, {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
 } from "react";
 import { Colors } from "@/constants/theme";
-import { Link, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import {
+    Link,
+    useLocalSearchParams,
+    useRouter,
+    useFocusEffect,
+} from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -50,9 +55,11 @@ export default function CommunityPage() {
     const snapPoints = useMemo(() => ["25%"], []);
     const [modalVisible, setModalVisible] = useState(false);
     const [sortMenuVisible, setSortMenuVisible] = useState(false);
-    const [selectedSort, setSelectedSort] = useState<"Newest" | "Oldest" | "A - Z" | "Z - A">("Newest");
+    const [selectedSort, setSelectedSort] = useState<
+        "Newest" | "Oldest" | "A - Z" | "Z - A"
+    >("Newest");
 
-    const { 
+    const {
         community,
         news,
         memberCount,
@@ -75,12 +82,16 @@ export default function CommunityPage() {
         switch (selectedSort) {
             case "Newest":
                 sorted.sort(
-                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                    (a, b) =>
+                        new Date(b.created_at).getTime() -
+                        new Date(a.created_at).getTime(),
                 );
                 break;
             case "Oldest":
                 sorted.sort(
-                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                    (a, b) =>
+                        new Date(a.created_at).getTime() -
+                        new Date(b.created_at).getTime(),
                 );
                 break;
             case "A - Z":
@@ -109,7 +120,7 @@ export default function CommunityPage() {
     useFocusEffect(
         useCallback(() => {
             refresh();
-        }, [])
+        }, []),
     );
 
     function nameToAvatar(name: string) {
@@ -274,17 +285,18 @@ export default function CommunityPage() {
                                 paddingVertical: 8,
                                 paddingHorizontal: 12,
                                 backgroundColor: isMember
-                                    ?  Colors[colorScheme].alert_red
-                                    :  Colors[colorScheme].bg_light,
+                                    ? Colors[colorScheme].alert_red
+                                    : Colors[colorScheme].bg_light,
                                 borderRadius: 20,
                                 borderWidth: 2,
                                 borderColor: isMember
-                                    ?  "transparent"
-                                    :  Colors[colorScheme].tint,
+                                    ? "transparent"
+                                    : Colors[colorScheme].tint,
                             }}
-                            onPress={ isMember
-                                ?  () => setModalVisible(true)
-                                :  handleJoinCommunity
+                            onPress={
+                                isMember
+                                    ? () => setModalVisible(true)
+                                    : handleJoinCommunity
                             }
                         >
                             <ThemedText
@@ -319,13 +331,21 @@ export default function CommunityPage() {
                     }}
                 >
                     <Pressable
-                        style={[styles.sortButtonContainer, {
-                            borderColor: Colors[colorScheme].border,
-                            backgroundColor: Colors[colorScheme].bg_light,
-                        }]}
+                        style={[
+                            styles.sortButtonContainer,
+                            {
+                                borderColor: Colors[colorScheme].border,
+                                backgroundColor: Colors[colorScheme].bg_light,
+                            },
+                        ]}
                         onPress={() => setSortMenuVisible(!sortMenuVisible)}
                     >
-                        <ThemedText type="defaultSemiBold" style={{ fontSize: 12 }}>Sort</ThemedText>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ fontSize: 12 }}
+                        >
+                            Sort
+                        </ThemedText>
                         <MaterialCommunityIcons
                             name="chevron-down"
                             size={16}
@@ -333,42 +353,57 @@ export default function CommunityPage() {
                         />
                     </Pressable>
                     {sortMenuVisible && (
-                        <View style={[styles.dropdownMenu, { backgroundColor: Colors[colorScheme].bg_light }]}>
-                            {["Newest", "Oldest", "A - Z", "Z - A"].map((option) => (
-                                <Pressable
-                                    key={option}
-                                    onPress={() => {
-                                        setSelectedSort(option as typeof selectedSort);
-                                        setSortMenuVisible(false);
-                                    }}
-                                    style={{
-                                        paddingVertical: 8,
-                                        paddingHorizontal: 4,
-                                        flexDirection: "row",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <ThemedText
-                                        type="defaultSemiBold"
+                        <View
+                            style={[
+                                styles.dropdownMenu,
+                                {
+                                    backgroundColor:
+                                        Colors[colorScheme].bg_light,
+                                },
+                            ]}
+                        >
+                            {["Newest", "Oldest", "A - Z", "Z - A"].map(
+                                (option) => (
+                                    <Pressable
+                                        key={option}
+                                        onPress={() => {
+                                            setSelectedSort(
+                                                option as typeof selectedSort,
+                                            );
+                                            setSortMenuVisible(false);
+                                        }}
                                         style={{
-                                            fontWeight: selectedSort === option ? "bold" : "normal",
-                                            color: Colors[colorScheme].text,
+                                            paddingVertical: 8,
+                                            paddingHorizontal: 4,
+                                            flexDirection: "row",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
                                         }}
                                     >
-                                        {option}
-                                    </ThemedText>
+                                        <ThemedText
+                                            type="defaultSemiBold"
+                                            style={{
+                                                fontWeight:
+                                                    selectedSort === option
+                                                        ? "bold"
+                                                        : "normal",
+                                                color: Colors[colorScheme].text,
+                                            }}
+                                        >
+                                            {option}
+                                        </ThemedText>
 
-                                    {/* Show check icon if option is selected */}
-                                    {selectedSort === option && (
-                                        <MaterialCommunityIcons
-                                            name="check-bold"
-                                            size={20}
-                                            color={Colors[colorScheme].text}
-                                        />
-                                    )}
-                                </Pressable>
-                            ))}
+                                        {/* Show check icon if option is selected */}
+                                        {selectedSort === option && (
+                                            <MaterialCommunityIcons
+                                                name="check-bold"
+                                                size={20}
+                                                color={Colors[colorScheme].text}
+                                            />
+                                        )}
+                                    </Pressable>
+                                ),
+                            )}
                         </View>
                     )}
                     {news?.length === 0 ? (
@@ -390,7 +425,11 @@ export default function CommunityPage() {
                                 nestedScrollEnabled={false}
                                 data={sortedNews}
                                 renderItem={({ item, index }) => (
-                                    <NewsPostCard news={item} key={index} />
+                                    <NewsPostCard
+                                        news={item}
+                                        inst_id={inst_id}
+                                        key={index}
+                                    />
                                 )}
                             />
                         </View>
@@ -411,8 +450,12 @@ export default function CommunityPage() {
                             onPress={() => {
                                 bottomSheetRef.current?.close();
                                 router.push({
-                                    pathname: "community/[communityId]/post_requests",
-                                    params: { communityId: communityId, inst_id:  inst_id},
+                                    pathname:
+                                        "/community/[communityId]/post_requests",
+                                    params: {
+                                        communityId: communityId,
+                                        inst_id: inst_id,
+                                    },
                                 });
                             }}
                         >
@@ -506,7 +549,7 @@ export default function CommunityPage() {
                                             Colors[colorScheme].alert_red,
                                     },
                                 ]}
-                                onPress={ handleLeaveCommunity }
+                                onPress={handleLeaveCommunity}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"
@@ -524,8 +567,8 @@ export default function CommunityPage() {
                         </View>
                     </View>
                 </View>
-           </Modal>
-       </GestureHandlerRootView>
+            </Modal>
+        </GestureHandlerRootView>
     );
 }
 

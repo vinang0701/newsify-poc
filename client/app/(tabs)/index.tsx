@@ -307,6 +307,7 @@ export default function HomeScreen() {
                                 renderItem={({ item }) => (
                                     <NewsPostCard
                                         news={item}
+                                        currentUserId={currentUser?.id}
                                         inst_id={inst_id}
                                         key={item.id}
                                     />

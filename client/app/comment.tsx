@@ -603,7 +603,7 @@ const Comment = () => {
                                 }}
                             >
                                 <ThemedText type="caption">
-                                    Replying to
+                                    Replying to{" "}
                                     <ThemedText type="caption" emphasized>
                                         @{replyingToName}
                                     </ThemedText>
