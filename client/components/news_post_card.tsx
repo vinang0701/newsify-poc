@@ -230,6 +230,7 @@ function NewsPostCard({ news, currentUserId, inst_id }: NewsPostCardProps) {
     };
 
     const handleBookmark = async () => {
+        console.log("bookmark");
         if (!currentUserId || bookmarkLoading) return;
         setBookmarkLoading(true);
 
@@ -426,7 +427,7 @@ function NewsPostCard({ news, currentUserId, inst_id }: NewsPostCardProps) {
                         {/* </Link> */}
                     </View>
                     <Pressable
-                        onPress={handleBookmark}
+                        onPress={() => handleBookmark()}
                         disabled={bookmarkLoading}
                     >
                         {bookmark ? (

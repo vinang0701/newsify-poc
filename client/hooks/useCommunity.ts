@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import api from "@/lib/axios";
+import { News } from "@/data/types";
+import { useAuthStore } from "@/utils/authStore";
 
 export type UserCommunities = {
     community_id: string;
@@ -16,14 +19,6 @@ export type CommunityDetails = {
     description: string;
     status: string;
     image_url: string;
-};
-
-export type News = {
-    id: string;
-    title: string;
-    description: string;
-    image_url: string;
-    created_at: string;
 };
 
 export function useCommunity(communityId?: string) {
@@ -61,12 +56,23 @@ export function useCommunity(communityId?: string) {
                 "Content-Type": "application/json",
             };
 
-            const [myCommRes, commRes, newsRes, membersRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/users/me/communities`, { headers }),
-                fetch(`${API_BASE_URL}/${inst_id}/communities/${communityId}`, { headers }),
-                fetch(`${API_BASE_URL}/${inst_id}/communities/${communityId}/news`, { headers }),
-                fetch(`${API_BASE_URL}/${inst_id}/communities/${communityId}/members`, { headers }),
-            ]);
+            const [myCommRes, commRes, newsRes, membersRes] = await Promise.all(
+                [
+                    fetch(`${API_BASE_URL}/users/me/communities`, { headers }),
+                    fetch(
+                        `${API_BASE_URL}/${inst_id}/communities/${communityId}`,
+                        { headers },
+                    ),
+                    fetch(
+                        `${API_BASE_URL}/${inst_id}/communities/${communityId}/news`,
+                        { headers },
+                    ),
+                    fetch(
+                        `${API_BASE_URL}/${inst_id}/communities/${communityId}/members`,
+                        { headers },
+                    ),
+                ],
+            );
 
             const myCommData = await myCommRes.json();
             const commData = await commRes.json();
@@ -74,7 +80,12 @@ export function useCommunity(communityId?: string) {
             const membersData = await membersRes.json();
 
             if (!myCommRes.ok || !commRes.ok || !newsRes.ok || !membersRes.ok) {
-                console.warn("Some fetches failed", { myCommData, commData, newsData, membersData });
+                console.warn("Some fetches failed", {
+                    myCommData,
+                    commData,
+                    newsData,
+                    membersData,
+                });
             }
 
             setMyCommunities(Array.isArray(myCommData) ? myCommData : []);
@@ -130,7 +141,9 @@ export function useCommunity(communityId?: string) {
     const userRole = useMemo(() => {
         if (!communityId || myCommunities.length === 0) return null;
 
-        const community = myCommunities.find(c => c.community_id === communityId);
+        const community = myCommunities.find(
+            (c) => c.community_id === communityId,
+        );
         return community?.role ?? null;
     }, [communityId, myCommunities]);
 

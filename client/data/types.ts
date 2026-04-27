@@ -11,6 +11,7 @@ export interface News {
     comments_count: number;
     has_liked: boolean;
     has_saved: boolean;
+    created_at: string;
 }
 
 export interface Community {

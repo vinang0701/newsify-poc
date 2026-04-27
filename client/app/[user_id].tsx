@@ -37,7 +37,11 @@ const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 export default function OtherUserProfileStack() {
+    const router = useRouter();
     const { user, session, metadata } = useAuthStore();
+    if (!user || !session || !metadata) {
+        return router.push("/login");
+    }
 
     const snapPoints = useMemo(() => ["20%"], []);
     const bottomSheetRef = useRef<BottomSheet>(null);
@@ -57,13 +61,12 @@ export default function OtherUserProfileStack() {
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const signOut = useAuthStore((state) => state.signOut);
-    const router = useRouter();
 
     const handleSignOut = async () => {
         setIsLoggingOut(true);
         try {
             await signOut();
-            router.replace("/login");
+            router.push("/login");
         } catch (error) {
             console.error("Error signing out:", error);
         } finally {
@@ -401,7 +404,11 @@ export default function OtherUserProfileStack() {
                                 }
                                 data={data}
                                 renderItem={({ item }) => (
-                                    <NewsPostCard news={item} />
+                                    <NewsPostCard
+                                        news={item}
+                                        currentUserId={user.id}
+                                        inst_id={inst_id}
+                                    />
                                 )}
                             />
                         )}

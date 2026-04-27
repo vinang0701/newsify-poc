@@ -21,7 +21,7 @@ class UpdatePostRequestStatus(BaseModel):
 
 
 # Return an array of institution news
-@router.get("/")
+@router.get("")
 async def get_communities(inst_id: str):
     # Add JWT Decode later
 

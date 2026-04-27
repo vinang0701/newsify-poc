@@ -32,6 +32,7 @@ import BottomSheet, {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuthStore } from "@/utils/authStore";
 import { supabase } from "@/lib/supabase";
+import api from "@/lib/axios";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -94,8 +95,8 @@ export default function Profile() {
 
     async function fetchUserNews(): Promise<News[]> {
         try {
-            const response = await axios.get<News[]>(
-                `${BASE_URL}/${inst_id}/users/${user_id}/news`,
+            const response = await api.get<News[]>(
+                `/${inst_id}/users/${user_id}/news`,
             );
 
             return response.data;
@@ -110,8 +111,8 @@ export default function Profile() {
 
     async function fetchUserProfile(): Promise<UserProfileDetails> {
         try {
-            const response = await axios.get<UserProfileDetails[]>(
-                `${BASE_URL}/${inst_id}/users/${user_id}`,
+            const response = await api.get<UserProfileDetails[]>(
+                `/${inst_id}/users/${user_id}`,
             );
 
             return response.data[0];
@@ -145,8 +146,8 @@ export default function Profile() {
     } = useQuery<number>({
         queryKey: ["following_count", user_id],
         queryFn: async () => {
-            const res = await axios.get(
-                `${BASE_URL}/${inst_id}/users/${user_id}/following_count`,
+            const res = await api.get(
+                `/${inst_id}/users/${user_id}/following_count`,
             );
             return res.data.count;
         },
@@ -160,8 +161,8 @@ export default function Profile() {
     } = useQuery<number>({
         queryKey: ["follower_count", user_id],
         queryFn: async () => {
-            const res = await axios.get(
-                `${BASE_URL}/${inst_id}/users/${user_id}/follower_count`,
+            const res = await api.get(
+                `/${inst_id}/users/${user_id}/follower_count`,
             );
             return res.data.count;
         },
@@ -189,7 +190,9 @@ export default function Profile() {
     const { data: currentUser } = useQuery({
         queryKey: ["current_user"],
         queryFn: async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             return user;
         },
     });
@@ -423,7 +426,11 @@ export default function Profile() {
                                 }
                                 data={data}
                                 renderItem={({ item }) => (
-                                    <NewsPostCard news={item} currentUserId={currentUser?.id} />
+                                    <NewsPostCard
+                                        news={item}
+                                        currentUserId={currentUser?.id}
+                                        inst_id={inst_id}
+                                    />
                                 )}
                             />
                         )}
@@ -472,7 +479,9 @@ export default function Profile() {
                                 style={styles.modalActionButtonCtn}
                                 onPress={() => {
                                     bottomSheetRef.current?.close();
-                                    router.push("/(tabs)/profile_page/bookmarks");
+                                    router.push(
+                                        "/(tabs)/profile_page/bookmarks",
+                                    );
                                 }}
                             >
                                 <Feather
@@ -485,17 +494,25 @@ export default function Profile() {
                                 </ThemedText>
                             </Pressable>
 
-                            <Pressable style={styles.modalActionButtonCtn}
+                            <Pressable
+                                style={styles.modalActionButtonCtn}
                                 onPress={() => {
                                     bottomSheetRef.current?.close(); // close the bottom sheet first
                                     router.push({
-                                        pathname: "/(tabs)/profile_page/preferences",
+                                        pathname:
+                                            "/(tabs)/profile_page/preferences",
                                         params: { inst_id: inst_id }, // pass inst_id like your other routes do
                                     });
                                 }}
-                                >
-                                <Feather name="settings" size={24} color={Colors[colorScheme].text} />
-                                <ThemedText type="defaultSemiBold">Change preference</ThemedText>
+                            >
+                                <Feather
+                                    name="settings"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    Change preference
+                                </ThemedText>
                             </Pressable>
 
                             <Pressable

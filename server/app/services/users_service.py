@@ -10,13 +10,11 @@ from app.core.db import supabase
 
 
 # join table between communities and community_members
-async def get_user_communities(
-    supabase: Client, user_id: str
-) -> List[dict]:
+async def get_user_communities(supabase: Client, user_id: str) -> List[dict]:
     response = (
         supabase.table("communities")
         .select("*, community_members!inner(*)")
-        .eq("community_members.user_id", str(user_id))
+        .eq("community_members.user_id", user_id)
         .execute()
     )
     communities = []
