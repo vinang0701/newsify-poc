@@ -342,7 +342,7 @@ async def get_personalised_news(
 
     # If user has no preferences, return the normal feed so screen isnt empty
     if not preferred_ids:
-        return await get_institution_news(supabase, str(inst_id))
+        return await get_institution_news(supabase, str(inst_id), user_id)
 
     # Step 2: Fetch posts where category_id matches user's preferences
     # category_id is now directly on news_posts so no joining needed!

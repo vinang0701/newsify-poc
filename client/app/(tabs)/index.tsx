@@ -141,7 +141,7 @@ export default function HomeScreen() {
     const { data: personalisedData, refetch: refetchPersonalised } = useQuery<
         News[]
     >({
-        queryKey: ["personalised_news", currentUser?.id],
+        queryKey: ["news"],
         queryFn: async (): Promise<News[]> => {
             const response = await api.get(
                 `/${metadata.inst_id}/news/feed/personalised?user_id=${currentUser?.id}`,
