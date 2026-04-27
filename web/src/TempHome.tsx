@@ -12,7 +12,7 @@ const TempHome = () => {
 				<Button>
 					<Link to={"/admin"}>Institution Admin</Link>
 				</Button>
-				<Button disabled>
+				<Button>
 					<Link to={"/platform"}>Platform Admin</Link>
 				</Button>
 				<Button className="bg-amber-800">

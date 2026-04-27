@@ -1,3 +1,5 @@
+import { registerGlobals } from "@livekit/react-native";
+registerGlobals();
 import {
     DarkTheme,
     DefaultTheme,
@@ -26,6 +28,7 @@ export default function RootLayout() {
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
         // Poppins: require("@/assets/fonts/Poppins-Regular.ttf"),
     });
+
     // Create a client
     const queryClient = new QueryClient();
 
@@ -71,10 +74,34 @@ export default function RootLayout() {
                                     animation: "none",
                                 }}
                             />
+                            <Stack.Screen
+                                name="[user_id]"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="update_password"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
                         </Stack.Protected>
                         <Stack.Protected guard={!session || session === null}>
                             <Stack.Screen
                                 name="login"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="forgot_password"
+                                options={{
+                                    headerShown: false,
+                                }}
+                            />
+                            <Stack.Screen
+                                name="verify_otp"
                                 options={{
                                     headerShown: false,
                                 }}

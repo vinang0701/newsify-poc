@@ -79,10 +79,10 @@ async def get_current_app_user(user: UserPayload = Depends(get_current_user)) ->
         )
 
     return {
-        "id": user.user_id,          # ✅ public.users.id
+        "id": user.user_id,  # ✅ public.users.id
         "inst_id": user.inst_id,
         "user_role": user.user_role,
-        "auth_id": user.id,          # Supabase auth.users.id (optional)
+        "auth_id": user.id,  # Supabase auth.users.id (optional)
         "email": user.email,
     }
 

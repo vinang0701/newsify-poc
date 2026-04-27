@@ -1,8 +1,15 @@
 from supabase import Client
 from typing import List
-from app.models.community import Community, CommunityMembership, CommunityMember, CommunityApplication
+from app.models.community import (
+    Community,
+    CommunityMembership,
+    CommunityMember,
+    CommunityApplication,
+    CommunityPostRequest,
+)
 from app.core.db import supabase
 import uuid
+from datetime import datetime
 
 
 async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
@@ -38,7 +45,7 @@ async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
     ]
 
 
-async def get_community(supabase: Client, community_id: str) -> List[dict]:
+async def get_community(supabase: Client, community_id: str):
     response = (
         supabase.table("communities")
         .select(
@@ -55,17 +62,19 @@ async def get_community(supabase: Client, community_id: str) -> List[dict]:
         .execute()
     )
 
-    return [
-        Community(
-            id=comm["id"],
-            created_by_user_id=comm["created_by_user_id"],
-            name=comm["name"],
-            description=comm["description"] or "",
-            status=comm["status"],
-            image_url=comm["image_url"] or "",
-        )
-        for comm in response.data
-    ]
+    if not response.data:
+        return None
+
+    comm = response.data[0]
+
+    return Community(
+        id=comm["id"],
+        created_by_user_id=comm["created_by_user_id"],
+        name=comm["name"],
+        description=comm["description"] or "",
+        status=comm["status"],
+        image_url=comm["image_url"] or "",
+    )
 
 
 # Function to insert new community application into communities_requests
@@ -142,9 +151,22 @@ async def get_community_membership(supabase, user_id: str):
     ]
 
 
+async def get_community_role(supabase, community_id: str, user_id: str):
+    res = (
+        supabase.table("community_members")
+        .select("role")
+        .eq("user_id", user_id)
+        .eq("community_id", community_id)
+        .execute()
+    )
+
+    if res.data:
+        return res.data[0]["role"]
+
+    return None
+
+
 async def leave_community(supabase: Client, community_id: str, user_id: str):
-    print(user_id)
-    print(community_id)
     response = (
         supabase.table("community_members")
         .delete()
@@ -162,7 +184,7 @@ async def join_community(supabase: Client, community_id: str, user_id: str):
             {
                 "community_id": community_id,
                 "user_id": user_id,
-                "joined_at": "now()",
+                "joined_at": datetime.utcnow().isoformat(),
                 "role": "member",
             }
         )
@@ -185,7 +207,7 @@ async def get_members_by_community(supabase: Client, community_id: str):
     )
 
     # Supabase returns nested objects, so we flatten them for easier UI use
-    memberships = [
+    members = [
         CommunityMember(
             community_id=community_id,
             user_id=member["users"]["id"],
@@ -196,4 +218,98 @@ async def get_members_by_community(supabase: Client, community_id: str):
         if member.get("users")
     ]
 
-    return memberships
+    return members
+
+
+async def get_community_post_requests(
+    supabase, community_id: str
+) -> list[CommunityPostRequest]:
+    response = (
+        supabase.table("community_post_requests")
+        .select(
+            """
+            request_id,
+            status,
+            reviewed_at,
+            rejection_reason,
+            news_posts(id, title, created_at, description, image_url),
+            author_name:requested_by_user_id(name),
+            reviewed_by:reviewed_by_user_id(name)
+            """
+        )
+        .eq("community_id", community_id)
+        .order("news_posts(created_at)", desc=True)
+        .execute()
+    )
+
+    result = []
+
+    for row in response.data or []:
+        author_name = row.get("author_name", {}).get("name", "")
+        reviewed_by = (
+            row.get("reviewed_by", {}).get("name", "")
+            if row.get("reviewed_by")
+            else "NULL"
+        )
+        image_url = row.get("news_posts", {}).get("image_url", "")
+        title = row.get("news_posts", {}).get("title", "Untitled")
+        description = row.get("news_posts", {}).get("description", "")
+        created_at = datetime.fromisoformat(
+            row.get("news_posts", {}).get("created_at", "")
+        )
+        formatted_created_at = created_at.strftime("%d/%m/%Y")
+        reviewed_at = (
+            datetime.fromisoformat(row["reviewed_at"])
+            if row.get("reviewed_at")
+            else None
+        )
+        formatted_reviewed_at = (
+            reviewed_at.strftime("%d/%m/%Y") if reviewed_at else None
+        )
+
+        result.append(
+            CommunityPostRequest(
+                request_id=row["request_id"],
+                author_name=author_name,
+                image_url=image_url,
+                title=title,
+                description=description,
+                status=row["status"],
+                created_at=formatted_created_at,
+                reviewed_at=formatted_reviewed_at,
+                reviewed_by=reviewed_by,
+                rejection_reason=row.get("rejection_reason"),
+            )
+        )
+
+    return result
+
+async def update_community_post_request(
+    supabase: Client,
+    request_id: str,
+    status: str,
+    reviewed_by_user_id: str,
+    rejection_reason: str,
+):
+    reviewed_at = datetime.utcnow().isoformat() # current time
+
+    update_data = {
+        "status": status,
+        "reviewed_at": reviewed_at,
+        "reviewed_by_user_id": reviewed_by_user_id,
+    }
+
+    # rejection_reason if status is rejected
+    if status == "rejected":
+        update_data["rejection_reason"] = rejection_reason
+    else:
+        update_data["rejection_reason"] = ""
+
+    response = (
+        supabase.table("community_post_requests")
+        .update(update_data)
+        .eq("request_id", request_id)
+        .execute()
+    )
+
+    return response.data, None

@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, List
-
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File, Query
 from pydantic import BaseModel
 from openai import OpenAI
@@ -12,6 +12,7 @@ from app.services import (
     requests_service,
     users_notifications_service,
     users_invitations_service,
+    users_preferences_service,
 )
 from app.core.db import supabase
 from app.core.config import settings
@@ -24,8 +25,9 @@ from app.schemas.notifications import (
     InvitationActionRequest,
 )
 from app.core.auth import get_current_user, get_current_app_user
+from app.models.registeredUsers import SavePreferencesRequest
 
-router = APIRouter(tags=["users"])
+router = APIRouter(tags=["users"], dependencies=[Depends(auth.get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
@@ -46,8 +48,7 @@ class JoinCommunityRequest(BaseModel):
     user_id: uuid.UUID | None = None
 
 
-class FollowUserRequest(BaseModel):
-    user_id: uuid.UUID | None = None
+class FollowRequest(BaseModel):
     followed_user_id: uuid.UUID
 
 
@@ -76,6 +77,7 @@ async def create_post_preview(item: UserPublishPostBody):
 # ----------------------------
 # SELF / AUTHENTICATED USER ROUTES
 # ----------------------------
+
 
 @router.get("/users/me/requests", response_model=UserRequestsResponse)
 async def get_my_requests(
@@ -197,13 +199,9 @@ async def get_my_communities(
     app_user=Depends(get_current_app_user),
 ):
     user_id = app_user["id"]
-    user_communities = await users_service.get_user_communities(
-        supabase, inst_id, user_id
-    )
+    user_communities = await users_service.get_user_communities(supabase, user_id)
 
-    if user_communities is None or len(user_communities) == 0:
-        raise HTTPException(status_code=404, detail="No communities found")
-    return user_communities
+    return user_communities or []
 
 
 @router.get("/users/me/news")
@@ -224,13 +222,22 @@ async def create_news_post(
     communities: list[str] = Form(...),
     image: UploadFile = File(...),
     app_user=Depends(get_current_app_user),
+    category_id: str | None = Form(None),
 ):
     try:
         user_id = app_user["id"]
         isSchool = school == "true"
 
         await news_service.create_post(
-            supabase, inst_id, user_id, image, title, content, isSchool, communities
+            supabase,
+            inst_id,
+            user_id,
+            image,
+            title,
+            content,
+            isSchool,
+            communities,
+            category_id,
         )
 
         return {
@@ -280,7 +287,7 @@ async def get_user_drafts(app_user=Depends(get_current_app_user)):
 
 @router.post("/users/me/following")
 async def follow_user(
-    body: FollowUserRequest,
+    body: FollowRequest,
     app_user=Depends(get_current_app_user),
 ):
     try:
@@ -323,7 +330,7 @@ async def unfollow_user(
         raise HTTPException(status_code=500, detail="Could not unfollow")
 
 
-@router.delete("/users/me/communities/{community_id}")
+@router.delete("/{inst_id}/users/me/communities/{community_id}")
 async def leave_community(
     community_id: str,
     app_user=Depends(get_current_app_user),
@@ -344,10 +351,10 @@ async def leave_community(
         raise HTTPException(status_code=500, detail="Could not leave community")
 
 
-@router.post("/users/me/communities")
+@router.post("/{inst_id}/users/me/communities")
 async def join_community(
     body: JoinCommunityRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(auth.get_current_user),
 ):
     try:
         result = await communities_service.join_community(
@@ -366,16 +373,30 @@ async def join_community(
         raise HTTPException(status_code=500, detail="Failed to join community")
 
 
+@router.post("/users/me/bookmarks")
+async def save_post(
+    body, current_user: auth.UserPayload = Depends(auth.get_current_user)
+):
+    return []
+
+
 # ----------------------------
 # INSTITUTION-SCOPED / OTHER USER ROUTES
 # ----------------------------
-
 @router.get("/{inst_id}/users/{user_id}/news")
 async def get_user_news(inst_id: str, user_id: str):
     my_news = await news_service.get_user_news(supabase, user_id)
     if my_news is None or len(my_news) == 0:
         raise HTTPException(status_code=404, detail="No news found")
     return my_news
+
+
+@router.get("/{inst_id}/users/me/following")
+async def get_my_following(inst_id: str, current_user=Depends(get_current_user)):
+    my_following = await users_service.get_user_following(
+        supabase, inst_id, str(current_user.id)
+    )
+    return my_following
 
 
 @router.get("/{inst_id}/users/{user_id}/following")
@@ -421,3 +442,96 @@ async def search_users(
     except Exception as e:
         print(f"Search Error: {e}")
         raise HTTPException(status_code=500, detail="Error searching users")
+
+
+# Check if a post is saved by the current user
+@router.get("/users/me/saved/{post_id}")
+async def check_saved_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        is_saved = await news_service.is_post_saved(supabase, str(user_id), post_id)
+        return {"is_saved": is_saved}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not check saved status")
+
+
+# Save a post
+@router.post("/users/me/saved/{post_id}")
+async def save_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.save_post(supabase, str(user_id), post_id)
+        return {"status": "success", "message": "Post saved successfully"}
+    except Exception as e:
+        # If already saved, duplicate key error will be thrown
+        if "duplicate key" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Post already saved")
+        raise HTTPException(status_code=500, detail="Could not save post")
+
+
+# Unsave a post
+@router.delete("/users/me/saved/{post_id}")
+async def unsave_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.unsave_post(supabase, str(user_id), post_id)
+        return {"status": "success", "message": "Post unsaved successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not unsave post")
+
+
+# Get all saved posts for current user
+@router.get("/users/me/saved")
+async def get_saved_posts(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        saved_posts = await news_service.get_saved_posts(supabase, str(user_id))
+        return saved_posts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch saved posts")
+
+
+@router.get("/{inst_id}/users/me/preferences")
+async def get_user_preferences(
+    inst_id: str, current_user: auth.UserPayload = Depends(auth.get_current_user)
+):
+    user_id = current_user.id
+    user_preferences = await users_preferences_service.get_user_preferences(
+        supabase=supabase, user_id=user_id
+    )
+    return user_preferences
+
+
+@router.post("/{inst_id}/users/me/preferences")
+async def update_preferences(
+    inst_id: str,
+    payload: SavePreferencesRequest,
+    current_user: auth.UserPayload = Depends(auth.get_current_user),
+):
+    try:
+        user_id = current_user.id
+        success = await users_preferences_service.save_user_preferences(
+            supabase=supabase,
+            user_id=user_id,
+            preferences=payload.preferences,  # Passing the list of objects
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to save preferences")
+
+        return {"message": "Preferences synchronized successfully"}
+
+    except Exception as e:
+        print(f"Error saving preferences: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

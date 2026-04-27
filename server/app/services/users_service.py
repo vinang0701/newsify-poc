@@ -1,13 +1,17 @@
 from supabase import Client
 from typing import List
 from app.models.community import Community, CommunityMembers
-from app.models.registeredUsers import UserProfileDetails, UserFollowing, UserFollowers
+from app.models.registeredUsers import (
+    UserProfileDetails,
+    UserFollowing,
+    UserFollowers,
+)
 from app.core.db import supabase
 
 
 # join table between communities and community_members
 async def get_user_communities(
-    supabase: Client, inst_id: str, user_id: str
+    supabase: Client, user_id: str
 ) -> List[dict]:
     response = (
         supabase.table("communities")
@@ -44,35 +48,36 @@ async def get_user_profile(supabase: Client, inst_id: str, user_id: str) -> List
         for user in response.data
     ]
 
-async def get_user_followers(supabase: Client, inst_id: str, user_id: str) -> List[dict]:
+
+async def get_user_followers(
+    supabase: Client, inst_id: str, user_id: str
+) -> List[dict]:
     response = (
-        supabase
-        .from_("user_follows")
+        supabase.from_("user_follows")
         .select("follower_user_id, users!user_follows_follower_user_id_fkey(name)")
         .eq("followed_user_id", user_id)
         .execute()
     )
     return [
         UserFollowers(
-            follower_user_id=user["follower_user_id"],
-            name=user["users"]["name"]
+            follower_user_id=user["follower_user_id"], name=user["users"]["name"]
         )
         for user in response.data
     ]
 
 
-async def get_user_following(supabase: Client, inst_id: str, user_id: str) -> List[dict]:
+async def get_user_following(
+    supabase: Client, inst_id: str, user_id: str
+) -> List[dict]:
     response = (
-        supabase
-        .from_("user_follows")
+        supabase.from_("user_follows")
         .select("followed_user_id, users!user_follows_followed_user_id_fkey(name)")
         .eq("follower_user_id", user_id)
         .execute()
     )
     return [
         UserFollowing(
-            followed_user_id=user["followed_user_id"],
-            name=user["users"]["name"]
+            followed_user_id=user["followed_user_id"], name=user["users"]["name"]
         )
         for user in response.data
     ]
@@ -85,7 +90,7 @@ async def follow_user(supabase: Client, user_id: str, followed_user_id: str):
             {
                 "follower_user_id": user_id,
                 "followed_user_id": followed_user_id,
-                "followed_at": "now()",
+                "followed_at": datetime.utcnow().isoformat(),
             }
         )
         .execute()

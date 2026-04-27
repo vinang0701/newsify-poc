@@ -37,6 +37,7 @@ async def create_new_user(
     password: str,
     role: str,
 ):
+    print("i reached here")
     auth_response = supabase.auth.admin.create_user(
         {
             "email": new_user_email,

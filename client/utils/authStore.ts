@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { getItem, setItem, deleteItemAsync } from "expo-secure-store";
-import { Session, User } from "@supabase/supabase-js";
+import { Session, User, UserAppMetadata } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { jwtDecode } from "jwt-decode";
 import { JwtPayload } from "@supabase/supabase-js";

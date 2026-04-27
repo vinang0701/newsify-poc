@@ -1,28 +1,28 @@
 import {
-    Text,
-    Pressable,
-    StyleSheet,
-    useColorScheme,
-    Image,
-    View,
-    ScrollView,
-    Modal,
-    ActivityIndicator,
-    Alert,
+	Text,
+	Pressable,
+	StyleSheet,
+	useColorScheme,
+	Image,
+	View,
+	ScrollView,
+	Modal,
+	ActivityIndicator,
+	Alert,
 } from "react-native";
 import BottomSheet, {
-    BottomSheetBackdrop,
-    BottomSheetView,
+	BottomSheetBackdrop,
+	BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
 } from "react";
 import { Colors } from "@/constants/theme";
-import { Link, useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,34 +32,69 @@ import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import NewsPostCard from "@/components/news_post_card";
-import axios, { AxiosError } from "axios";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
-
-const HEADER_HEIGHT = 250;
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
-
-interface UserCommunities {
-    community_id: string;
-    community_name: string;
-    role: string;
-}
+import { useCommunity } from "@/hooks/useCommunity";
 
 export default function CommunityPage() {
     const colorScheme = useColorScheme() ?? "light";
-    const { communityId } = useLocalSearchParams();
+    const params = useLocalSearchParams<{
+        inst_id?: string;
+        communityId: string;
+    }>();
+    const communityId = params.communityId;
+    const inst_id = params.inst_id;
     const router = useRouter();
-    const snapPoints = useMemo(() => ["20%"], []);
-    const [modalVisible, setModalVisible] = useState(false);
-    const queryClient = useQueryClient();
-
-    const tenantId = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-    // ref
     const bottomSheetRef = useRef<BottomSheet>(null);
+    const snapPoints = useMemo(() => ["25%"], []);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [sortMenuVisible, setSortMenuVisible] = useState(false);
+    const [selectedSort, setSelectedSort] = useState<"Newest" | "Oldest" | "A - Z" | "Z - A">("Newest");
+
+    const { 
+        community,
+        news,
+        memberCount,
+        myCommunities,
+        myCommunityIds,
+        isMember,
+        userRole,
+        joinCommunity,
+        leaveCommunity,
+        refresh,
+        loading,
+        currentUserId,
+    } = useCommunity(communityId);
+
+    const sortedNews = useMemo(() => {
+        if (!news) return [];
+
+        const sorted = [...news];
+
+        switch (selectedSort) {
+            case "Newest":
+                sorted.sort(
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+                break;
+            case "Oldest":
+                sorted.sort(
+                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+                break;
+            case "A - Z":
+                sorted.sort((a, b) => a.title.localeCompare(b.title));
+                break;
+            case "Z - A":
+                sorted.sort((a, b) => b.title.localeCompare(a.title));
+                break;
+        }
+
+        return sorted;
+    }, [news, selectedSort]);
 
     const handleExpandSheet = () => bottomSheetRef.current?.expand();
-
     const renderBackdrop = useCallback(
         (props: any) => (
             <BottomSheetBackdrop
@@ -69,6 +104,12 @@ export default function CommunityPage() {
             />
         ),
         [],
+    );
+
+    useFocusEffect(
+        useCallback(() => {
+            refresh();
+        }, [])
     );
 
     function nameToAvatar(name: string) {
@@ -87,147 +128,28 @@ export default function CommunityPage() {
         return [first, second];
     }
 
-    async function fetchCommunity(): Promise<Community[]> {
+    const handleJoinCommunity = async () => {
         try {
-            const response = await axios.get<Community[]>(
-                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}`,
-            );
-            console.log(response.data);
-            return response.data;
-        } catch (error) {
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
-    }
-
-    async function fetchCommunityNews(tenantId: string): Promise<News[]> {
-        console.log("fetching in community");
-        try {
-            const response = await axios.get<News[]>(
-                `http://10.0.2.2:8000/api/v1/${tenantId}/communities/${communityId}/news`,
-            );
-            console.log("news", response.data);
-            return response.data;
-        } catch (error) {
-            // Re-throwing the error allows TanStack Query to "see" the failure
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
-    }
-
-    async function leaveCommunity() {
-        console.log("Leaving community");
-        try {
-            const response = await axios.delete(
-                `${BASE_URL}/${inst_id}/users/me/communities/${communityId}`,
-            );
-
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
-            return response.data;
-        } catch (error) {
-            console.error("Failed to leave:", error);
-        }
-    }
-
-    const { mutate, isPending } = useMutation({
-        mutationKey: ["user_communities"],
-        mutationFn: leaveCommunity,
-        onError: (error) => {
-            Alert.alert("Error", "Something went wrong.");
-            console.error(error);
-        },
-    });
-
-    const joinComm = async (id: string) => {
-        try {
-            await axios.post(`${BASE_URL}/${inst_id}/users/me/communities`, {
-                community_id: id,
-                user_id: user_id,
-            });
-
-            // Refresh the query so the button changes to "Leave"
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+            await joinCommunity();
+            console.log("Joined community successfully");
         } catch (err) {
-            console.error("Join failed", err);
+            console.error(err);
+            Alert.alert("Error", "Failed to join the community.");
         }
     };
 
-    const { mutate: mu_joinComm } = useMutation({
-        mutationFn: joinComm,
-    });
+    const handleLeaveCommunity = async () => {
+        try {
+            await leaveCommunity();
+            console.log("Left community successfully");
+            setModalVisible(false);
+        } catch (err) {
+            console.error(err);
+            Alert.alert("Error", "Failed to leave the community.");
+        }
+    };
 
-    function handleLeaveComm() {
-        setModalVisible(!modalVisible);
-        mutate();
-    }
-
-    // Fetch data from server
-    const { isFetching, status, data, error } = useQuery({
-        queryKey: ["community_news", tenantId],
-        queryFn: () => fetchCommunityNews(tenantId),
-    });
-
-    const {
-        isFetching: commFetching,
-        status: commStatus,
-        data: commData,
-        error: commError,
-    } = useQuery({
-        queryKey: ["community", communityId],
-        queryFn: () => fetchCommunity(),
-    });
-
-    // Temp workaround
-    const {
-        data: comm_mem_data,
-        error: comm_mem_error,
-        refetch: comm_mem_refetch,
-    } = useQuery<UserCommunities[]>({
-        queryKey: ["user_communities", user_id],
-        queryFn: async () => {
-            // axios try catch
-            const response = await axios.get(
-                `${BASE_URL}/${inst_id}/users/me/communities`,
-            );
-
-            return response.data;
-        },
-    });
-
-    const isMember = comm_mem_data?.some(
-        (item) => item.community_id === communityId,
-    );
-
-    if (commData === undefined || commError) {
-        return (
-            <View>
-                <Text>Error</Text>
-            </View>
-        );
-    }
-
-    if (isFetching) {
-        return (
-            <SafeAreaView
-                style={{
-                    flex: 1,
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
-            >
-                <ActivityIndicator
-                    size="large"
-                    color={Colors[colorScheme].tint}
-                />
-            </SafeAreaView>
-        );
-    }
+    if (loading && !community) return <Loading />;
 
     return (
         <GestureHandlerRootView>
@@ -267,7 +189,9 @@ export default function CommunityPage() {
             {/* Content Container */}
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                style={{ backgroundColor: Colors[colorScheme].bg }}
+                style={{
+                    backgroundColor: Colors[colorScheme].bg,
+                }}
             >
                 {/* Community Info */}
                 <View
@@ -316,8 +240,8 @@ export default function CommunityPage() {
                                         color: Colors[colorScheme].button_text, // White text usually pops best on colors
                                     }}
                                 >
-                                    {nameToAvatar(commData[0].name)[0]}
-                                    {nameToAvatar(commData[0].name)[1]}
+                                    {nameToAvatar(community?.name ?? "")[0]}
+                                    {nameToAvatar(community?.name ?? "")[1]}
                                 </ThemedText>
                             </View>
                             {/* Community name and Member Count */}
@@ -325,13 +249,13 @@ export default function CommunityPage() {
                                 href={{
                                     pathname:
                                         "/community/[communityId]/members",
-                                    params: { communityId: commData[0].id },
+                                    params: { communityId: communityId },
                                 }}
                             >
                                 <View>
                                     <ThemedText type="defaultSemiBold">
                                         {/* Chess Club */}
-                                        {commData[0]?.name}
+                                        {community?.name ?? ""}
                                     </ThemedText>
                                     <ThemedText
                                         type="caption"
@@ -339,30 +263,29 @@ export default function CommunityPage() {
                                             color: Colors[colorScheme].caption,
                                         }}
                                     >
-                                        20 members
+                                        {memberCount} members
                                     </ThemedText>
                                 </View>
                             </Link>
                         </View>
                         {/* Join Button */}
-
                         <Pressable
                             style={{
                                 paddingVertical: 8,
                                 paddingHorizontal: 12,
                                 backgroundColor: isMember
-                                    ? Colors[colorScheme].alert_red
-                                    : Colors[colorScheme].bg_light,
+                                    ?  Colors[colorScheme].alert_red
+                                    :  Colors[colorScheme].bg_light,
                                 borderRadius: 20,
                                 borderWidth: 2,
                                 borderColor: isMember
-                                    ? "transparent"
-                                    : Colors[colorScheme].tint,
+                                    ?  "transparent"
+                                    :  Colors[colorScheme].tint,
                             }}
-                            onPress={() => {
-                                isMember && setModalVisible(true);
-                                !isMember && mu_joinComm(commData[0].id);
-                            }}
+                            onPress={ isMember
+                                ?  () => setModalVisible(true)
+                                :  handleJoinCommunity
+                            }
                         >
                             <ThemedText
                                 type="body_small"
@@ -385,7 +308,7 @@ export default function CommunityPage() {
                             color: Colors[colorScheme].caption,
                         }}
                     >
-                        {commData[0]?.description}
+                        {community?.description}
                     </ThemedText>
                 </View>
 
@@ -395,23 +318,60 @@ export default function CommunityPage() {
                         paddingHorizontal: 16,
                     }}
                 >
-                    {/* <View
-                        style={[
-                            styles.sortButtonContainer,
-                            {
-                                borderColor: Colors[colorScheme].border,
-                                backgroundColor: Colors[colorScheme].bg_light,
-                            },
-                        ]}
+                    <Pressable
+                        style={[styles.sortButtonContainer, {
+                            borderColor: Colors[colorScheme].border,
+                            backgroundColor: Colors[colorScheme].bg_light,
+                        }]}
+                        onPress={() => setSortMenuVisible(!sortMenuVisible)}
                     >
-                        <ThemedText>Sort</ThemedText>
+                        <ThemedText type="defaultSemiBold" style={{ fontSize: 12 }}>Sort</ThemedText>
                         <MaterialCommunityIcons
                             name="chevron-down"
                             size={16}
                             color={Colors[colorScheme].text}
                         />
-                    </View> */}
-                    {status === "error" || data?.length === 0 ? (
+                    </Pressable>
+                    {sortMenuVisible && (
+                        <View style={[styles.dropdownMenu, { backgroundColor: Colors[colorScheme].bg_light }]}>
+                            {["Newest", "Oldest", "A - Z", "Z - A"].map((option) => (
+                                <Pressable
+                                    key={option}
+                                    onPress={() => {
+                                        setSelectedSort(option as typeof selectedSort);
+                                        setSortMenuVisible(false);
+                                    }}
+                                    style={{
+                                        paddingVertical: 8,
+                                        paddingHorizontal: 4,
+                                        flexDirection: "row",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                    }}
+                                >
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={{
+                                            fontWeight: selectedSort === option ? "bold" : "normal",
+                                            color: Colors[colorScheme].text,
+                                        }}
+                                    >
+                                        {option}
+                                    </ThemedText>
+
+                                    {/* Show check icon if option is selected */}
+                                    {selectedSort === option && (
+                                        <MaterialCommunityIcons
+                                            name="check-bold"
+                                            size={20}
+                                            color={Colors[colorScheme].text}
+                                        />
+                                    )}
+                                </Pressable>
+                            ))}
+                        </View>
+                    )}
+                    {news?.length === 0 ? (
                         <View
                             style={{
                                 justifyContent: "center",
@@ -428,7 +388,7 @@ export default function CommunityPage() {
                         <View>
                             <FlashList
                                 nestedScrollEnabled={false}
-                                data={data}
+                                data={sortedNews}
                                 renderItem={({ item, index }) => (
                                     <NewsPostCard news={item} key={index} />
                                 )}
@@ -445,6 +405,27 @@ export default function CommunityPage() {
                 enablePanDownToClose
             >
                 <BottomSheetView style={styles.bottomSheet}>
+                    {userRole === "admin" && (
+                        <Pressable
+                            style={styles.modalActionButtonCtn}
+                            onPress={() => {
+                                bottomSheetRef.current?.close();
+                                router.push({
+                                    pathname: "community/[communityId]/post_requests",
+                                    params: { communityId: communityId, inst_id:  inst_id},
+                                });
+                            }}
+                        >
+                            <Feather
+                                name="file-text"
+                                size={24}
+                                color={Colors[colorScheme].text}
+                            />
+                            <ThemedText type="defaultSemiBold">
+                                View post requests
+                            </ThemedText>
+                        </Pressable>
+                    )}
                     <Pressable style={styles.modalActionButtonCtn}>
                         <MaterialCommunityIcons
                             name="help-circle-outline"
@@ -525,7 +506,7 @@ export default function CommunityPage() {
                                             Colors[colorScheme].alert_red,
                                     },
                                 ]}
-                                onPress={() => handleLeaveComm()}
+                                onPress={ handleLeaveCommunity }
                             >
                                 <ThemedText
                                     type="defaultSemiBold"
@@ -543,16 +524,12 @@ export default function CommunityPage() {
                         </View>
                     </View>
                 </View>
-            </Modal>
-        </GestureHandlerRootView>
+           </Modal>
+       </GestureHandlerRootView>
     );
 }
 
 const styles = StyleSheet.create({
-    header: {
-        height: HEADER_HEIGHT,
-        overflow: "hidden",
-    },
     headerContainer: {
         flex: 0,
         flexDirection: "row",
@@ -565,40 +542,6 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
-    },
-    card: {
-        flex: 1,
-        gap: 8,
-        alignContent: "flex-start",
-        borderRadius: 8,
-        paddingVertical: 12,
-        marginBottom: 4,
-        minHeight: 200,
-    },
-    cardInfoContainer: {
-        flex: 1,
-        gap: 8,
-        marginBottom: 4,
-        alignItems: "center",
-        flexDirection: "row",
-        paddingHorizontal: 12,
-    },
-
-    titleContainer: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-    },
-    stepContainer: {
-        gap: 8,
-        marginBottom: 8,
-    },
-    iconsContainer: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingTop: 8,
-        paddingHorizontal: 12,
     },
     bottomSheet: {
         flex: 0,
@@ -636,7 +579,7 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         borderRadius: 4,
         borderWidth: 1,
-        marginVertical: 12,
+        marginVertical: 8,
     },
     button: {
         flex: 1,
@@ -656,5 +599,23 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         justifyContent: "center",
         alignItems: "center",
+    },
+    dropdownMenu: {
+        position: "absolute",
+        top: 42,
+        left: 16,
+        width: 180,
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+        zIndex: 100,
     },
 });
