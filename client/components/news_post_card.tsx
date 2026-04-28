@@ -312,7 +312,8 @@ function NewsPostCard({ news, currentUserId, inst_id }: NewsPostCardProps) {
                         type="default"
                         style={{
                             fontSize: 10,
-                            color: "hsl(0, 0%, 5%)",
+                            // color: "hsl(0, 0%, 5%)",
+                            color: Colors[colorScheme].text,
                         }}
                     >
                         {timeAgo(news.created_at)}
@@ -457,12 +458,12 @@ function NewsPostCard({ news, currentUserId, inst_id }: NewsPostCardProps) {
             >
                 <BottomSheetView style={styles.bottomSheet}>
                     <Pressable style={styles.menuItem}>
-                        <Feather name="bookmark" size={18} color="#111111" />
+                        <Feather name="bookmark" size={20} color="#111111" />
                         <Text style={styles.menuText}>Save to bookmarks</Text>
                     </Pressable>
 
                     <Pressable style={styles.menuItem}>
-                        <Feather name="user-plus" size={18} color="#111111" />
+                        <Feather name="user-plus" size={20} color="#111111" />
                         <Text style={styles.menuText}>Follow</Text>
                     </Pressable>
 
@@ -472,7 +473,7 @@ function NewsPostCard({ news, currentUserId, inst_id }: NewsPostCardProps) {
                     >
                         <Feather
                             name="alert-circle"
-                            size={18}
+                            size={20}
                             color="#111111"
                         />
                         <Text style={styles.menuText}>Report post</Text>
@@ -486,7 +487,7 @@ function NewsPostCard({ news, currentUserId, inst_id }: NewsPostCardProps) {
                                 setSuspendModalVisible(true); // show confirmation modal
                             }}
                         >
-                            <Feather name="x-circle" size={24} color="red" />
+                            <Feather name="x-circle" size={20} color="red" />
                             <ThemedText
                                 type="defaultSemiBold"
                                 style={{ color: "red" }}
