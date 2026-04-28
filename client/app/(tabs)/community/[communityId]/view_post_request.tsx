@@ -36,11 +36,21 @@ export default function ViewPostRequestPage() {
         error: postRequestDetailsError,
         refresh: postRequestDetailsRefresh,
         updatePostRequestStatus,
+        postToCommunity,
     } = useCommunityPostRequests(params.inst_id, params.communityId);
 
     const selectedRequest = postRequestDetails.find(
         (request) => request.request_id === params.request_id
     );
+
+    const handlePost = async () => {
+        try {
+            await postToCommunity(selectedRequest.request_id);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to post to community.");
+        }
+    }
 
     const handleApprove = async () => {
         try {
@@ -197,42 +207,33 @@ export default function ViewPostRequestPage() {
 
                         {selectedRequest?.status === "approved" && (
                             <>
-                            <Pressable
-                                style={({ pressed }) => [
-                                    styles.button,
-                                    {
-                                        backgroundColor: pressed
-                                        ? Colors[colorScheme].caption
-                                        : Colors[colorScheme].text,
-                                    },
-                                ]}
-                                onPress={() => router.back()}
-                            >
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
-                                >
-                                    Back
-                                </ThemedText>
-                            </Pressable>
-                            <Pressable
-                                style={({ pressed }) => [
-                                    styles.button,
-                                    {
-                                        backgroundColor: pressed
-                                        ? Colors[colorScheme].alert_red_dark
-                                        : Colors[colorScheme].alert_red,
-                                    },
-                                ]}
-                                onPress={() => setRejectModalVisible(true)}
-                            >
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
-                                >
-                                    Reject
-                                </ThemedText>
-                            </Pressable>
+                            <View
+                                style={{
+                                    flexDirection: "column",
+                                    width: "100%",
+                                }}>
+                                <View
+                                    style={{
+                                        height: 1,
+                                        backgroundColor: Colors[colorScheme].border,
+                                        marginBottom: 8,
+                                    }}
+                                />
+                                <View
+                                    style={{
+                                        flexDirection: "column",
+                                        paddingBottom: 8,
+                                        justifyContent: "space-between",
+                                        gap: 4,
+                                    }}>
+                                    <ThemedText type="caption" style={{ fontSize: 14 }}>
+                                        Reviewed by: {selectedRequest.reviewed_by}
+                                    </ThemedText>
+                                    <ThemedText type="caption" style={{ fontSize: 14 }}>
+                                        Reviewed at: {selectedRequest.reviewed_at}
+                                    </ThemedText>
+                                </View>
+                            </View>
                             </>
                         )}
 
@@ -265,7 +266,7 @@ export default function ViewPostRequestPage() {
                                         backgroundColor: "hsl(0,0%,90%)",
                                         borderRadius: 8,
                                         padding: 12,
-                                        marginBottom: 8,
+                                        marginBottom: 16,
                                     }}
                                 >
                                     <ThemedText type="caption"
@@ -283,46 +284,12 @@ export default function ViewPostRequestPage() {
                                         justifyContent: "space-between",
                                         gap: 4,
                                     }}>
-                                    <ThemedText type="caption" style={{ fontSize: 14 }}>Reviewed by: {selectedRequest.reviewed_by}</ThemedText>
-                                    <ThemedText type="caption" style={{ fontSize: 14 }}>Reviewed at: {selectedRequest.reviewed_at}</ThemedText>
-                                </View>
-                                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.button,
-                                            {
-                                                backgroundColor: pressed
-                                                ? Colors[colorScheme].caption
-                                                : Colors[colorScheme].text,
-                                            },
-                                        ]}
-                                        onPress={() => router.back()}
-                                    >
-                                        <ThemedText
-                                            type="defaultSemiBold"
-                                            style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
-                                        >
-                                            Back
-                                        </ThemedText>
-                                    </Pressable>
-                                    <Pressable
-                                        style={({ pressed }) => [
-                                            styles.button,
-                                            {
-                                                backgroundColor: pressed
-                                                ? Colors[colorScheme].secondary_dark
-                                                : Colors[colorScheme].secondary,
-                                            },
-                                        ]}
-                                        onPress={() => setApproveModalVisible(true)}
-                                    >
-                                        <ThemedText
-                                            type="defaultSemiBold"
-                                            style={{ color: Colors[colorScheme].button_text, textAlign: "center" }}
-                                        >
-                                            Approve
-                                        </ThemedText>
-                                    </Pressable>
+                                    <ThemedText type="caption" style={{ fontSize: 14 }}>
+                                        Reviewed by: {selectedRequest.reviewed_by}
+                                    </ThemedText>
+                                    <ThemedText type="caption" style={{ fontSize: 14 }}>
+                                        Reviewed at: {selectedRequest.reviewed_at}
+                                    </ThemedText>
                                 </View>
                             </View>
                             </>
@@ -391,7 +358,10 @@ export default function ViewPostRequestPage() {
                                             : Colors[colorScheme].secondary,
                                     },
                                 ]}
-                                onPress={() => handleApprove()}
+                                onPress={async () => {
+                                    await handleApprove();
+                                    await handlePost();
+                                }}
                             >
                                 <ThemedText
                                     type="defaultSemiBold"

@@ -176,7 +176,7 @@ export default function PostRequestPage() {
                         renderItem={({ item }) => (
                         <Pressable
                             onPress={() => {
-                                console.log("request_id:", item.request_id, "community_id:", item.community_id, "user_id:", item.author_name);
+                                console.log("request_id:", item.request_id, "user_id:", item.author_name);
                                 goToViewPostRequest(item.request_id);
                             }}
                         >
