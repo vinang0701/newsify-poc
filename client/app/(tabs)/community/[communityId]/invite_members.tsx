@@ -39,7 +39,7 @@ const InviteMemberPage = () => {
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showSuccess, setShowSuccess] = useState(false);
 
-    // Fetch all invitable users (non-members of this community)
+    
     const { data: users, isLoading } = useQuery<InvitableUser[]>({
         queryKey: ["invitable_users", communityId],
         queryFn: async () => {
