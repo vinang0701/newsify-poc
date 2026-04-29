@@ -1,14 +1,32 @@
 import uuid
-from typing import Any, Optional, List
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File, Query
-from pydantic import EmailStr, BaseModel
+from pydantic import BaseModel
 from openai import OpenAI
-from app.services import users_service, news_service, communities_service
+
+from app.services import (
+    users_service,
+    news_service,
+    communities_service,
+    requests_service,
+    users_notifications_service,
+    users_invitations_service,
+)
 from app.core.db import supabase
 from app.core.config import settings
+from app.schemas.requests import UserRequestsResponse
+from app.schemas.notifications import (
+    NotificationsListResponse,
+    InvitationsListResponse,
+    UnreadCountResponse,
+    GenericMessageResponse,
+    InvitationActionRequest,
+)
+from app.dependencies.auth import get_current_user
+from app.core import auth
 
-router = APIRouter(prefix="/{inst_id}/users", tags=["users"])
+router = APIRouter(tags=["users"], dependencies=[Depends(auth.get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
@@ -26,17 +44,14 @@ class UserPublishPostBody(BaseModel):
 
 class JoinCommunityRequest(BaseModel):
     community_id: uuid.UUID
-    user_id: uuid.UUID
+    user_id: uuid.UUID | None = None
 
 
-class FollowUserRequest(BaseModel):
-    user_id: uuid.UUID
+class FollowRequest(BaseModel):
     followed_user_id: uuid.UUID
 
 
 def moderate_text(text: str):
-    # ingest
-    # call api
     print("Moderating text...")
     response = client.moderations.create(
         model="omni-moderation-latest",
@@ -48,8 +63,8 @@ def moderate_text(text: str):
     return response.results[0].flagged
 
 
-@router.post("/create")
-async def create_post(item: UserPublishPostBody):
+@router.post("/users/create")
+async def create_post_preview(item: UserPublishPostBody):
     moderation = moderate_text(item.content)
 
     return {
@@ -58,117 +73,174 @@ async def create_post(item: UserPublishPostBody):
     }
 
 
-# Get a list a community user is a part of
-@router.get("/me/communities")
-async def get_user_communities(inst_id: str):
-    # hard code this first
-    user_id = "4813d507-9b97-4bb7-bee4-39ec47070889"
+# ----------------------------
+# SELF / AUTHENTICATED USER ROUTES
+# ----------------------------
+
+
+@router.get("/users/me/requests", response_model=UserRequestsResponse)
+async def get_my_requests(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        requests = await requests_service.get_all_user_requests(user_id)
+        return {"requests": requests}
+    except Exception as e:
+        print(f"Requests Fetch Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/users/me/notifications", response_model=NotificationsListResponse)
+async def get_my_notifications(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        rows = await users_notifications_service.get_user_notifications(user_id)
+        return {"items": users_notifications_service.map_notifications(rows)}
+    except Exception as e:
+        print(f"My Notifications Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/users/me/notifications/unread-count", response_model=UnreadCountResponse)
+async def get_my_notifications_unread_count(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        unread_count = await users_notifications_service.get_unread_notification_count(
+            user_id
+        )
+        return {"unread_count": unread_count}
+    except Exception as e:
+        print(f"My Notifications Unread Count Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/users/me/notifications/{notification_id}/read",
+    response_model=GenericMessageResponse,
+)
+async def mark_my_notification_as_read(
+    notification_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await users_notifications_service.mark_notification_as_read(
+            user_id, notification_id
+        )
+        return {"message": "Notification marked as read"}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        print(f"Mark My Notification Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/users/me/notifications/read-all", response_model=GenericMessageResponse)
+async def mark_all_my_notifications_as_read(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await users_notifications_service.mark_all_notifications_as_read(user_id)
+        return {"message": "All notifications marked as read"}
+    except Exception as e:
+        print(f"Read All My Notifications Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/users/me/invitations", response_model=InvitationsListResponse)
+async def get_my_invitations(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        rows = await users_invitations_service.get_user_invitations(user_id)
+        return {"items": users_invitations_service.map_invitations(rows)}
+    except Exception as e:
+        print(f"My Invitations Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post(
+    "/users/me/invitations/{invitation_id}/respond",
+    response_model=GenericMessageResponse,
+)
+async def respond_to_my_invitation(
+    invitation_id: str,
+    payload: InvitationActionRequest,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await users_invitations_service.respond_to_invitation(
+            user_id, invitation_id, payload.action
+        )
+        return {"message": f"Invitation {payload.action}"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        print(f"Respond My Invitation Error: {repr(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{inst_id}/users/me/communities")
+async def get_my_communities(
+    inst_id: str,
+    current_user=Depends(auth.get_current_user),
+):
+    user_id = current_user.id
     user_communities = await users_service.get_user_communities(
         supabase, inst_id, user_id
     )
 
-    if user_communities is None or len(user_communities) == 0:
+    if user_communities is None:
         raise HTTPException(status_code=404, detail="No communities found")
     return user_communities
 
 
-@router.get("/me/news")
-async def get_my_news(user_id: str):
+@router.get("/users/me/news")
+async def get_my_news(current_user=Depends(get_current_user)):
+    user_id = current_user.id
     my_news = await news_service.get_user_news(supabase, user_id)
     if my_news is None or len(my_news) == 0:
         raise HTTPException(status_code=404, detail="No news found")
     return my_news
 
 
-@router.get("/{user_id}/news")
-async def get_user_news(user_id: str):
-    my_news = await news_service.get_user_news(supabase, user_id)
-    if my_news is None or len(my_news) == 0:
-        raise HTTPException(status_code=404, detail="No news found")
-    return my_news
-
-
-@router.post("/me/following")
-async def follow_user(body: FollowUserRequest):
-    try:
-        result = await users_service.follow_user(
-            supabase, str(body.user_id), str(body.followed_user_id)
-        )
-
-        return {
-            "status": "success",
-            "message": "Succesfully followed!",
-            "data": result,
-        }
-    except Exception as e:
-        # Check if the error is a "Duplicate Key" (User already following)
-        if "duplicate key" in str(e).lower():
-            raise HTTPException(status_code=400, detail="Already following user.")
-
-        raise HTTPException(status_code=500, detail="Failed to follow user")
-
-
-@router.delete("/me/following/{user_id}")
-async def unfollow_user(user_id: str):
-    try:
-        curr_id = "4813d507-9b97-4bb7-bee4-39ec47070889"
-        # Call the service layer to handle the DB logic
-        result = await users_service.unfollow_user(
-            supabase, curr_id, user_id
-        )
-        return {
-            "status": "success",
-            "message": "Successfully unfollowed.",
-            "data": result,
-        }
-    except Exception as e:
-        print(f"Delete Error: {e}")
-        raise HTTPException(status_code=500, detail="Could not unfollow")
-
-
-@router.get("/{user_id}/following")
-async def get_user_following(inst_id: str, user_id: str):
-    user_following = await users_service.get_user_following(supabase, inst_id, user_id)
-
-    return user_following
-
-
-@router.get("/{user_id}/following_count")
-async def get_following_count(inst_id: str, user_id: str):
-    user_following = await users_service.get_user_following(supabase, inst_id, user_id)
-
-    return {"count" : len(user_following)}
-
-
-@router.get("/{user_id}/followers")
-async def get_user_followers(inst_id: str, user_id: str):
-    user_followers = await users_service.get_user_followers(supabase, inst_id, user_id)
-
-    return user_followers
-
-
-@router.get("/{user_id}/follower_count")
-async def get_follower_count(inst_id: str, user_id: str):
-    user_followers = await users_service.get_user_followers(supabase, inst_id, user_id)
-
-    return {"count" : len(user_followers)}
-
-
-@router.post("/me/news")
-async def create_post(
-    inst_id: str,
-    user_id: str = Form(...),
+@router.post("/users/me/news")
+async def create_news_post(
+    inst_id: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
     school: str = Form(...),
     communities: list[str] = Form(...),
     image: UploadFile = File(...),
+    category_id: str | None = Form(None),
+    current_user=Depends(get_current_user),
 ):
     try:
-        isSchool = True if school == "true" else False
+        user_id = current_user.id
+        isSchool = school == "true"
 
-        response = await news_service.create_post(
-            supabase, inst_id, user_id, image, title, content, isSchool, communities
+        await news_service.create_post(
+            supabase,
+            inst_id,
+            user_id,
+            image,
+            title,
+            content,
+            isSchool,
+            communities,
+            category_id,
         )
 
         return {
@@ -180,14 +252,15 @@ async def create_post(
         raise HTTPException(status_code=500, detail="Failed to upload image")
 
 
-@router.post("/me/drafts")
+@router.post("/users/me/drafts")
 async def save_draft(
-    user_id: str = Form(...),
     title: str | None = Form(None),
     content: str | None = Form(None),
     image: UploadFile | None = File(None),
+    current_user=Depends(get_current_user),
 ):
     try:
+        user_id = current_user.id
         response = await news_service.save_draft(
             supabase, user_id, image, title, content
         )
@@ -199,41 +272,72 @@ async def save_draft(
         }
 
     except Exception as e:
-        # Log the actual error for your own debugging
         print(f"Draft Save Error: {str(e)}")
-
-        # Return a more descriptive error if possible
         raise HTTPException(
             status_code=500,
             detail="We couldn't save your draft right now. Please try again.",
         )
 
 
-@router.get("/me/drafts")
-async def get_user_drafts(user_id: str):
+@router.get("/users/me/drafts")
+async def get_user_drafts(current_user=Depends(get_current_user)):
+    user_id = current_user.id
     user_drafts = await news_service.get_user_drafts(supabase, user_id)
     if user_drafts is None or len(user_drafts) == 0:
         raise HTTPException(status_code=404, detail="No drafts found")
     return user_drafts
 
 
-@router.get("/{user_id}")
-async def get_user_profile(inst_id: str, user_id: str):
-    user_profile = await users_service.get_user_profile(supabase, inst_id, user_id)
-    if user_profile is None or len(user_profile) == 0:
-        raise HTTPException(status_code=404, detail="No profile details found")
-    return user_profile
-
-
-@router.delete("/me/communities/{community_id}")
-async def leave_community(community_id: str):
+@router.post("/users/me/following")
+async def follow_user(
+    body: FollowRequest,
+    current_user=Depends(get_current_user),
+):
     try:
-        user_id = "4813d507-9b97-4bb7-bee4-39ec47070889"
-        # Call the service layer to handle the DB logic
-        result = await communities_service.leave_community(
-            supabase, community_id, user_id
+        result = await users_service.follow_user(
+            supabase, str(current_user.id), body.followed_user_id
         )
-        print(result)
+
+        return {
+            "status": "success",
+            "message": "Succesfully followed!",
+            "data": result,
+        }
+    except Exception as e:
+        if "duplicate key" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Already following user.")
+
+        raise HTTPException(status_code=500, detail="Failed to follow user")
+
+
+@router.delete("/users/me/following/{user_id}")
+async def unfollow_user(
+    user_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        result = await users_service.unfollow_user(
+            supabase, str(current_user.id), user_id
+        )
+        return {
+            "status": "success",
+            "message": "Successfully unfollowed.",
+            "data": result,
+        }
+    except Exception as e:
+        print(f"Delete Error: {e}")
+        raise HTTPException(status_code=500, detail="Could not unfollow")
+
+
+@router.delete("/{inst_id}/users/me/communities/{community_id}")
+async def leave_community(
+    community_id: str,
+    current_user=Depends(auth.get_current_user),
+):
+    try:
+        result = await communities_service.leave_community(
+            supabase, community_id, str(current_user.id)
+        )
         return {
             "status": "success",
             "message": "You have successfully left the community.",
@@ -244,26 +348,14 @@ async def leave_community(community_id: str):
         raise HTTPException(status_code=500, detail="Could not leave community")
 
 
-@router.get("/")
-async def search_users(
-    inst_id: str,
-    name: Optional[str] = Query(None, min_length=1),  # Prevents empty string searches
+@router.post("/{inst_id}/users/me/communities")
+async def join_community(
+    body: JoinCommunityRequest,
+    current_user=Depends(auth.get_current_user),
 ):
     try:
-        # If no name is provided, you might want to return all users
-        # or an empty list depending on your UI needs.
-        result = await users_service.find_users_by_name(supabase, inst_id, name)
-        return result
-    except Exception as e:
-        print(f"Search Error: {e}")
-        raise HTTPException(status_code=500, detail="Error searching users")
-
-
-@router.post("/me/communities")
-async def join_community(body: JoinCommunityRequest):
-    try:
         result = await communities_service.join_community(
-            supabase, str(body.community_id), str(body.user_id)
+            supabase, str(body.community_id), str(current_user.id)
         )
 
         return {
@@ -272,8 +364,136 @@ async def join_community(body: JoinCommunityRequest):
             "data": result,
         }
     except Exception as e:
-        # Check if the error is a "Duplicate Key" (User already in community)
         if "duplicate key" in str(e).lower():
             raise HTTPException(status_code=400, detail="You are already a member.")
 
         raise HTTPException(status_code=500, detail="Failed to join community")
+
+
+@router.post("/users/me/bookmarks")
+async def save_post(
+    body, current_user: auth.UserPayload = Depends(auth.get_current_user)
+):
+    return []
+
+
+# ----------------------------
+# INSTITUTION-SCOPED / OTHER USER ROUTES
+# ----------------------------
+@router.get("/{inst_id}/users/{user_id}/news")
+async def get_user_news(inst_id: str, user_id: str):
+    my_news = await news_service.get_user_news(supabase, user_id)
+    if my_news is None or len(my_news) == 0:
+        raise HTTPException(status_code=404, detail="No news found")
+    return my_news
+
+
+@router.get("/{inst_id}/users/me/following")
+async def get_my_following(inst_id: str, current_user=Depends(get_current_user)):
+    my_following = await users_service.get_user_following(
+        supabase, inst_id, str(current_user.id)
+    )
+    return my_following
+
+
+@router.get("/{inst_id}/users/{user_id}/following")
+async def get_user_following(inst_id: str, user_id: str):
+    user_following = await users_service.get_user_following(supabase, inst_id, user_id)
+    return user_following
+
+
+@router.get("/{inst_id}/users/{user_id}/following_count")
+async def get_following_count(inst_id: str, user_id: str):
+    user_following = await users_service.get_user_following(supabase, inst_id, user_id)
+    return {"count": len(user_following)}
+
+
+@router.get("/{inst_id}/users/{user_id}/followers")
+async def get_user_followers(inst_id: str, user_id: str):
+    user_followers = await users_service.get_user_followers(supabase, inst_id, user_id)
+    return user_followers
+
+
+@router.get("/{inst_id}/users/{user_id}/follower_count")
+async def get_follower_count(inst_id: str, user_id: str):
+    user_followers = await users_service.get_user_followers(supabase, inst_id, user_id)
+    return {"count": len(user_followers)}
+
+
+@router.get("/{inst_id}/users/{user_id}")
+async def get_user_profile(inst_id: str, user_id: str):
+    user_profile = await users_service.get_user_profile(supabase, inst_id, user_id)
+    if user_profile is None or len(user_profile) == 0:
+        raise HTTPException(status_code=404, detail="No profile details found")
+    return user_profile
+
+
+@router.get("/{inst_id}/users")
+async def search_users(
+    inst_id: str,
+    name: Optional[str] = Query(None, min_length=1),
+):
+    try:
+        result = await users_service.find_users_by_name(supabase, inst_id, name)
+        return result
+    except Exception as e:
+        print(f"Search Error: {e}")
+        raise HTTPException(status_code=500, detail="Error searching users")
+
+
+# Check if a post is saved by the current user
+@router.get("/users/me/saved/{post_id}")
+async def check_saved_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        is_saved = await news_service.is_post_saved(supabase, str(user_id), post_id)
+        return {"is_saved": is_saved}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not check saved status")
+
+
+# Save a post
+@router.post("/users/me/saved/{post_id}")
+async def save_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.save_post(supabase, str(user_id), post_id)
+        return {"status": "success", "message": "Post saved successfully"}
+    except Exception as e:
+        # If already saved, duplicate key error will be thrown
+        if "duplicate key" in str(e).lower():
+            raise HTTPException(status_code=400, detail="Post already saved")
+        raise HTTPException(status_code=500, detail="Could not save post")
+
+
+# Unsave a post
+@router.delete("/users/me/saved/{post_id}")
+async def unsave_post(
+    post_id: str,
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        await news_service.unsave_post(supabase, str(user_id), post_id)
+        return {"status": "success", "message": "Post unsaved successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not unsave post")
+
+
+# Get all saved posts for current user
+@router.get("/users/me/saved")
+async def get_saved_posts(
+    current_user=Depends(get_current_user),
+):
+    try:
+        user_id = current_user.id
+        saved_posts = await news_service.get_saved_posts(supabase, str(user_id))
+        return saved_posts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not fetch saved posts")

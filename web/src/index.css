@@ -7,7 +7,7 @@
 
 @theme inline {
 	--font-heading: var(--font-sans);
-	--font-sans: 'Roboto Variable', sans-serif;
+	--font-sans: "Roboto Variable", sans-serif;
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,6 +48,7 @@
 	--radius-2xl: calc(var(--radius) * 1.8);
 	--radius-3xl: calc(var(--radius) * 2.2);
 	--radius-4xl: calc(var(--radius) * 2.6);
+	--color-success: var(--success);
 }
 
 :root {
@@ -65,7 +66,7 @@
 	--muted-foreground: oklch(0.556 0 0);
 	--accent: oklch(0.97 0 0);
 	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
+	--destructive: oklch(0.584 0.237503 26.2217);
 	--border: oklch(0.8452 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: oklch(0.708 0 0);
@@ -85,6 +86,7 @@
 	--sidebar-ring: oklch(0.708 0 0);
 	--button-text: oklch(100% 0.00011 271.152);
 	--caption: oklch(51.028% 0.00006 271.152);
+	--success: oklch(60.378% 0.13179 162.341);
 }
 
 .dark {
@@ -121,6 +123,7 @@
 	--button-text: oklch(100% 0.00011 271.152);
 	--caption: hsl(0, 0%, 60%);
 	--secondary: oklch(0.274 0.006 286.033);
+	--success: oklch(60.378% 0.13179 162.341);
 }
 
 @layer base {
@@ -147,15 +150,19 @@
 	z-index: 1000;
 }
 .loader {
-  width: fit-content;
-  font-weight: bold;
-  font-family: sans-serif;
-  font-size: 30px;
-  padding-bottom: 8px;
-  background: linear-gradient(currentColor 0 0) 0 100%/0% 3px no-repeat;
-  animation: l2 2s linear infinite;
+	width: fit-content;
+	font-weight: bold;
+	font-family: sans-serif;
+	font-size: 30px;
+	padding-bottom: 8px;
+	background: linear-gradient(currentColor 0 0) 0 100%/0% 3px no-repeat;
+	animation: l2 2s linear infinite;
 }
 .loader:before {
-  content:"Loading..."
+	content: "Loading...";
 }
-@keyframes l2 {to{background-size: 100% 3px}}
+@keyframes l2 {
+	to {
+		background-size: 100% 3px;
+	}
+}

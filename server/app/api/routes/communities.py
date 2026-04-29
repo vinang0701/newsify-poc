@@ -8,7 +8,7 @@ from app.services import communities_service, news_service
 from app.core.config import settings
 from app.core.db import supabase
 from app.models.community import CommunityApplication, CommunityApplicationReq
-
+from app.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/{inst_id}/communities", tags=["communities"])
 
@@ -42,8 +42,8 @@ async def get_community(community_id: str):
 @router.get("/{community_id}/news")
 async def get_community_news(community_id: str):
     community_news = await news_service.get_community_news(supabase, community_id)
-    if community_news is None or len(community_news) == 0:
-        raise HTTPException(status_code=404, detail="No news found")
+    if community_news is None:
+        raise HTTPException(status_code=404, detail="This community does not exist.")
 
     return community_news
 
@@ -89,3 +89,31 @@ async def get_community_members(inst_id: str, community_id: str):
     except Exception as e:
         print(f"Error fetching members: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community members")
+
+
+@router.get("/{community_id}/members/me/role")
+async def get_community_role(
+    inst_id: str,
+    community_id: str,
+    current_user=Depends(get_current_user)
+):
+    try:
+        role = await communities_service.get_community_role(
+            supabase, community_id, current_user.id
+        )
+        return {"role": role}
+    except Exception as e:
+        print(f"Error fetching members: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch community role")
+
+
+@router.get("/{community_id}/post_requests")
+async def get_community_post_requests(inst_id: str, community_id: str):
+    try:
+        post_request = await communities_service.get_community_post_requests(
+            supabase, community_id
+        )
+        return post_request
+    except Exception as e:
+        print(f"Error fetching members: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch community post requests")

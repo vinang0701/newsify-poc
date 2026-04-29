@@ -11,6 +11,8 @@ const StreamStackLayout = () => {
             }}
         >
             <Stack.Screen name="index" />
+            <Stack.Screen name="player" />
+            <Stack.Screen name="prejoin" />
         </Stack>
     );
 };

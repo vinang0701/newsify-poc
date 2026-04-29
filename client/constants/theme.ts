@@ -23,9 +23,10 @@ export const Colors = {
         tabIconDefault: "#687076",
         tabIconSelected: tintColorLight,
         buttonPressed: "hsl(221, 100%, 45%)",
-        secondary: "hsl(161, 100%, 50%)",
-        secondary_dark: "hsl(161, 100%, 30%)",
+        secondary: "hsl(161, 100%, 40%)",
+        secondary_dark: "hsl(161, 100%, 20%)",
         alert_red: "hsl(352, 100%, 45%)",
+        alert_red_dark: "hsl(352, 100%, 30%)",
     },
     dark: {
         text: "hsl(0, 0%, 95%)",

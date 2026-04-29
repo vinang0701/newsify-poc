@@ -6,6 +6,7 @@ import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useNavigate, useSearchParams } from "react-router";
 import Loading from "./components/loading";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 const LoginPage = () => {
     const [email, setEmail] = useState("");
@@ -14,10 +15,11 @@ const LoginPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const [showPassword, setShowPassword] = useState(false);
 
     const supabase_client = supabase;
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setError(null);
@@ -97,17 +99,40 @@ const LoginPage = () => {
                                 <FieldLabel htmlFor="password">
                                     Password
                                 </FieldLabel>
-
-                                <Input
-                                    id="password"
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) =>
-                                        setPassword(e.target.value)
-                                    }
-                                    placeholder="••••••••"
-                                    className="w-full border border-border"
-                                />
+                                <div className="relative">
+                                    <Input
+                                        id="password"
+                                        type={
+                                            showPassword ? "text" : "password"
+                                        }
+                                        value={password}
+                                        onChange={(e) =>
+                                            setPassword(e.target.value)
+                                        }
+                                        placeholder="••••••••"
+                                        className="w-full border border-border"
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                                        onClick={() =>
+                                            setShowPassword((prev) => !prev)
+                                        }
+                                    >
+                                        {showPassword ? (
+                                            <EyeOffIcon className="h-4 w-4 text-muted-foreground" />
+                                        ) : (
+                                            <EyeIcon className="h-4 w-4 text-muted-foreground" />
+                                        )}
+                                        <span className="sr-only">
+                                            {showPassword
+                                                ? "Hide password"
+                                                : "Show password"}
+                                        </span>
+                                    </Button>
+                                </div>
                             </Field>
                         </FieldGroup>
                     </FieldSet>

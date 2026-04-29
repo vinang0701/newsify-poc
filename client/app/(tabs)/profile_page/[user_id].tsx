@@ -9,16 +9,10 @@ import {
     ActivityIndicator,
     Modal,
 } from "react-native";
-import React, {
-    Component,
-    useCallback,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Link, router, useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import {
     SafeAreaView,
@@ -37,19 +31,27 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuthStore } from "@/utils/authStore";
+import { supabase } from "@/lib/supabase";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 export default function Profile() {
+    const { user, session, metadata } = useAuthStore();
+    console.log(session?.access_token);
+
     const snapPoints = useMemo(() => ["20%"], []);
     const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? "light";
-    const { user_id } = useLocalSearchParams();
+
+    const user_id = user?.id ?? "";
+    const inst_id = metadata?.inst_id ?? "";
+
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
-    const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
     const signOut = useAuthStore((state) => state.signOut);
     const router = useRouter();
 
@@ -57,7 +59,6 @@ export default function Profile() {
         setIsLoggingOut(true);
         try {
             await signOut();
-            // Redirect to the login screen after clearing state
             router.replace("/login");
         } catch (error) {
             console.error("Error signing out:", error);
@@ -66,11 +67,6 @@ export default function Profile() {
         }
     };
 
-    const handleSheetChange = (index: number) => {
-        if (index === -1) {
-            router.back();
-        }
-    };
     const handleExpandSheet = () => bottomSheetRef.current?.expand();
 
     const renderBackdrop = useCallback(
@@ -84,20 +80,19 @@ export default function Profile() {
         [],
     );
 
-    const onRefresh = React.useCallback(() => {
+    const onRefresh = useCallback(() => {
         setRefreshing(true);
-        console.log("refetching");
         refetch();
         profileRefetch();
         followingCountRefetch();
         followerCountRefetch();
+
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
     }, []);
 
     async function fetchUserNews(): Promise<News[]> {
-        console.log("fetching in profile");
         try {
             const response = await axios.get<News[]>(
                 `${BASE_URL}/${inst_id}/users/${user_id}/news`,
@@ -105,7 +100,6 @@ export default function Profile() {
 
             return response.data;
         } catch (error) {
-            // Re-throwing the error allows TanStack Query to "see" the failure
             if (axios.isAxiosError(error)) {
                 console.log(error);
                 throw error;
@@ -115,7 +109,6 @@ export default function Profile() {
     }
 
     async function fetchUserProfile(): Promise<UserProfileDetails> {
-        console.log("fetching user profile");
         try {
             const response = await axios.get<UserProfileDetails[]>(
                 `${BASE_URL}/${inst_id}/users/${user_id}`,
@@ -123,7 +116,6 @@ export default function Profile() {
 
             return response.data[0];
         } catch (error) {
-            // Re-throwing the error allows TanStack Query to "see" the failure
             if (axios.isAxiosError(error)) {
                 console.log(error);
                 throw error;
@@ -132,11 +124,17 @@ export default function Profile() {
         }
     }
 
-    function goToFollowing(user_id: string) {
-        console.log(user_id + "'s following");
+    function goToFollowing(targetUserId: string) {
         router.push({
             pathname: "/(tabs)/profile_page/following",
-            params: { user_id: user_id },
+            params: { user_id: targetUserId, inst_id: inst_id },
+        });
+    }
+
+    function goToFollowers(targetUserId: string) {
+        router.push({
+            pathname: "/(tabs)/profile_page/followers",
+            params: { user_id: targetUserId, inst_id: inst_id },
         });
     }
 
@@ -152,15 +150,8 @@ export default function Profile() {
             );
             return res.data.count;
         },
+        enabled: !!user_id,
     });
-
-    function goToFollowers(user_id: string) {
-        console.log(user_id + "'s followers");
-        router.push({
-            pathname: "/(tabs)/profile_page/followers",
-            params: { user_id: user_id },
-        });
-    }
 
     const {
         data: follower_count,
@@ -174,6 +165,7 @@ export default function Profile() {
             );
             return res.data.count;
         },
+        enabled: !!user_id,
     });
 
     const {
@@ -185,20 +177,26 @@ export default function Profile() {
     } = useQuery<UserProfileDetails>({
         queryKey: ["user_profile", user_id],
         queryFn: fetchUserProfile,
+        enabled: !!user_id,
     });
 
     const { status, data, error, isFetching, refetch } = useQuery<News[]>({
         queryKey: ["user_news", user_id],
         queryFn: fetchUserNews,
-        // queryFn: () => {
-        //     return [];
-        // },
+        enabled: !!user_id,
+    });
+
+    const { data: currentUser } = useQuery({
+        queryKey: ["current_user"],
+        queryFn: async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            return user;
+        },
     });
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-                {/* Header */}
                 <View
                     style={[
                         styles.headerContainer,
@@ -207,12 +205,18 @@ export default function Profile() {
                         },
                     ]}
                 >
-                    <Pressable onPress={() => router.back()}>
+                    <Pressable
+                        onPress={() => {
+                            router.push({
+                                pathname: "/notifications",
+                                params: { inst_id: inst_id },
+                            });
+                        }}
+                    >
                         <Feather
                             name="bell"
                             size={24}
                             color={Colors[colorScheme].button_text}
-                            weight="bold"
                         />
                     </Pressable>
 
@@ -220,8 +224,9 @@ export default function Profile() {
                         source={require("@/assets/images/icon_light.png")}
                         style={{ width: 42, height: 20, resizeMode: "contain" }}
                     />
+
                     <Link href="/search" push asChild>
-                        <Pressable onPress={() => {}}>
+                        <Pressable>
                             <Feather
                                 name="search"
                                 size={24}
@@ -230,7 +235,7 @@ export default function Profile() {
                         </Pressable>
                     </Link>
                 </View>
-                {/* Content */}
+
                 <ScrollView
                     contentContainerStyle={{
                         flex: 1,
@@ -243,7 +248,6 @@ export default function Profile() {
                         />
                     }
                 >
-                    {/* User Profile Card */}
                     <View
                         style={[
                             styles.profileCardContainer,
@@ -291,6 +295,7 @@ export default function Profile() {
                                 />
                             </Pressable>
                         </View>
+
                         <ThemedText
                             type="caption"
                             style={{
@@ -299,9 +304,8 @@ export default function Profile() {
                             }}
                         >
                             {profileData?.description}
-                            {/* Studying Computer Science, but also passionate about
-                        writing and sharing school stories. */}
                         </ThemedText>
+
                         <View
                             style={[
                                 styles.flexRowContainer,
@@ -322,6 +326,7 @@ export default function Profile() {
                                     News Posts
                                 </ThemedText>
                             </View>
+
                             <View style={styles.statsInfoContainer}>
                                 <ThemedText type="defaultSemiBold">
                                     4
@@ -336,6 +341,7 @@ export default function Profile() {
                                     Communities
                                 </ThemedText>
                             </View>
+
                             <View style={styles.statsInfoContainer}>
                                 <Pressable
                                     onPress={() => goToFollowers(user_id)}
@@ -355,6 +361,7 @@ export default function Profile() {
                                     </ThemedText>
                                 </Pressable>
                             </View>
+
                             <View style={styles.statsInfoContainer}>
                                 <Pressable
                                     onPress={() => goToFollowing(user_id)}
@@ -376,6 +383,7 @@ export default function Profile() {
                             </View>
                         </View>
                     </View>
+
                     <View
                         style={{
                             flex: 1,
@@ -385,23 +393,6 @@ export default function Profile() {
                             marginBottom: 16,
                         }}
                     >
-                        {/* <View
-                        style={[
-                            styles.sortButtonContainer,
-                            {
-                                borderColor: Colors[colorScheme].border,
-                                backgroundColor: Colors[colorScheme].bg_light,
-                            },
-                        ]}
-                    >
-                        <ThemedText>Sort</ThemedText>
-                        <MaterialCommunityIcons
-                            name="chevron-down"
-                            size={16}
-                            color={Colors[colorScheme].text}
-                        />
-                    </View> */}
-                        {/* Card */}
                         {status === "pending" ? (
                             <ActivityIndicator
                                 size={"large"}
@@ -432,11 +423,12 @@ export default function Profile() {
                                 }
                                 data={data}
                                 renderItem={({ item }) => (
-                                    <NewsPostCard news={item} />
+                                    <NewsPostCard news={item} currentUserId={currentUser?.id} />
                                 )}
                             />
                         )}
                     </View>
+
                     <BottomSheet
                         ref={bottomSheetRef}
                         index={-1}
@@ -445,9 +437,18 @@ export default function Profile() {
                         enablePanDownToClose
                     >
                         <BottomSheetView style={styles.bottomSheet}>
-                            <Pressable style={styles.modalActionButtonCtn}>
+                            <Pressable
+                                style={styles.modalActionButtonCtn}
+                                onPress={() => {
+                                    bottomSheetRef.current?.close();
+                                    router.push({
+                                        pathname: "/requests",
+                                        params: { inst_id: inst_id },
+                                    });
+                                }}
+                            >
                                 <Feather
-                                    name="edit-3"
+                                    name="file-text"
                                     size={24}
                                     color={Colors[colorScheme].text}
                                 />
@@ -455,6 +456,7 @@ export default function Profile() {
                                     View requests
                                 </ThemedText>
                             </Pressable>
+
                             <Pressable style={styles.modalActionButtonCtn}>
                                 <Feather
                                     name="award"
@@ -462,19 +464,40 @@ export default function Profile() {
                                     color={Colors[colorScheme].text}
                                 />
                                 <ThemedText type="defaultSemiBold">
-                                    View requests
+                                    View achievements
                                 </ThemedText>
                             </Pressable>
-                            <Pressable style={styles.modalActionButtonCtn}>
+
+                            <Pressable
+                                style={styles.modalActionButtonCtn}
+                                onPress={() => {
+                                    bottomSheetRef.current?.close();
+                                    router.push("/(tabs)/profile_page/bookmarks");
+                                }}
+                            >
                                 <Feather
-                                    name="settings"
+                                    name="bookmark"
                                     size={24}
                                     color={Colors[colorScheme].text}
                                 />
                                 <ThemedText type="defaultSemiBold">
-                                    Change preference
+                                    View bookmarks
                                 </ThemedText>
                             </Pressable>
+
+                            <Pressable style={styles.modalActionButtonCtn}
+                                onPress={() => {
+                                    bottomSheetRef.current?.close(); // close the bottom sheet first
+                                    router.push({
+                                        pathname: "/(tabs)/profile_page/preferences",
+                                        params: { inst_id: inst_id }, // pass inst_id like your other routes do
+                                    });
+                                }}
+                                >
+                                <Feather name="settings" size={24} color={Colors[colorScheme].text} />
+                                <ThemedText type="defaultSemiBold">Change preference</ThemedText>
+                            </Pressable>
+
                             <Pressable
                                 style={styles.modalActionButtonCtn}
                                 onPress={() => setModalVisible(true)}
@@ -495,6 +518,7 @@ export default function Profile() {
                             </Pressable>
                         </BottomSheetView>
                     </BottomSheet>
+
                     <Modal
                         animationType="slide"
                         visible={modalVisible}
@@ -545,6 +569,7 @@ export default function Profile() {
                                             Cancel
                                         </ThemedText>
                                     </Pressable>
+
                                     <Pressable
                                         style={[
                                             styles.button,
@@ -630,7 +655,6 @@ const styles = StyleSheet.create({
         minHeight: 200,
         elevation: 2,
     },
-
     iconsContainer: {
         flex: 1,
         flexDirection: "row",
@@ -651,7 +675,6 @@ const styles = StyleSheet.create({
     modalView: {
         width: "100%",
         gap: 16,
-
         borderRadius: 8,
         paddingHorizontal: 24,
         paddingVertical: 16,
