@@ -3,6 +3,7 @@ from typing import List
 from app.core.db import supabase
 from supabase import Client
 from app.models.registeredUsers import UserPreference, PreferenceItem
+import uuid
 
 
 async def get_user_preferences(
