@@ -55,13 +55,13 @@ export default function PostRequestPage() {
         loading: postRequestsLoading,
         refreshing: postRequestsRefreshing,
         error: postRequestsError,
-        refresh: postRequestsRefresh
+        refresh: postRequestsRefresh,
     } = useCommunityPostRequests(inst_id, communityId);
 
     useFocusEffect(
         useCallback(() => {
             postRequestsRefresh();
-        }, [])
+        }, []),
     );
 
     const filteredRequests = postRequests.filter((request) => {
@@ -75,7 +75,7 @@ export default function PostRequestPage() {
                 communityId,
                 inst_id,
                 request_id,
-            }
+            },
         });
     }
 
@@ -118,7 +118,7 @@ export default function PostRequestPage() {
             <View
                 style={{
                     flex: 1,
-                    paddingHorizontal:16,
+                    paddingHorizontal: 16,
                 }}
             >
                 <FlashList
@@ -163,9 +163,9 @@ export default function PostRequestPage() {
                         </Pressable>
                     )}
                 />
-                { filteredRequests.length === 0 ? (
+                {filteredRequests.length === 0 ? (
                     <View style={{ flex: 1, justifyContent: "center" }}>
-                        <ThemedText type="body" style={{ textAlign: 'center' }}>
+                        <ThemedText style={{ textAlign: "center" }}>
                             No request found
                         </ThemedText>
                     </View>
@@ -174,90 +174,103 @@ export default function PostRequestPage() {
                         showsVerticalScrollIndicator={false}
                         data={filteredRequests}
                         renderItem={({ item }) => (
-                        <Pressable
-                            onPress={() => {
-                                console.log("request_id:", item.request_id, "community_id:", item.community_id, "user_id:", item.author_name);
-                                goToViewPostRequest(item.request_id);
-                            }}
-                        >
-                            <View
-                                style={[
-                                    styles.card,
-                                    {
-                                        backgroundColor: Colors[colorScheme].bg_light,
-                                        borderColor: Colors[colorScheme].border,
-                                    },
-                                ]}
+                            <Pressable
+                                onPress={() => {
+                                    console.log(
+                                        "request_id:",
+                                        item.request_id,
+                                        "user_id:",
+                                        item.author_name,
+                                    );
+                                    goToViewPostRequest(item.request_id);
+                                }}
                             >
                                 <View
                                     style={[
-                                        styles.cardInfoContainer,
+                                        styles.card,
+                                        {
+                                            backgroundColor:
+                                                Colors[colorScheme].bg_light,
+                                            borderColor:
+                                                Colors[colorScheme].border,
+                                        },
                                     ]}
                                 >
-                                    <Image
-                                        alt="image"
-                                        source={item.image_url}
-                                        style={{
-                                            borderRadius: 8,
-                                            width: 150,
-                                            height: "100%",
-                                            resizeMode: "cover",
-                                        }}
-                                    />
-                                    <View
-                                        style={{
-                                            flexShrink: 1,
-                                            justifyContent: "space-between",
-                                            gap: 4,
-                                        }}>
-                                        <ThemedText type="defaultSemiBold">
-                                            {item.title}
-                                        </ThemedText>
-                                        <ThemedText
-                                            type="caption"
+                                    <View style={[styles.cardInfoContainer]}>
+                                        <Image
+                                            alt="image"
+                                            source={item.image_url}
                                             style={{
-                                                color: Colors[colorScheme].caption,
+                                                borderRadius: 8,
+                                                width: 150,
+                                                height: "100%",
+                                                resizeMode: "cover",
                                             }}
-                                            numberOfLines={4}
-                                            ellipsizeMode="tail"
-                                        >
-                                            {item.description}
-                                        </ThemedText>
+                                        />
                                         <View
                                             style={{
-                                                flexDirection: "row",
-                                                alignItems: "center",
-                                                gap: 8,
+                                                flexShrink: 1,
+                                                justifyContent: "space-between",
+                                                gap: 4,
                                             }}
                                         >
-                                            <Image
-                                                source={require("@/assets/images/profile.png")}
-                                                style={{ width: 26, height: 26 }}
-                                            />
-                                            <ThemedText type="caption" emphasized>
-                                                {item.author_name}
+                                            <ThemedText type="defaultSemiBold">
+                                                {item.title}
                                             </ThemedText>
-                                        </View>
-                                        <View
-                                            style={{
-                                                flex: 1,
-                                                justifyContent: "flex-end",
-                                                //alignItems: "flex-end",
-                                            }}
-                                        >
                                             <ThemedText
                                                 type="caption"
                                                 style={{
-                                                    color: Colors[colorScheme].caption,
+                                                    color: Colors[colorScheme]
+                                                        .caption,
+                                                }}
+                                                numberOfLines={4}
+                                                ellipsizeMode="tail"
+                                            >
+                                                {item.description}
+                                            </ThemedText>
+                                            <View
+                                                style={{
+                                                    flexDirection: "row",
+                                                    alignItems: "center",
+                                                    gap: 8,
                                                 }}
                                             >
-                                                {item.created_at}
-                                            </ThemedText>
+                                                <Image
+                                                    source={require("@/assets/images/profile.png")}
+                                                    style={{
+                                                        width: 26,
+                                                        height: 26,
+                                                    }}
+                                                />
+                                                <ThemedText
+                                                    type="caption"
+                                                    emphasized
+                                                >
+                                                    {item.author_name}
+                                                </ThemedText>
+                                            </View>
+                                            <View
+                                                style={{
+                                                    flex: 1,
+                                                    justifyContent: "flex-end",
+                                                    //alignItems: "flex-end",
+                                                }}
+                                            >
+                                                <ThemedText
+                                                    type="caption"
+                                                    style={{
+                                                        color: Colors[
+                                                            colorScheme
+                                                        ].caption,
+                                                    }}
+                                                >
+                                                    {item.created_at}
+                                                </ThemedText>
+                                            </View>
                                         </View>
                                     </View>
                                 </View>
-                            </View>
-                        </Pressable>
+                            </Pressable>
                         )}
                     />
                 )}
