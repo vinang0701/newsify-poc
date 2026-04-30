@@ -40,7 +40,6 @@ const FALLBACK_INST_ID = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 export default function Profile() {
     const { user, session, metadata } = useAuthStore();
-    console.log(session?.access_token);
 
     const snapPoints = useMemo(() => ["20%"], []);
     const bottomSheetRef = useRef<BottomSheetModal>(null);
