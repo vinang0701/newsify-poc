@@ -270,7 +270,7 @@ const InstitutionsMgmtPage = () => {
               onMouseLeave={(e) => (e.currentTarget.style.background = sortField ? "#E8ECF2" : "#F4F6FA")}
               onClick={() => setShowSortMenu(!showSortMenu)}
             >
-              {sortField ? `${sortField.replace("_", " ").charAt(0).toUpperCase() + sortField.replace("_", " ").slice(1)} ▾` : "Sort ▾"}
+              {sortField ? `${sortField.replace("_", " ").charAt(0).toUpperCase() + sortField.replace("_", " ").slice(1)} ▾` : "Sort ▾"}  
             </button>
             {showSortMenu && (
               <div style={{ position: "absolute", right: 0, top: "110%", background: "#fff", border: "1px solid #E8ECF2", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.10)", minWidth: 160, zIndex: 30, overflow: "hidden" }}>

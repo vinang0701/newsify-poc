@@ -59,7 +59,8 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
-    except Exception:
+    except Exception as e:
+        print(f"Auth error: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=401, detail="Authentication failed")
 
 
