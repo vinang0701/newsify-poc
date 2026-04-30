@@ -284,6 +284,7 @@ async def get_community_post_requests(
 
     return result
 
+
 async def update_community_post_request(
     supabase: Client,
     request_id: str,
@@ -313,3 +314,40 @@ async def update_community_post_request(
     )
 
     return response.data, None
+
+
+async def post_to_community(
+    supabase: Client,
+    community_id: str,
+    request_id: str,
+):
+    select_response = (
+        supabase.table("community_post_requests")
+        .select("community_id, request_id, reviewed_at")
+        .eq("request_id", request_id)
+        .single()
+        .execute()
+    )
+
+    if not select_response.data:
+        raise Exception("Request not found")
+
+    request_data = select_response.data
+
+    community_id = request_data["community_id"]
+    post_id = request_data["request_id"]
+    reviewed_at = request_data["reviewed_at"]
+
+    response = (
+        supabase.table("community_posts")
+        .insert(
+            {
+                "community_id": community_id,
+                "post_id": post_id,
+                "created_at": reviewed_at,
+            }
+        )
+        .execute()
+    )
+
+    return response.data

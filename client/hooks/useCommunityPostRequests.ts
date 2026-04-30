@@ -101,6 +101,20 @@ export function useCommunityPostRequests(inst_id: string, communityId: string) {
         [communityId, inst_id]
     );
 
+    const postToCommunity = async (request_id) => {
+        const token = await getAccessToken();
+        if (!token) throw new Error("No active session");
+
+        await fetch(`${API_BASE_URL}/${inst_id}/communities/${communityId}/news`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ request_id: request_id }),
+        });
+    };
+
     const refresh = async () => {
         setRefreshing(true);
         await fetchRequests();
@@ -117,5 +131,6 @@ export function useCommunityPostRequests(inst_id: string, communityId: string) {
         error,
         refresh,
         updatePostRequestStatus,
+        postToCommunity,
     };
 }

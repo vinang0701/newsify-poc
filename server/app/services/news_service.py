@@ -267,13 +267,20 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
         .select(
             """
             id,
+            created_at,
             author,
             title, 
             description, 
             image_url,
             content,
-            users!news_posts_author_fkey!inner(name, image_url)
-        """
+            users!news_posts_author_fkey!inner(name, image_url),
+            likes_count:post_likes(count),
+            comments_count:post_comments(count),
+            user_liked:post_likes(count).eq(user_id, {user_id}),
+            user_saved:saved_post(count).eq(user_id, {user_id})
+            """.format(
+                user_id=f"'{user_id}'"
+            )
         )
         .eq("author", user_id)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
@@ -281,21 +288,34 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
         .execute()
     )
 
-    if len(response.data) != 0:
-        return [
+    posts = []
+    for post in response.data:
+        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
+        likes = post.get("likes_count", [{}])[0].get("count", 0)
+        comments = post.get("comments_count", [{}])[0].get("count", 0)
+
+        # 3. Boolean check: if count > 0, the user has interacted with it
+        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
+        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
+
+        posts.append(
             NewsPost(
                 id=post["id"],
+                created_at=post["created_at"],
                 author_id=post["author"],
-                author=post["users"]["name"],  # Map snake_case to camelCase
+                author=post["users"]["name"],
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"]
-                or {},  # Pydantic handles JSONB to Dict[str, Any] automatically
+                content=post["content"] or {},
+                likes_count=likes,
+                comments_count=comments,
+                has_liked=has_liked,
+                has_saved=has_saved,
             )
-            for post in response.data
-        ]
-    return []
+        )
+
+    return posts
 
 
 async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:

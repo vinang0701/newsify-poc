@@ -24,7 +24,7 @@ from app.schemas.notifications import (
     GenericMessageResponse,
     InvitationActionRequest,
 )
-from app.core.auth import get_current_user, get_current_app_user
+from app.core.auth import get_current_user, get_current_app_user, UserPayload
 from app.models.registeredUsers import SavePreferencesRequest
 from app.core.auth import UserPayload
 
