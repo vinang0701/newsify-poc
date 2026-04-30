@@ -26,6 +26,8 @@ from app.schemas.notifications import (
 )
 from app.core.auth import get_current_user, get_current_app_user
 from app.models.registeredUsers import SavePreferencesRequest
+from app.core.auth import UserPayload
+
 
 router = APIRouter(tags=["users"], dependencies=[Depends(get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)

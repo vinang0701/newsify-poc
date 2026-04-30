@@ -1,5 +1,5 @@
 const AchievementsMgmtPage = () => {
-    return <div>Roles</div>;
+    return <div>Achievements Page</div>;
 };
 
 export default AchievementsMgmtPage;

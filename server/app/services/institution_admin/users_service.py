@@ -13,6 +13,7 @@ async def get_student_users(supabase: Client, inst_id: str) -> List[dict]:
         .select(
             """
             id,
+            inst_id,
             name,
             email,
             role,
@@ -67,3 +68,53 @@ async def create_new_user(
         .execute()
     )
     return db_response.data
+
+async def ban_user(supabase: Client, user_id: str) -> dict:
+    # Set status to "banned" — user cannot login anymore
+    response = (
+        supabase.table("users")
+        .update({"status": "banned"})
+        .eq("id", user_id)
+        .execute()
+    )
+    return response.data
+
+async def lift_ban(supabase: Client, user_id: str) -> dict:
+    # Set status back to "active" — user can login again
+    response = (
+        supabase.table("users")
+        .update({"status": "active"})
+        .eq("id", user_id)
+        .execute()
+    )
+    return response.data
+
+async def suspend_user(supabase: Client, user_id: str) -> dict:
+    # Set status to "suspended" — user cannot login
+    response = (
+        supabase.table("users")
+        .update({"status": "suspended"})
+        .eq("id", user_id)
+        .execute()
+    )
+    return response.data
+
+async def update_user(
+    supabase: Client,
+    user_id: str,
+    name: str,
+    email: str,
+    role: str,
+) -> dict:
+    # Update user details in the users table
+    response = (
+        supabase.table("users")
+        .update({
+            "name": name,
+            "email": email,
+            "role": role,
+        })
+        .eq("id", user_id)
+        .execute()
+    )
+    return response.data

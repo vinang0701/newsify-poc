@@ -90,3 +90,65 @@ async def create_user_route(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Ban a user
+@router.patch("/{user_id}/ban")
+async def ban_user(user_id: str):
+    try:
+        result = await users_service.ban_user(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "User has been banned successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Lift ban
+@router.patch("/{user_id}/lift-ban")
+async def lift_ban(user_id: str):
+    try:
+        result = await users_service.lift_ban(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "Ban has been lifted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Suspend a user
+@router.patch("/{user_id}/suspend")
+async def suspend_user(user_id: str):
+    try:
+        result = await users_service.suspend_user(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "User has been suspended successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Update user details
+@router.patch("/{user_id}")
+async def update_user(
+    user_id: str,
+    name: str = Form(...),
+    email: str = Form(...),
+    role: str = Form(...),
+):
+    try:
+        result = await users_service.update_user(
+            supabase, user_id, name, email, role
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "User updated successfully", "data": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
