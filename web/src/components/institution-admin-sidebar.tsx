@@ -16,7 +16,6 @@ import {
 	Flag,
 	LayoutGrid,
 	LogOut,
-	Tag,
 	User2,
 	Users2,
 } from "lucide-react";
@@ -142,17 +141,7 @@ export function InstitutionAdminSidebar() {
 								</Link>
 							</CollapsibleContent>
 						</Collapsible>
-						<SidebarMenuButton
-							className="text-base h-10"
-							isActive={pathname === "/admin/roles"}
-						>
-							<Link
-								to={"/admin/roles"}
-								className="w-full flex flex-row items-center gap-2"
-							>
-								<Tag size={16} /> Roles
-							</Link>
-						</SidebarMenuButton>
+						
 						<SidebarMenuButton
 							className="text-base h-10"
 							isActive={pathname === "/admin/achievements"}

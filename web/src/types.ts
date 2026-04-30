@@ -54,6 +54,7 @@ export interface UserAuth {
 
 export interface User {
 	id: string;
+	inst_id: string;
 	name: string;
 	email: string;
 	role: string;

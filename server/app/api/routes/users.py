@@ -1,7 +1,16 @@
 import uuid
 from typing import Optional, List
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, Form, File, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    UploadFile,
+    Form,
+    File,
+    Query,
+    status,
+)
 from pydantic import BaseModel
 from openai import OpenAI
 
@@ -26,6 +35,7 @@ from app.schemas.notifications import (
 )
 from app.core.auth import get_current_user, get_current_app_user, UserPayload
 from app.models.registeredUsers import SavePreferencesRequest
+from app.core.auth import UserPayload
 
 router = APIRouter(tags=["users"], dependencies=[Depends(get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -237,6 +247,9 @@ async def create_news_post(
         user_id = app_user["id"]
         isSchool = school == "true"
 
+        # Run moderation check on title + content
+        is_flagged = moderate_text(f"{title} {content}")
+
         await news_service.create_post(
             supabase,
             inst_id,
@@ -247,12 +260,21 @@ async def create_news_post(
             isSchool,
             communities,
             category_id,
+            is_flagged,
         )
 
+        if is_flagged:
+            return {
+                "status" : "flagged",
+                "flagged" : True,
+                "message" : "Your post has been flagged for review by an admin.",
+            }
+        
         return {
             "status": "success",
             "message": "You have successfully published your news post.",
         }
+    
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail="Failed to upload image")
@@ -543,3 +565,27 @@ async def update_preferences(
     except Exception as e:
         print(f"Error saving preferences: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/users/me")
+async def get_user_data(current_user: UserPayload = Depends(get_current_app_user)):
+    try:
+        user = await users_service.get_user_data(
+            supabase=supabase,
+            inst_id=current_user["inst_id"],
+            user_id=current_user["id"],
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="User profile not found"
+            )
+
+        return user
+    except Exception as e:
+        # Log the actual error 'e' here for internal debugging
+        print(f"Error fetching user data: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while retrieving user data",
+        )
