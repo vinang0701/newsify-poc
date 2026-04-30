@@ -49,7 +49,7 @@ export default function CommunityPage() {
         communityId: string;
     }>();
     const communityId = params.communityId;
-    const inst_id = params.inst_id;
+    const inst_id = params?.inst_id;
     const router = useRouter();
     const bottomSheetRef = useRef<BottomSheet>(null);
     const snapPoints = useMemo(() => ["25%"], []);
@@ -427,7 +427,7 @@ export default function CommunityPage() {
                                 renderItem={({ item, index }) => (
                                     <NewsPostCard
                                         news={item}
-                                        inst_id={inst_id}
+                                        inst_id={inst_id as string}
                                         key={index}
                                     />
                                 )}

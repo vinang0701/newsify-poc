@@ -28,6 +28,24 @@ const DraftsTab = ({ draftData }: { draftData: Draft[] }) => {
                 showsVerticalScrollIndicator={false}
                 nestedScrollEnabled={false}
                 data={draftData}
+                contentContainerStyle={{ flexGrow: 1 }}
+                ListEmptyComponent={
+                    <View
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            alignItems: "center",
+                        }}
+                    >
+                        <ThemedText
+                            type="body_small"
+                            emphasized
+                            style={{ color: Colors[colorScheme].caption }}
+                        >
+                            No drafts found
+                        </ThemedText>
+                    </View>
+                }
                 renderItem={({ item }) => {
                     return (
                         <View

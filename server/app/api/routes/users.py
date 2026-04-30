@@ -62,16 +62,73 @@ class FollowRequest(BaseModel):
     followed_user_id: uuid.UUID
 
 
+# def moderate_text(text: str):
+#     print("Moderating text...")
+#     response = client.moderations.create(
+#         model="omni-moderation-latest",
+#         input=text,
+#     )
+#     print(response.results)
+#     print("Checking for flag...")
+#     print(response.results[0].flagged)
+#     return response.results[0].flagged
 def moderate_text(text: str):
-    print("Moderating text...")
-    response = client.moderations.create(
-        model="omni-moderation-latest",
-        input=text,
-    )
-    print(response.results)
-    print("Checking for flag...")
-    print(response.results[0].flagged)
-    return response.results[0].flagged
+    try:
+        print(f"Moderating text: {text[:50]}...")  # Log a snippet
+
+        # Call the OpenAI moderation endpoint
+        response = client.moderations.create(
+            model="omni-moderation-latest",
+            input=text,
+        )
+
+        # Accessing the first result object
+        result = response.results[0]
+        scores_dict = result.category_scores.model_dump()
+
+        for category, score in scores_dict.items():
+            # Formatting to 6 decimal places to make it readable
+            print(f"  {category.ljust(25)}: {score:.6f}")
+        THRESHOLDS = {
+            "sexual": 0.05,  # Very strict
+            "sexual/minors": 0.01,  # Absolute zero tolerance
+            "harassment": 0.1,  # Strict for gossips/scandals
+            "hate": 0.1,
+            "hate/threatening": 0.01,
+            "harassment_threatening": 0.2,
+            "self_harm_instructions": 0.1,
+            "violence_graphic": 0.01,
+            "self-harm": 0.1,
+            "violence": 0.2,
+        }
+
+        custom_flagged = False
+        flagged_categories = []
+
+        print("\n--- Threshold Evaluation ---")
+        for category, score in scores_dict.items():
+            # Check if we have a custom threshold for this category
+            threshold = THRESHOLDS.get(category, 0.5)  # Default to 0.5 if not listed
+
+            if score > threshold:
+                custom_flagged = True
+                flagged_categories.append(category)
+                print(f"  [!] TRIGGERED: {category}")
+                print(f"      Score {score:.6f} > Threshold {threshold}")
+
+        print(f"\nFinal Custom Flag Status: {custom_flagged}")
+        print("--- Moderation Complete ---\n")
+
+        return {
+            "flagged": custom_flagged,
+            "categories": flagged_categories,
+            "scores": scores_dict,
+        }
+
+    except Exception as e:
+        print(f"Moderation error: {e}")
+        # Return a safe default to avoid breaking the calling code
+        return {"flagged": False, "error": str(e)}
 
 
 @router.post("/users/create")
@@ -234,47 +291,47 @@ async def get_my_news(app_user=Depends(get_current_app_user)):
 
 @router.post("/users/me/news")
 async def create_news_post(
-    inst_id: str = Form(...),
     title: str = Form(...),
     content: str = Form(...),
     school: str = Form(...),
     communities: list[str] = Form(...),
     image: UploadFile = File(...),
     app_user=Depends(get_current_app_user),
-    category_id: str | None = Form(None),
+    category_id: str = Form(...),
 ):
     try:
         user_id = app_user["id"]
+        inst_id = app_user["inst_id"]
         isSchool = school == "true"
 
         # Run moderation check on title + content
-        is_flagged = moderate_text(f"{title} {content}")
+        moderation = moderate_text(f"{title} {content}")
 
-        await news_service.create_post(
-            supabase,
-            inst_id,
-            user_id,
-            image,
-            title,
-            content,
-            isSchool,
-            communities,
-            category_id,
-            is_flagged,
-        )
+        # await news_service.create_post(
+        #     supabase,
+        #     inst_id,
+        #     user_id,
+        #     image,
+        #     title,
+        #     content,
+        #     isSchool,
+        #     communities,
+        #     category_id,
+        #     is_flagged,
+        # )
 
-        if is_flagged:
+        if moderation["flagged"]:
             return {
-                "status" : "flagged",
-                "flagged" : True,
-                "message" : "Your post has been flagged for review by an admin.",
+                "status": "flagged",
+                "flagged": True,
+                "message": "This post is being reviewed by staff to ensure it follows school community guidelines.",
             }
-        
+
         return {
             "status": "success",
             "message": "You have successfully published your news post.",
         }
-    
+
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail="Failed to upload image")
@@ -311,7 +368,7 @@ async def save_draft(
 async def get_user_drafts(app_user=Depends(get_current_app_user)):
     user_id = app_user["id"]
     user_drafts = await news_service.get_user_drafts(supabase, user_id)
-    if user_drafts is None or len(user_drafts) == 0:
+    if user_drafts is None:
         raise HTTPException(status_code=404, detail="No drafts found")
     return user_drafts
 

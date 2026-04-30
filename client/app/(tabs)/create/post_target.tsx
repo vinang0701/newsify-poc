@@ -12,6 +12,7 @@ import {
     Alert,
     ActivityIndicator,
     Modal,
+    Keyboard,
 } from "react-native";
 import axios, { isAxiosError } from "axios";
 
@@ -30,6 +31,7 @@ import Feather from "@expo/vector-icons/Feather";
 import { FlashList } from "@shopify/flash-list";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import api from "@/lib/axios";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 type ModerationResponse = {
     content: string;
@@ -73,6 +75,8 @@ export default function PostTargetForm() {
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
         null,
     );
+    const [selectedCategoryName, setSelectedCategoryName] = useState("");
+    const [pickerVisible, setPickerVisible] = useState(false);
 
     // Stores the list of categories fetched from Supabase
     const [categories, setCategories] = useState<
@@ -148,16 +152,12 @@ export default function PostTargetForm() {
 
         console.log(formData);
 
-        const response = await axios.post(
-            `${BASE_URL}/${inst_id}/users/me/news`,
-            formData,
-            {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                    // "Authorization": `Bearer ${token}` // If your FastAPI uses Supabase Auth
-                },
+        const response = await api.post(`/users/me/news`, formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+                // "Authorization": `Bearer ${token}` // If your FastAPI uses Supabase Auth
             },
-        );
+        });
 
         return response.data;
     };
@@ -263,7 +263,7 @@ export default function PostTargetForm() {
                     </View>
 
                     {/* Category Picker */}
-                    <View style={{ width: "100%", gap: 8 }}>
+                    {/* <View style={{ width: "100%", gap: 8 }}>
                         <ThemedText type="defaultSemiBold">
                             Select a Category
                         </ThemedText>
@@ -309,8 +309,127 @@ export default function PostTargetForm() {
                                 </Pressable>
                             ))}
                         </View>
-                    </View>
+                    </View> */}
+                    {/* Categories Selector */}
+                    <View style={styles.selectorContainer}>
+                        <Pressable
+                            style={[
+                                styles.selector,
+                                {
+                                    backgroundColor:
+                                        Colors[colorScheme].bg_dark,
+                                },
+                            ]}
+                            onPress={() => setPickerVisible(!pickerVisible)}
+                        >
+                            <ThemedText type="defaultSemiBold">
+                                {selectedCategoryName || "Select a Category"}
+                            </ThemedText>
+                            <MaterialCommunityIcons
+                                name="chevron-down" // "chevron-down" is more standard than a rotated triangle
+                                size={20}
+                                color={Colors[colorScheme].text}
+                                style={{
+                                    transform: [
+                                        {
+                                            rotate: pickerVisible
+                                                ? "180deg"
+                                                : "0deg",
+                                        },
+                                    ],
+                                }}
+                            />
+                        </Pressable>
 
+                        {pickerVisible && (
+                            <>
+                                {/* Invisible Backdrop to close dropdown when clicking outside */}
+                                <Pressable
+                                    style={styles.backdrop}
+                                    onPress={() => setPickerVisible(false)}
+                                />
+
+                                <View
+                                    style={[
+                                        styles.dropdownMenu,
+                                        {
+                                            backgroundColor:
+                                                Colors[colorScheme].bg_dark,
+                                            shadowColor: "#000",
+                                        },
+                                    ]}
+                                >
+                                    <FlashList
+                                        data={categories}
+                                        keyExtractor={(item) =>
+                                            item.category_id.toString()
+                                        }
+                                        ItemSeparatorComponent={() => (
+                                            <View
+                                                style={[
+                                                    styles.separator,
+                                                    {
+                                                        backgroundColor:
+                                                            Colors[colorScheme]
+                                                                .border,
+                                                    },
+                                                ]}
+                                            />
+                                        )}
+                                        renderItem={({ item }) => (
+                                            <Pressable
+                                                style={({ pressed }) => [
+                                                    styles.item,
+                                                    {
+                                                        opacity: pressed
+                                                            ? 0.7
+                                                            : 1,
+                                                    },
+                                                ]}
+                                                onPress={() => {
+                                                    setSelectedCategoryId(
+                                                        item.category_id,
+                                                    );
+                                                    setSelectedCategoryName(
+                                                        item.category_name,
+                                                    );
+                                                    setPickerVisible(false);
+                                                }}
+                                            >
+                                                <ThemedText
+                                                    style={{
+                                                        color:
+                                                            selectedCategoryId ===
+                                                            item.category_id
+                                                                ? Colors[
+                                                                      colorScheme
+                                                                  ].tint
+                                                                : Colors[
+                                                                      colorScheme
+                                                                  ].text,
+                                                    }}
+                                                >
+                                                    {item.category_name}
+                                                </ThemedText>
+
+                                                {selectedCategoryId ===
+                                                    item.category_id && (
+                                                    <MaterialCommunityIcons
+                                                        name="check"
+                                                        size={18}
+                                                        color={
+                                                            Colors[colorScheme]
+                                                                .tint
+                                                        }
+                                                    />
+                                                )}
+                                            </Pressable>
+                                        )}
+                                    />
+                                </View>
+                            </>
+                        )}
+                    </View>
                     {/* Communities */}
                     <View
                         style={{
@@ -332,6 +451,7 @@ export default function PostTargetForm() {
                                     borderRadius: 8,
                                     marginBottom: 12,
                                     gap: 4,
+                                    zIndex: 1,
                                 },
                             ]}
                         >
@@ -485,7 +605,7 @@ export default function PostTargetForm() {
                                     ]}
                                     onPress={() => {
                                         setModalVisible(!modalVisible);
-                                        router.navigate("/(tabs)");
+                                        router.push("/(tabs)");
                                     }}
                                 >
                                     <ThemedText
@@ -542,7 +662,7 @@ export default function PostTargetForm() {
                                     ]}
                                     onPress={() => {
                                         setModalVisible(!modalVisible);
-                                        router.navigate("/(tabs)");
+                                        router.push("/(tabs)");
                                     }}
                                 >
                                     <ThemedText
@@ -649,5 +769,52 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
+    },
+    // Category Selector
+    selectorContainer: {
+        width: "100%",
+        zIndex: 100,
+    },
+    selector: {
+        padding: 12,
+        borderRadius: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        borderWidth: 1,
+        borderColor: "rgba(0,0,0,0.1)",
+    },
+    backdrop: {
+        position: "absolute",
+        top: -500, // Cover the whole screen
+        left: -500,
+        right: -500,
+        bottom: -500,
+        zIndex: 90,
+    },
+    dropdownMenu: {
+        position: "absolute",
+        top: 55,
+        left: 0,
+        width: "100%",
+        borderRadius: 8,
+        padding: 4,
+        elevation: 5,
+        zIndex: 100,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    item: {
+        padding: 12,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+    },
+    separator: {
+        height: 1,
+        width: "95%",
+        alignSelf: "center",
+        opacity: 0.2,
     },
 });

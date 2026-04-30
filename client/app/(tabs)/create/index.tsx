@@ -33,6 +33,8 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import EditorToolbar from "@/components/editor_toolbar";
 import Feather from "@expo/vector-icons/Feather";
+import { useAuthStore } from "@/utils/authStore";
+import api from "@/lib/axios";
 type ModerationResponse = {
     content: string;
     flag: boolean;
@@ -50,15 +52,21 @@ type Draft = {
     content?: string;
 };
 
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+// const BASE_URL = "http://10.0.2.2:8000/api/v1";
+// const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+// const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
 export default function CreatePost() {
+    // get user data
+    const { metadata } = useAuthStore();
+    if (!metadata) {
+        return null;
+    }
+    const inst_id = metadata.inst_id;
+    const user_id = metadata.user_id;
     const colorScheme = useColorScheme() ?? "light";
     const [inputValue, setInputValue] = useState("");
     const [titleInputValue, setTitleInputValue] = useState("");
     const [activeFilter, setActiveFilter] = useState("New");
-    const navigation = useNavigation();
     const router = useRouter();
     const [image, setImage] = useState<string | null>(null);
     const [selectedText, setSelectedText] = useState<SelectedText>();
@@ -136,37 +144,21 @@ export default function CreatePost() {
 
         console.log(formData);
 
-        const response = await axios.post(
-            `${BASE_URL}/${inst_id}/users/me/drafts`,
-            formData,
-            {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                    // "Authorization": `Bearer ${token}` // If your FastAPI uses Supabase Auth
-                },
+        const response = await api.post(`/users/me/drafts`, formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
             },
-        );
+        });
 
         return response.data;
     };
 
     async function fetchUserDrafts(): Promise<Draft[]> {
         console.log("fetching in profile");
-        try {
-            const response = await axios.get<Draft[]>(
-                `${BASE_URL}/${inst_id}/users/me/drafts`,
-                { params: { user_id: user_id } },
-            );
 
-            return response.data;
-        } catch (error) {
-            // Re-throwing the error allows TanStack Query to "see" the failure
-            if (axios.isAxiosError(error)) {
-                console.log(error);
-                throw error;
-            }
-            throw new Error("An unexpected error occurred");
-        }
+        const response = await api.get<Draft[]>(`/users/me/drafts`);
+
+        return response.data;
     }
 
     const {
