@@ -31,9 +31,10 @@ interface AppMetadata {
 type AuthState = {
     user: User | null;
     session: Session | null;
+    isVerified: boolean;
     metadata: AppMetadata | null;
     initialized: boolean;
-    setAuth: (session: Session | null) => void;
+    setAuth: (session: Session | null, isVerifed?: boolean) => void;
     signOut: () => Promise<void>;
 };
 
@@ -70,10 +71,11 @@ export const useAuthStore = create<AuthState>()(
         (set) => ({
             user: null,
             session: null,
+            isVerified: false,
             metadata: null,
             initialized: false, // Useful to prevent "flicker" on app load
 
-            setAuth: (session) => {
+            setAuth: (session, isVerified = false) => {
                 const appMetadata = session?.access_token
                     ? extractAppMetadata(session.access_token)
                     : null;
@@ -82,6 +84,7 @@ export const useAuthStore = create<AuthState>()(
                     session,
                     metadata: appMetadata,
                     user: session?.user ?? null,
+                    isVerified,
                     initialized: true,
                 });
             },
@@ -94,6 +97,7 @@ export const useAuthStore = create<AuthState>()(
                     user: null,
                     session: null,
                     metadata: null,
+                    isVerified: false,
                     initialized: true,
                 });
             },

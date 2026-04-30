@@ -4,6 +4,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import PyJWKClient
 from pydantic import BaseModel, Field
 from typing import Optional
+from app.services import users_service
+from app.core.db import supabase
 
 from app.core.config import settings
 
@@ -53,14 +55,26 @@ async def get_current_user(
             audience="authenticated",
         )
 
-        return UserPayload(**payload)
+        user_payload = UserPayload(**payload)
+        user_id = user_payload.id
+        inst_id = user_payload.inst_id
+        user_status = await users_service.get_user_data(supabase, inst_id, user_id)
+
+        if user_status.status in ["banned", "suspended"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"User account is {user_status}",
+            )
+
+        return user_payload
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
-    except Exception:
-        raise HTTPException(status_code=401, detail="Authentication failed")
+    # except Exception as e:
+    #     print(f"Unexpected Auth Error: {e}")
+    #     raise HTTPException(status_code=401, detail="Authentication failed")
 
 
 # ✅ UPDATED: NEW helper to standardise app-level user access

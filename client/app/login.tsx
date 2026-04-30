@@ -15,6 +15,10 @@ import { Colors } from "@/constants/theme";
 import { Link, useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { API_BASE_URL } from "@/constants/api";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
+import axios from "axios";
 
 const Login = () => {
     const colorScheme = "light";
@@ -49,32 +53,22 @@ const Login = () => {
             );
             const role = payload.app_metadata.user_role;
 
-            // Check if user is banned or suspended
-            const { data: userData } = await supabase
-                .from("users")
-                .select("status")
-                .eq("id", data.user.id)
-                .single(); // returns one row instead of an array
+            const response = await api.get(`${API_BASE_URL}/users/me`);
 
-            if (userData?.status === "banned") {
-                // Sign them out and show ban message
-                await supabase.auth.signOut();
-                setError("Your account has been banned. Please contact your institution admin.");
-                return;
-            }
+            // const userData = response.data;
 
-            if (userData?.status === "suspended") {
-                // Sign them out and show suspended message
-                await supabase.auth.signOut();
-                setError("Your account has been suspended. Please contact your institution admin.");
-                return;
-            }
+            useAuthStore.getState().setAuth(data.session, true);
 
             // All good — go to the app
             router.push("/(tabs)");
-
         } catch (err: any) {
-            setError(err.message || "An unexpected error occurred");
+            if (err.response.status === 403) {
+                setError(
+                    "Your account is restricted. Please contact your institution admin.",
+                );
+            } else {
+                setError(err.message || "An unexpected error occurred");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -209,7 +203,7 @@ const Login = () => {
                             </ThemedText>
                         </View>
                     )}
-                    <Link href={{ pathname: "/forgot_password"}} push asChild>
+                    <Link href={{ pathname: "/forgot_password" }} push asChild>
                         <ThemedText
                             type="body_medium"
                             style={{

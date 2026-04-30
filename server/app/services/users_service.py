@@ -5,6 +5,7 @@ from app.models.registeredUsers import (
     UserProfileDetails,
     UserFollowing,
     UserFollowers,
+    RegisteredUser,
 )
 from app.core.db import supabase
 
@@ -116,3 +117,17 @@ async def find_users_by_name(supabase: Client, inst_id: str, name: str | None):
     response = query.execute()
     print(response.data)
     return response.data
+
+
+async def get_user_data(supabase: Client, inst_id: str, user_id: str):
+    user = (
+        supabase.table("users")
+        .select("*")
+        .eq("inst_id", inst_id)
+        .eq("id", user_id)
+        .limit(1)
+        .single()
+        .execute()
+    )
+
+    return RegisteredUser(**user.data)
