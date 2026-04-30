@@ -1,5 +1,5 @@
 from supabase import Client
-from typing import List
+from typing import List, Optional
 from app.models.news_post import PostComment
 from app.core.db import supabase
 import uuid

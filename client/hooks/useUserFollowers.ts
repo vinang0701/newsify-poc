@@ -47,18 +47,26 @@ export function useUserFollowers(userId?: string) {
 
             if (!userId) return;
 
-            const res = await fetch(`${API_BASE_URL}/${inst_id}/users/${userId}/followers`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
+            const res = await fetch(
+                `${API_BASE_URL}/${inst_id}/users/${userId}/followers`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
                 },
-            });
+            );
 
             if (!res.ok) {
                 const errorData = await res.json();
-                console.error("Failed to fetch user's followers:", errorData?.message || res.statusText);
-                throw new Error(errorData?.message || "Failed to fetch user's followers");
+                console.error(
+                    "Failed to fetch user's followers:",
+                    errorData?.message || res.statusText,
+                );
+                throw new Error(
+                    errorData?.message || "Failed to fetch user's followers",
+                );
             }
 
             const data = await res.json();
@@ -83,18 +91,26 @@ export function useUserFollowers(userId?: string) {
                 return;
             }
 
-            const res = await fetch(`${API_BASE_URL}/${inst_id}/users/me/following`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
+            const res = await fetch(
+                `${API_BASE_URL}/${inst_id}/users/me/following`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
                 },
-            });
+            );
 
             if (!res.ok) {
                 const errorData = await res.json();
-                console.error("Failed to fetch following:", errorData?.message || res.statusText);
-                throw new Error(errorData?.message || "Failed to fetch following");
+                console.error(
+                    "Failed to fetch following:",
+                    errorData?.message || res.statusText,
+                );
+                throw new Error(
+                    errorData?.message || "Failed to fetch following",
+                );
             }
 
             const data = await res.json();
@@ -131,14 +147,16 @@ export function useUserFollowers(userId?: string) {
 
             if (!res.ok) {
                 const errorData = await res.json();
-                console.error("Failed to follow user:", errorData?.message || res.statusText);
+                console.error(
+                    "Failed to follow user:",
+                    errorData?.message || res.statusText,
+                );
                 throw new Error(errorData?.message || "Failed to follow user");
             }
 
             await fetchMyFollowing();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error during follow:", err.message || err);
-            Alert.alert("Error", err.message || "Something went wrong");
         }
     };
 
@@ -152,24 +170,28 @@ export function useUserFollowers(userId?: string) {
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${token}` },
-                }
+                },
             );
 
             if (!res.ok) {
                 const errorData = await res.json();
-                console.error("Failed to unfollow user:", errorData?.message || res.statusText);
-                throw new Error(errorData?.message || "Failed to unfollow user");
+                console.error(
+                    "Failed to unfollow user:",
+                    errorData?.message || res.statusText,
+                );
+                throw new Error(
+                    errorData?.message || "Failed to unfollow user",
+                );
             }
 
             await fetchMyFollowing();
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error during unfollow:", err.message || err);
-            Alert.alert("Error", err.message || "Something went wrong");
         }
     };
 
     const followingUserIds = useMemo(() => {
-        return new Set(myFollowing.map((u) => u.followed_user_id));
+        return new Set(myFollowing.map((u) => u.follower_user_id));
     }, [myFollowing]);
 
     useEffect(() => {

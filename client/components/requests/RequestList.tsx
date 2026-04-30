@@ -118,25 +118,25 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
     },
     labelText: {
-        fontSize: 10,
+        fontSize: 14,
         fontWeight: "700",
         color: "#111827",
         marginBottom: 4,
     },
     mainText: {
-        fontSize: 10,
+        fontSize: 14,
         color: "#111827",
         lineHeight: 14,
     },
     subText: {
         marginTop: 2,
-        fontSize: 9.5,
+        fontSize: 12,
         color: "#374151",
         lineHeight: 13,
     },
     statusLine: {
         marginTop: 4,
-        fontSize: 9.5,
+        fontSize: 12,
         color: "#111827",
     },
     statusPending: {

@@ -19,11 +19,14 @@ import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import { ThemedText } from "./themed-text";
-import { ModalProps, News } from "@/data/types";
+import { News } from "@/data/types";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import BottomSheet, {
 	BottomSheetBackdrop,
+	BottomSheetModal,
+	BottomSheetModalProvider,
 	BottomSheetView,
+	TouchableHighlight,
 } from "@gorhom/bottom-sheet";
 import { z } from "zod";
 import { useAuthStore } from "@/utils/authStore";
@@ -31,11 +34,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { supabase } from "@/lib/supabase";
 import api from "@/lib/axios";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
+
+//UPDATE: inst_id is pased from HomeScreen using authStore metadata.
 type NewsPostCardProps = {
 	news: News;
 	currentUserId?: string; //if not passed, suspend wont show. need to check if current user is the logged in user to be able to suspend own post
+	inst_id: string;
 };
 
 const ToggleLikeSchema = z.object({
@@ -48,20 +55,32 @@ const ToggleLikeSchema = z.object({
 
 type ToggleLikeResponse = z.infer<typeof ToggleLikeSchema>;
 
-function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
+function NewsPostCard({ news, currentUserId, inst_id }: NewsPostCardProps) {
 	const colorScheme = useColorScheme() ?? "light";
 	// const [like, setLike] = useState(news.has_liked);
 	const [bookmark, setBookmark] = useState(news.has_saved);
 	const [bookmarkLoading, setBookmarkLoading] = useState(false);
 	// const [likeCount, setLikeCount] = useState(news.likes_count);
+	const [menuVisible, setMenuVisible] = useState(false);
 	const router = useRouter();
+	const { bottom: bottomSafeArea } = useSafeAreaInsets();
 
-	const bottomSheetRef = useRef<BottomSheet>(null);
+	// const bottomSheetRef = useRef<BottomSheet>(null);
+	const bottomSheetRef = useRef<BottomSheetModal>(null);
 	const snapPoints = useMemo(() => ["20%"], []);
 	const [suspendModalVisible, setSuspendModalVisible] = useState(false);
 	const [suspending, setSuspending] = useState(false);
 
-	const handleExpandSheet = () => bottomSheetRef.current?.expand();
+	// const handleExpandSheet = () => bottomSheetRef.current?.expand();
+	const handleExpandSheet = useCallback(() => {
+		bottomSheetRef.current?.present();
+	}, []);
+	const handleCloseSheet = useCallback(() => {
+		bottomSheetRef.current?.dismiss();
+	}, []);
+	const handleSheetChanges = useCallback((index: number) => {
+		console.log("handleSheetChanges", index);
+	}, []);
 	const { user, metadata } = useAuthStore();
 
 	if (!user || !metadata) {
@@ -154,6 +173,31 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 			},
 		});
 
+	function timeAgo(createdAt?: string | Date | null) {
+		if (!createdAt) return "";
+
+		const date =
+			createdAt instanceof Date ? createdAt : new Date(createdAt);
+
+		if (isNaN(date.getTime())) return "";
+
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+
+		const diffSec = Math.floor(diffMs / 1000);
+		const diffMin = Math.floor(diffSec / 60);
+		const diffHour = Math.floor(diffMin / 60);
+		const diffDay = Math.floor(diffHour / 24);
+		const diffWeek = Math.floor(diffDay / 7);
+
+		if (diffWeek >= 1) return `${diffWeek}w`;
+		if (diffDay >= 1) return `${diffDay}d`;
+		if (diffHour >= 1) return `${diffHour}h`;
+		if (diffMin >= 1) return `${diffMin}m`;
+
+		return `${diffSec}s`;
+	}
+
 	function handleNavigate(user_id: string) {
 		console.log(user_id);
 		router.push({
@@ -201,6 +245,7 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 	};
 
 	const handleBookmark = async () => {
+		console.log("bookmark");
 		if (!currentUserId || bookmarkLoading) return;
 		setBookmarkLoading(true);
 
@@ -236,8 +281,22 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 		}
 	};
 
+	function handleReportPost() {
+		// setMenuVisible(false);
+		handleCloseSheet();
+
+		router.push({
+			pathname: "/report-post",
+			params: {
+				post_id: news.id,
+				inst_id: inst_id,
+			},
+		});
+	}
+
 	return (
-		<GestureHandlerRootView>
+		<View>
+			{/* <BottomSheetModalProvider> */}
 			<View
 				style={[
 					styles.card,
@@ -270,14 +329,16 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 						type="default"
 						style={{
 							fontSize: 10,
-							color: "hsl(0, 0%, 5%)",
+							// color: "hsl(0, 0%, 5%)",
+							color: Colors[colorScheme].text,
 						}}
 					>
-						1d
+						{timeAgo(news.created_at)}
 					</ThemedText>
 					<Pressable
 						style={{ marginLeft: "auto" }}
 						onPress={handleExpandSheet}
+						// onPress={() => setMenuVisible(true)}
 					>
 						<Feather
 							name="more-vertical"
@@ -322,7 +383,6 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 						) || ""}
 					</ThemedText>
 				</View>
-
 				<View style={styles.iconsContainer}>
 					{/* Interaction */}
 					<View
@@ -356,122 +416,136 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 									color="black"
 								/>
 							)}
-						</Pressable>
-						<View style={styles.iconsContainer}>
-							{/* Interaction */}
-							<View
-								style={{
-									flex: 1,
-									flexDirection: "row",
-									justifyContent: "flex-start",
-									gap: 24,
-								}}
-							>
-								<Pressable
-									style={{
-										flex: 0,
-										flexDirection: "row",
-										gap: 4,
-										alignItems: "center",
-										justifyContent: "flex-start",
-									}}
-									onPress={() => mu_toggleLikePost(news.id)}
-								>
-									{news.has_liked ? (
-										<MaterialCommunityIcons
-											name="heart"
-											size={24}
-											color="red"
-										/>
-									) : (
-										<MaterialCommunityIcons
-											name="heart-outline"
-											size={24}
-											color="black"
-										/>
-									)}
 
-									<ThemedText>{news.likes_count}</ThemedText>
-								</Pressable>
-								{/* <Link href="/comment" push asChild> */}
-								<Pressable
-									style={{
-										flex: 0,
-										flexDirection: "row",
-										gap: 4,
-										justifyContent: "flex-start",
-										alignItems: "center",
-									}}
-									onPress={() =>
-										router.push({
-											pathname: "/comment",
-											params: { post_id: news.id },
-										})
-									}
-								>
-									<Feather
-										name="message-square"
-										size={24}
-										color="black"
-									/>
-									<ThemedText>
-										{news.comments_count}
-									</ThemedText>
-								</Pressable>
-								{/* </Link> */}
-							</View>
-							<Pressable
-								onPress={handleBookmark}
-								disabled={bookmarkLoading}
-							>
-								{bookmark ? (
-									<MaterialCommunityIcons
-										name="bookmark"
-										size={24}
-										color={Colors[colorScheme].tint}
-									/>
-								) : (
-									<MaterialCommunityIcons
-										name="bookmark-outline"
-										size={24}
-										color="black"
-									/>
-								)}
-							</Pressable>
-						</View>
+							<ThemedText>{news.likes_count}</ThemedText>
+						</Pressable>
+						{/* <Link href="/comment" push asChild> */}
+						<Pressable
+							style={{
+								flex: 0,
+								flexDirection: "row",
+								gap: 4,
+								justifyContent: "flex-start",
+								alignItems: "center",
+							}}
+							onPress={() =>
+								router.push({
+									pathname: "/comment",
+									params: { post_id: news.id },
+								})
+							}
+						>
+							<Feather
+								name="message-square"
+								size={24}
+								color="black"
+							/>
+							<ThemedText>{news.comments_count}</ThemedText>
+						</Pressable>
+						{/* </Link> */}
 					</View>
+					<Pressable
+						onPress={() => handleBookmark()}
+						disabled={bookmarkLoading}
+					>
+						{bookmark ? (
+							<MaterialCommunityIcons
+								name="bookmark"
+								size={24}
+								color={Colors[colorScheme].tint}
+							/>
+						) : (
+							<MaterialCommunityIcons
+								name="bookmark-outline"
+								size={24}
+								color="black"
+							/>
+						)}
+					</Pressable>
 				</View>
 			</View>
 
 			{/* Bottom sheet — shows options when 3 dots is tapped */}
-			<BottomSheet
+			<BottomSheetModal
 				ref={bottomSheetRef}
-				index={-1}
-				snapPoints={snapPoints}
+				onChange={handleSheetChanges}
 				backdropComponent={renderBackdrop}
 				enablePanDownToClose
 			>
-				<BottomSheetView style={styles.bottomSheet}>
+				<BottomSheetView
+					style={[
+						styles.bottomSheet,
+						{ paddingBottom: bottomSafeArea + 28 },
+					]}
+				>
+					<Pressable style={styles.menuItem}>
+						<Feather
+							name="bookmark"
+							size={20}
+							color={Colors[colorScheme].text}
+						/>
+						<ThemedText
+							type="defaultSemiBold"
+							style={{ color: Colors[colorScheme].text }}
+						>
+							Save to bookmarks
+						</ThemedText>
+					</Pressable>
+
+					<Pressable style={styles.menuItem}>
+						<Feather
+							name="user-plus"
+							size={20}
+							color={Colors[colorScheme].text}
+						/>
+						<ThemedText
+							type="defaultSemiBold"
+							style={{ color: Colors[colorScheme].text }}
+						>
+							Follow
+						</ThemedText>
+					</Pressable>
+
+					<Pressable
+						style={styles.menuItem}
+						onPress={handleReportPost}
+					>
+						<Feather
+							name="alert-circle"
+							size={20}
+							color={Colors[colorScheme].alert_red}
+						/>
+						<ThemedText
+							type="defaultSemiBold"
+							style={{ color: Colors[colorScheme].text }}
+						>
+							Report post
+						</ThemedText>
+					</Pressable>
 					{/* Only show suspend option if this is the user's own post */}
 					{currentUserId === news.author_id && (
 						<Pressable
-							style={styles.bottomSheetOption}
+							style={styles.menuItem}
 							onPress={() => {
 								bottomSheetRef.current?.close();
 								setSuspendModalVisible(true); // show confirmation modal
 							}}
 						>
-							<Feather name="x-circle" size={24} color="red" />
+							<Feather
+								name="x-circle"
+								size={20}
+								color={Colors[colorScheme].alert_red}
+							/>
 							<ThemedText
 								type="defaultSemiBold"
-								style={{ color: "red" }}
+								style={{ color: Colors[colorScheme].alert_red }}
 							>
 								Suspend news post
 							</ThemedText>
 						</Pressable>
 					)}
 				</BottomSheetView>
-			</BottomSheet>
+			</BottomSheetModal>
 
 			{/* Confirmation modal */}
 			<Modal
@@ -484,7 +558,9 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 					<View
 						style={[
 							styles.modalCard,
-							{ backgroundColor: Colors[colorScheme].bg_light },
+							{
+								backgroundColor: Colors[colorScheme].bg_light,
+							},
 						]}
 					>
 						<ThemedText
@@ -546,7 +622,8 @@ function NewsPostCard({ news, currentUserId }: NewsPostCardProps) {
 					</View>
 				</View>
 			</Modal>
-		</GestureHandlerRootView>
+			{/* </BottomSheetModalProvider> */}
+		</View>
 	);
 }
 
@@ -579,9 +656,10 @@ const styles = StyleSheet.create({
 	},
 
 	bottomSheet: {
+		flex: 0,
 		paddingHorizontal: 16,
 		paddingVertical: 12,
-		gap: 16,
+		gap: 12,
 	},
 	bottomSheetOption: {
 		flexDirection: "row",
@@ -603,6 +681,17 @@ const styles = StyleSheet.create({
 		padding: 12,
 		borderRadius: 8,
 		alignItems: "center",
+	},
+	menuItem: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: 10,
+		paddingVertical: 10,
+	},
+	menuText: {
+		fontSize: 13,
+		fontWeight: "700",
+		color: "#111111",
 	},
 });
 

@@ -9,16 +9,20 @@ import {
     ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useRouter } from "expo-router";
 import { usePreferences } from "@/hooks/usePreferences";
 import { Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
 import Feather from "@expo/vector-icons/Feather";
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
 
 export default function ExcludePreferencesScreen() {
     const colorScheme = useColorScheme() ?? "light";
+    const router = useRouter();
+    const { user, metadata } = useAuthStore();
 
     // Get the includeIds that were passed from Screen 1
     // useLocalSearchParams reads the params from the URL/navigation
@@ -38,10 +42,11 @@ export default function ExcludePreferencesScreen() {
 
     // Toggle exclude selection — same logic as include but for excluded list
     const toggleExclude = (id: string) => {
-        setExcluded((prev) =>
-            prev.includes(id)
-                ? prev.filter((c) => c !== id) // remove if already excluded
-                : [...prev, id]                 // add if not excluded
+        setExcluded(
+            (prev) =>
+                prev.includes(id)
+                    ? prev.filter((c) => c !== id) // remove if already excluded
+                    : [...prev, id], // add if not excluded
         );
     };
 
@@ -49,7 +54,9 @@ export default function ExcludePreferencesScreen() {
         setSaving(true);
         try {
             // Get the currently logged in user
-            const { data: { user } } = await supabase.auth.getUser();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
             if (!user) throw new Error("No user found");
 
             // Delete ALL existing preferences for this user
@@ -83,7 +90,44 @@ export default function ExcludePreferencesScreen() {
 
             // Go to the main feed
             router.replace("/(tabs)");
+        } catch (err) {
+            Alert.alert("Error", "Something went wrong. Please try again.");
+        } finally {
+            setSaving(false);
+        }
+    };
 
+    const handleSavePreferences = async () => {
+        setSaving(true);
+        try {
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!user) throw new Error("No user found");
+
+            // Build rows for include and exclude
+            const includeRows = includedIds.map((category_id) => ({
+                category_id: category_id,
+                preference_type: "include",
+            }));
+
+            const excludeRows = excluded.map((id) => ({
+                category_id: id,
+                preference_type: "exclude",
+            }));
+
+            // Insert both lists together
+            const combinedPreferences = [...includeRows, ...excludeRows];
+
+            const response = await api.post(
+                `/${metadata?.inst_id}/users/me/preferences`,
+                {
+                    preferences: combinedPreferences,
+                },
+            );
+            if (response.data) {
+                router.replace("/(tabs)/profile_page/[user_id]");
+            }
         } catch (err) {
             Alert.alert("Error", "Something went wrong. Please try again.");
         } finally {
@@ -93,8 +137,17 @@ export default function ExcludePreferencesScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                <ActivityIndicator size="large" color={Colors[colorScheme].tint} />
+            <SafeAreaView
+                style={{
+                    flex: 1,
+                    justifyContent: "center",
+                    alignItems: "center",
+                }}
+            >
+                <ActivityIndicator
+                    size="large"
+                    color={Colors[colorScheme].tint}
+                />
             </SafeAreaView>
         );
     }
@@ -102,12 +155,24 @@ export default function ExcludePreferencesScreen() {
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
             {/* Header */}
-            <View style={[styles.headerContainer, { backgroundColor: Colors[colorScheme].tint }]}>
+            <View
+                style={[
+                    styles.headerContainer,
+                    { backgroundColor: Colors[colorScheme].tint },
+                ]}
+            >
                 {/* Back button goes back to Screen 1 */}
                 <Pressable onPress={() => router.back()}>
-                    <Feather name="arrow-left" size={24} color={Colors[colorScheme].button_text} />
+                    <Feather
+                        name="arrow-left"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                    />
                 </Pressable>
-                <ThemedText type="defaultSemiBold" style={{ color: Colors[colorScheme].button_text }}>
+                <ThemedText
+                    type="defaultSemiBold"
+                    style={{ color: Colors[colorScheme].button_text }}
+                >
                     Select Excluded Categories
                 </ThemedText>
                 <View style={{ width: 24 }} />
@@ -167,14 +232,16 @@ export default function ExcludePreferencesScreen() {
                         styles.saveBtn,
                         {
                             backgroundColor: saving
-                                ? "#ccc"                        // grey while saving
-                                : Colors[colorScheme].tint,     // normal color
+                                ? "#ccc" // grey while saving
+                                : Colors[colorScheme].tint, // normal color
                         },
                     ]}
-                    onPress={handleSave}
+                    onPress={handleSavePreferences}
                     disabled={saving} // prevent double tapping
                 >
-                    <ThemedText style={{ color: Colors[colorScheme].button_text }}>
+                    <ThemedText
+                        style={{ color: Colors[colorScheme].button_text }}
+                    >
                         {saving ? "Saving..." : "Save"}
                     </ThemedText>
                 </Pressable>

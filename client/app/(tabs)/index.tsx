@@ -25,10 +25,13 @@ import {
 } from "react-native-safe-area-context";
 import NewsPostCard from "@/components/news_post_card";
 // import CommentsModal from "@/components/comments_modal";
-import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
+import BottomSheet, {
+	BottomSheetBackdrop,
+	BottomSheetModalProvider,
+} from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation } from "expo-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
@@ -57,10 +60,14 @@ const DATA = [
 // like, comment, repost, save
 
 export default function HomeScreen() {
-	const { user, metadata } = useAuthStore();
+	const { user, metadata, initialized } = useAuthStore();
 
 	if (!metadata || !user) {
 		throw new Error("Error occurred when retrieving user data.");
+	}
+
+	if (!initialized) {
+		return null;
 	}
 	const inst_id = metadata.inst_id;
 
@@ -69,7 +76,11 @@ export default function HomeScreen() {
 	// const snapPoints = useMemo(() => ["100%"], []);
 	const bottomSheetRef = useRef<BottomSheet>(null);
 	const insets = useSafeAreaInsets();
-	// const navigation = useNavigation();
+	// Pull categories from the hook — we reuse this for both steps of the modal
+	const { categories, selected, toggleCategory, loading } = usePreferences();
+	if (categories === undefined) {
+		throw new Error("Error occurred while fetching categories.");
+	}
 
 	const [refreshing, setRefreshing] = React.useState(false);
 
@@ -108,13 +119,14 @@ export default function HomeScreen() {
 		error,
 		refetch,
 	} = useQuery<News[]>({
-		queryKey: ["news"],
+		queryKey: ["news", inst_id],
 		queryFn: async () => {
 			const response = await api.get(`${inst_id}/news/feed`);
 			// Optional: Zod validation here
 			// return NewsSchema.array().parse(response.data);
 			return response.data;
 		},
+		enabled: !!inst_id,
 	});
 
 	// Get the currently logged in user from Supabase auth
@@ -132,13 +144,13 @@ export default function HomeScreen() {
 	const { data: personalisedData, refetch: refetchPersonalised } = useQuery<
 		News[]
 	>({
-		queryKey: ["personalised_news", currentUser?.id],
+		queryKey: ["news"],
 		queryFn: async (): Promise<News[]> => {
-			const response = await fetch(
-				`http://10.0.2.2:8000/api/v1/391848ae-e6c6-43ec-a34c-e6ce06f0d842/news/feed/personalised?user_id=${currentUser?.id}`,
+			const response = await api.get(
+				`/${metadata.inst_id}/news/feed/personalised?user_id=${currentUser?.id}`,
 			);
-			if (!response.ok) throw new Error("Network response was not ok");
-			return await response.json();
+			// if (!response.ok) throw new Error("Network response was not ok");
+			return await response.data;
 		},
 		enabled: !!currentUser?.id, // only fetch once we have the user id
 	});
@@ -168,16 +180,13 @@ export default function HomeScreen() {
 	useEffect(() => {
 		const checkPreferences = async () => {
 			if (!currentUser?.id) return;
+			if (!loading) {
+				const data = selected;
 
-			const { data } = await supabase
-				.from("user_preferences")
-				.select("category_id")
-				.eq("user_id", currentUser.id)
-				.limit(1); // only need to know if at least one exists
-
-			if (!data || data.length === 0) {
-				// No preferences found → first time user → show modal
-				setShowPrefsModal(true);
+				if (!data || data.length === 0) {
+					// No preferences found → first time user → show modal
+					setShowPrefsModal(true);
+				}
 			}
 		};
 		checkPreferences();
@@ -186,44 +195,39 @@ export default function HomeScreen() {
 	// Called when user taps Save on Step 2
 	const handleSavePreferences = async () => {
 		if (!currentUser?.id) return;
-		setSavingPrefs(true);
-
 		try {
-			// Delete any existing preferences first
-			await supabase
-				.from("user_preferences")
-				.delete()
-				.eq("user_id", currentUser.id);
+			setSavingPrefs(true);
 
 			// Build rows for include and exclude
-			const includeRows = includeIds.map((category_id) => ({
-				user_id: currentUser.id,
-				category_id,
+			const includeRows = includeIds.map((id) => ({
+				category_id: id,
 				preference_type: "include",
 			}));
 
-			const excludeRows = excludeIds.map((category_id) => ({
-				user_id: currentUser.id,
-				category_id,
+			const excludeRows = excludeIds.map((id) => ({
+				category_id: id,
 				preference_type: "exclude",
 			}));
 
 			// Insert both lists together
-			await supabase
-				.from("user_preferences")
-				.insert([...includeRows, ...excludeRows]);
+			const combinedPreferences = [...includeRows, ...excludeRows];
+
+			const response = await api.post(
+				`/${inst_id}/users/me/preferences`,
+				{
+					preferences: combinedPreferences,
+				},
+			);
 
 			// Close the modal
 			setShowPrefsModal(false);
+			return response.data;
 		} catch (err) {
 			Alert.alert("Error", "Something went wrong. Please try again.");
 		} finally {
 			setSavingPrefs(false);
 		}
 	};
-
-	// Pull categories from the hook — we reuse this for both steps of the modal
-	const { categories } = usePreferences();
 
 	return (
 		<GestureHandlerRootView style={{ flex: 1 }}>
@@ -257,12 +261,12 @@ export default function HomeScreen() {
 						keyExtractor={(item) => item.id}
 						horizontal
 						style={{ marginBottom: 12, elevation: 10 }}
-						data={DATA}
+						data={categories}
 						renderItem={({ item }) => (
 							<Pressable
 								style={{
 									backgroundColor:
-										activeFilter === item.title
+										activeFilter === item.category_name
 											? Colors[colorScheme].tint
 											: Colors[colorScheme].bg_light,
 									paddingHorizontal: 12,
@@ -274,10 +278,10 @@ export default function HomeScreen() {
 								}}
 								onPress={() => {
 									// Check if active state is pressed
-									if (activeFilter === item.title) {
+									if (activeFilter === item.category_name) {
 										return;
 									} else {
-										setActiveFilter(item.title);
+										setActiveFilter(item.category_name);
 									}
 								}}
 							>
@@ -286,24 +290,30 @@ export default function HomeScreen() {
 									emphasized={true}
 									style={{
 										color:
-											activeFilter === item.title
+											activeFilter === item.category_name
 												? Colors[colorScheme]
 														.button_text
 												: Colors[colorScheme].tint,
 									}}
 								>
-									{item.title}
+									{item.category_name}
 								</ThemedText>
 							</Pressable>
 						)}
 					/>
+
 					{activeFilter === "Recent" ? (
 						<View style={{ paddingBottom: insets.bottom + 20 }}>
 							<FlashList
 								style={{ marginBottom: 16 }}
-								data={data}
+								data={personalisedData}
 								renderItem={({ item }) => (
-									<NewsPostCard news={item} key={item.id} />
+									<NewsPostCard
+										news={item}
+										currentUserId={currentUser?.id}
+										inst_id={inst_id}
+										key={item.id}
+									/>
 								)}
 							/>
 						</View>

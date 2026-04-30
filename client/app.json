@@ -4,12 +4,12 @@
 		"slug": "newsify",
 		"version": "1.0.0",
 		"orientation": "portrait",
-		"icon": "./assets/images/icon.png",
-		"scheme": "com.newsify",
+		"icon": "./assets/images/test_icon.png",
+		"scheme": "com.anonymous.client",
 		"userInterfaceStyle": "automatic",
 		"ios": {
 			"supportsTablet": true,
-			"bundleIdentifier": "com.newsify",
+			"bundleIdentifier": "com.anonymous.client",
 			"infoPlist": {
 				"ITSAppUsesNonExemptEncryption": false
 			}
@@ -17,27 +17,26 @@
 		"android": {
 			"adaptiveIcon": {
 				"backgroundColor": "#E6F4FE",
-				"foregroundImage": "./assets/images/android-icon-foreground.png",
-				"backgroundImage": "./assets/images/android-icon-background.png",
-				"monochromeImage": "./assets/images/android-icon-monochrome.png"
+				"foregroundImage": "./assets/images/test_icon.png",
+				"monochromeImage": "./assets/images/test_icon_monochrome.png"
 			},
 			"predictiveBackGestureEnabled": false,
 			"permissions": [
 				"android.permission.CAMERA",
 				"android.permission.RECORD_AUDIO"
 			],
-			"package": "com.newsify"
+			"package": "com.anonymous.client"
 		},
 		"web": {
 			"output": "static",
-			"favicon": "./assets/images/favicon.png"
+			"favicon": "./assets/images/test_icon.png"
 		},
 		"plugins": [
 			"expo-router",
 			[
 				"expo-splash-screen",
 				{
-					"image": "./assets/images/splash-icon.png",
+					"image": "./assets/images/test_icon.png",
 					"imageWidth": 200,
 					"resizeMode": "contain",
 					"backgroundColor": "#ffffff",
@@ -54,9 +53,7 @@
 					"recordAudioAndroid": true
 				}
 			],
-			[
-				"expo-font"
-			],
+			["expo-font"],
 			[
 				"expo-image-picker",
 				{

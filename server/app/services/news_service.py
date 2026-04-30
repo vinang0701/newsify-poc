@@ -20,6 +20,7 @@ async def get_institution_news(
         .select(
             """
             id,
+            created_at,
             author,
             title, 
             description, 
@@ -67,6 +68,7 @@ async def get_institution_news(
         posts.append(
             NewsPost(
                 id=post["id"],
+                created_at=post["created_at"],
                 author_id=post["author"],
                 author=post["users"]["name"],
                 title=post["title"],
@@ -106,6 +108,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
         .select(
             """
                 community_id,
+                created_at,
                 news_posts!inner(id, title,
                 description,
                 image_url,
@@ -119,7 +122,6 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
         """
         )
         .eq("community_id", community_id)
-        .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -127,6 +129,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
     return [
         NewsPost(
             id=post["news_posts"]["id"],
+            created_at=post["created_at"],
             author_id=post["news_posts"]["author"]["id"],
             author=post["news_posts"]["author"]["name"],  # Map snake_case to camelCase
             title=post["news_posts"]["title"],
@@ -261,13 +264,20 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
         .select(
             """
             id,
+            created_at,
             author,
             title, 
             description, 
             image_url,
             content,
-            users!news_posts_author_fkey!inner(name, image_url)
-        """
+            users!news_posts_author_fkey!inner(name, image_url),
+            likes_count:post_likes(count),
+            comments_count:post_comments(count),
+            user_liked:post_likes(count).eq(user_id, {user_id}),
+            user_saved:saved_post(count).eq(user_id, {user_id})
+            """.format(
+                user_id=f"'{user_id}'"
+            )
         )
         .eq("author", user_id)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
@@ -275,21 +285,34 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
         .execute()
     )
 
-    if len(response.data) != 0:
-        return [
+    posts = []
+    for post in response.data:
+        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
+        likes = post.get("likes_count", [{}])[0].get("count", 0)
+        comments = post.get("comments_count", [{}])[0].get("count", 0)
+
+        # 3. Boolean check: if count > 0, the user has interacted with it
+        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
+        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
+
+        posts.append(
             NewsPost(
                 id=post["id"],
+                created_at=post["created_at"],
                 author_id=post["author"],
-                author=post["users"]["name"],  # Map snake_case to camelCase
+                author=post["users"]["name"],
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"]
-                or {},  # Pydantic handles JSONB to Dict[str, Any] automatically
+                content=post["content"] or {},
+                likes_count=likes,
+                comments_count=comments,
+                has_liked=has_liked,
+                has_saved=has_saved,
             )
-            for post in response.data
-        ]
-    return []
+        )
+
+    return posts
 
 
 async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:
@@ -339,7 +362,7 @@ async def get_personalised_news(
 
     # If user has no preferences, return the normal feed so screen isnt empty
     if not preferred_ids:
-        return await get_institution_news(supabase, inst_id)
+        return await get_institution_news(supabase, str(inst_id), user_id)
 
     # Step 2: Fetch posts where category_id matches user's preferences
     # category_id is now directly on news_posts so no joining needed!
@@ -348,38 +371,59 @@ async def get_personalised_news(
         .select(
             """
             id,
+            created_at,
             author,
-            title,
-            description,
+            title, 
+            description, 
             image_url,
             content,
-            users!news_posts_author_fkey!inner(name, image_url)
-            """
+            users!news_posts_author_fkey!inner(name, image_url),
+            likes_count:post_likes(count),
+            comments_count:post_comments(count),
+            user_liked:post_likes(count).eq(user_id, {user_id}),
+            user_saved:saved_post(count).eq(user_id, {user_id})
+            """.format(
+                user_id=f"'{user_id}'"
+            )
         )
-        .eq("inst_id", inst_id)  # only this institution
-        .in_("category_id", preferred_ids)  # only matching categories
+        .eq("inst_id", inst_id)
+        .in_("category_id", preferred_ids)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
-        .order("created_at", desc=True)  # newest first
+        .order("created_at", desc=True)
         .execute()
     )
 
-    # Return empty list if no matching posts found
     if not response.data:
         return []
 
-    # Map to NewsPost objects — same pattern as get_institution_news
-    return [
-        NewsPost(
-            id=post["id"],
-            author_id=post["author"],
-            author=post["users"]["name"],
-            title=post["title"],
-            description=post["description"] or "",
-            image_url=post["image_url"] or "",
-            content=post["content"] or {},
+    posts = []
+    for post in response.data:
+        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
+        likes = post.get("likes_count", [{}])[0].get("count", 0)
+        comments = post.get("comments_count", [{}])[0].get("count", 0)
+
+        # 3. Boolean check: if count > 0, the user has interacted with it
+        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
+        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
+
+        posts.append(
+            NewsPost(
+                id=post["id"],
+                created_at=post["created_at"],
+                author_id=post["author"],
+                author=post["users"]["name"],
+                title=post["title"],
+                description=post["description"] or "",
+                image_url=post["image_url"] or "",
+                content=post["content"] or {},
+                likes_count=likes,
+                comments_count=comments,
+                has_liked=has_liked,
+                has_saved=has_saved,
+            )
         )
-        for post in response.data
-    ]
+
+    return posts
 
 
 async def save_post(supabase: Client, user_id: str, post_id: str) -> dict:
@@ -411,44 +455,109 @@ async def unsave_post(supabase: Client, user_id: str, post_id: str) -> dict:
 
 async def get_saved_posts(supabase: Client, user_id: str) -> List[dict]:
     # Fetch all posts saved by this user
+    # response = (
+    #     supabase.table("saved_post")
+    #     .select(
+    #         """
+    #         post_id,
+    #         news_posts!inner(
+    #             id,
+    #             author,
+    #             title,
+    #             description,
+    #             image_url,
+    #             content,
+    #             status,
+    #             users!news_posts_author_fkey!inner(name, image_url)
+    #         )
+    #         """
+    #     )
+    #     .eq("user_id", user_id)  # only this user's saved posts
+    #     .eq("news_posts.status", "PUBLISHED")  # only published posts
+    #     .order("saved_at", desc=True)  # most recently saved first
+    #     .execute()
+    # )
+    query_columns = """
+        post_id,
+        news_posts!inner(
+            id,
+            created_at,
+            author,
+            title,
+            description,
+            image_url,
+            content,
+            status,
+            users!news_posts_author_fkey!inner(name, image_url),
+            likes_count:post_likes(count),
+            comments_count:post_comments(count),
+            user_liked:post_likes(count)
+        )
+    """
+
     response = (
         supabase.table("saved_post")
-        .select(
-            """
-            post_id,
-            news_posts!inner(
-                id,
-                author,
-                title,
-                description,
-                image_url,
-                content,
-                status,
-                users!news_posts_author_fkey!inner(name, image_url)
-            )
-            """
-        )
-        .eq("user_id", user_id)  # only this user's saved posts
-        .eq("news_posts.status", "PUBLISHED")  # only published posts
-        .order("saved_at", desc=True)  # most recently saved first
+        .select(query_columns)
+        .eq("user_id", user_id)
+        .eq("news_posts.status", "PUBLISHED")
+        # Filter the nested post_likes specifically for this user
+        .eq("news_posts.post_likes.user_id", user_id)
+        .order("saved_at", desc=True)
         .execute()
     )
 
     if not response.data:
         return []
 
-    return [
-        NewsPost(
-            id=row["news_posts"]["id"],
-            author_id=row["news_posts"]["author"],
-            author=row["news_posts"]["users"]["name"],
-            title=row["news_posts"]["title"],
-            description=row["news_posts"]["description"] or "",
-            image_url=row["news_posts"]["image_url"] or "",
-            content=row["news_posts"]["content"] or {},
+    if not response.data:
+        return []
+
+    posts = []
+    for row in response.data:
+        p = row.get("news_posts")
+        if not p:
+            continue
+
+        # Logic for boolean flags:
+        # If the query returned any record in 'user_liked' for this user, it's True
+        has_liked = len(p.get("user_liked", [])) > 0
+
+        # Since we are fetching from 'saved_post' table for THIS user, it's always True
+        has_saved = True
+
+        posts.append(
+            NewsPost(
+                id=p["id"],
+                created_at=p["created_at"],
+                author_id=p["author"],
+                author=p["users"]["name"] if p.get("users") else "Unknown",
+                title=p["title"],
+                description=p.get("description") or "",
+                image_url=p.get("image_url") or "",
+                content=p.get("content") or {},
+                likes_count=p["likes_count"][0]["count"] if p.get("likes_count") else 0,
+                comments_count=(
+                    p["comments_count"][0]["count"] if p.get("comments_count") else 0
+                ),
+                has_liked=has_liked,
+                has_saved=has_saved,
+            )
         )
-        for row in response.data
-    ]
+
+    return posts
+
+    # return [
+    #     NewsPost(
+    #         id=row["news_posts"]["id"],
+    #         author_id=row["news_posts"]["author"],
+    #         author=row["news_posts"]["users"]["name"],
+    #         title=row["news_posts"]["title"],
+    #         description=row["news_posts"]["description"] or "",
+    #         image_url=row["news_posts"]["image_url"] or "",
+    #         content=row["news_posts"]["content"] or {},
+    #     )
+    #     for row in response.data
+    # ]
 
 
 async def is_post_saved(supabase: Client, user_id: str, post_id: str) -> bool:
@@ -468,11 +577,11 @@ async def is_post_saved(supabase: Client, user_id: str, post_id: str) -> bool:
 # ----------------------------
 # MY LIKES
 # ----------------------------
-async def toggle_post_like(post_id: uuid.UUID, user_id: uuid.UUID):
+async def toggle_post_like(post_id: uuid.UUID, user_id: str):
     try:
 
         response = supabase.rpc(
-            "toggle_post_like", {"p_post_id": str(post_id), "p_user_id": str(user_id)}
+            "toggle_post_like", {"p_post_id": str(post_id), "p_user_id": user_id}
         ).execute()
 
         if not response.data:

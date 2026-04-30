@@ -8,13 +8,24 @@ from app.services import communities_service, news_service
 from app.core.config import settings
 from app.core.db import supabase
 from app.models.community import CommunityApplication, CommunityApplicationReq
-from app.dependencies.auth import get_current_user
+from app.core.auth import get_current_user, get_current_app_user
+from pydantic import BaseModel
+from typing import Optional
 
 router = APIRouter(prefix="/{inst_id}/communities", tags=["communities"])
 
 
+class UpdatePostRequestStatus(BaseModel):
+    status: str
+    rejection_reason: Optional[str] = None
+
+
+class PostToCommunityRequest(BaseModel):
+    request_id: str
+
+
 # Return an array of institution news
-@router.get("/")
+@router.get("")
 async def get_communities(inst_id: str):
     # Add JWT Decode later
 
@@ -33,8 +44,6 @@ async def get_communities(inst_id: str):
 @router.get("/{community_id}")
 async def get_community(community_id: str):
     community = await communities_service.get_community(supabase, community_id)
-    if community is None:
-        raise HTTPException(status_code=404, detail="Community cannot be found")
 
     return community
 
@@ -45,7 +54,7 @@ async def get_community_news(community_id: str):
     if community_news is None:
         raise HTTPException(status_code=404, detail="This community does not exist.")
 
-    return community_news
+    return community_news or []
 
 
 @router.post("/requests")
@@ -93,17 +102,15 @@ async def get_community_members(inst_id: str, community_id: str):
 
 @router.get("/{community_id}/members/me/role")
 async def get_community_role(
-    inst_id: str,
-    community_id: str,
-    current_user=Depends(get_current_user)
+    inst_id: str, community_id: str, current_user=Depends(get_current_app_user)
 ):
     try:
         role = await communities_service.get_community_role(
-            supabase, community_id, current_user.id
+            supabase, community_id, current_user["id"]
         )
         return {"role": role}
     except Exception as e:
-        print(f"Error fetching members: {e}")
+        print(f"Error fetching role: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community role")
 
 
@@ -115,5 +122,61 @@ async def get_community_post_requests(inst_id: str, community_id: str):
         )
         return post_request
     except Exception as e:
-        print(f"Error fetching members: {e}")
-        raise HTTPException(status_code=500, detail="Could not fetch community post requests")
+        print(f"Error fetching requests: {e}")
+        raise HTTPException(
+            status_code=500, detail="Could not fetch community post requests"
+        )
+
+
+@router.post("/{community_id}/post_requests/{request_id}")
+async def update_community_post_request(
+    inst_id: str,
+    community_id: str,
+    request_id: str,
+    review_data: UpdatePostRequestStatus,
+    current_user=Depends(get_current_app_user),
+):
+    try:
+        updated_request, error = (
+            await communities_service.update_community_post_request(
+                supabase,
+                request_id=request_id,
+                status=review_data.status,
+                reviewed_by_user_id=current_user["id"],
+                rejection_reason=review_data.rejection_reason,
+            )
+        )
+
+        if error:
+            raise HTTPException(
+                status_code=400, detail=f"Failed to update post request: {error}"
+            )
+
+        return {
+            "status": "ok",
+            "message": f"Post request {review_data.status}",
+            "data": updated_request,
+        }
+    except Exception as e:
+        print(f"Error updating post request: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update post request")
+
+
+@router.post("/{community_id}/news")
+async def post_to_community(
+    inst_id: str,
+    community_id: str,
+    body: PostToCommunityRequest,
+):
+    try:
+        news = await communities_service.post_to_community(
+            supabase,
+            community_id=community_id,
+            request_id=body.request_id,
+        )
+        return news
+    except Exception as e:
+        print(f"Error posting to community: {e}")
+        raise HTTPException(
+            status_code=500, detail="Could not post to community"
+        )
