@@ -9,6 +9,8 @@ from app.models.news_post import (
 from app.core.db import supabase
 import uuid
 from fastapi import File, UploadFile
+from fastapi import HTTPException
+from postgrest.exceptions import APIError
 
 
 async def get_institution_news(
@@ -152,6 +154,7 @@ async def create_post(
     school: str,
     communities: List[str],
     category_id: str | None = None,
+    is_flagged: bool = False,
 ) -> List[dict]:
     try:
 
@@ -182,7 +185,7 @@ async def create_post(
                     "title": title,
                     "description": content[:100],
                     "content": {"text": content},
-                    "status": "PUBLISHED",
+                    "status": "FLAGGED" if is_flagged else "PUBLISHED",
                     "category_id": category_id,
                 }
             )

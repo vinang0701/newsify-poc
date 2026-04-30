@@ -16,7 +16,6 @@ import {
 	Flag,
 	LayoutGrid,
 	LogOut,
-	Tag,
 	User2,
 	Users2,
 } from "lucide-react";

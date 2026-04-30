@@ -239,6 +239,9 @@ async def create_news_post(
         user_id = app_user["id"]
         isSchool = school == "true"
 
+        # Run moderation check on title + content
+        is_flagged = moderate_text(f"{title} {content}")
+
         await news_service.create_post(
             supabase,
             inst_id,
@@ -249,12 +252,21 @@ async def create_news_post(
             isSchool,
             communities,
             category_id,
+            is_flagged,
         )
 
+        if is_flagged:
+            return {
+                "status" : "flagged",
+                "flagged" : True,
+                "message" : "Your post has been flagged for review by an admin.",
+            }
+        
         return {
             "status": "success",
             "message": "You have successfully published your news post.",
         }
+    
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail="Failed to upload image")

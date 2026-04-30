@@ -118,3 +118,113 @@ async def update_user(
         .execute()
     )
     return response.data
+
+async def get_flagged_posts(supabase: Client, inst_id: str) -> List[dict]:
+    # Fetch all posts with FLAGGED status for this institution
+    response = (
+        supabase.table("news_posts")
+        .select(
+            """
+            id,
+            title,
+            description,
+            content,
+            image_url,
+            status,
+            created_at,
+            users!news_posts_author_fkey!inner(name)
+            """
+        )
+        .eq("inst_id", inst_id)
+        .eq("status", "FLAGGED")   # only flagged posts
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data
+
+
+async def approve_post(supabase: Client, post_id: str) -> dict:
+    # Change status to PUBLISHED
+    response = (
+        supabase.table("news_posts")
+        .update({"status": "PUBLISHED"})
+        .eq("id", post_id)
+        .execute()
+    )
+    return response.data
+
+
+async def reject_post(supabase: Client, post_id: str) -> dict:
+    # Change status to REJECTED
+    response = (
+        supabase.table("news_posts")
+        .update({"status": "REJECTED"})
+        .eq("id", post_id)
+        .execute()
+    )
+    return response.data
+
+async def get_published_posts(supabase: Client, inst_id: str) -> List[dict]:
+    # Fetch all published posts for this institution for admin review
+    response = (
+        supabase.table("news_posts")
+        .select(
+            """
+            id,
+            title,
+            description,
+            image_url,
+            status,
+            created_at,
+            author,
+            users!news_posts_author_fkey!inner(name, email)
+            """
+        )
+        .eq("inst_id", inst_id)
+        .eq("status", "PUBLISHED")
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data
+
+
+async def flag_post(
+    supabase: Client,
+    post_id: str,
+    reason: str,
+    admin_id: str,
+    inst_id: str,
+) -> dict:
+    # Step 1: Get the post author so we can notify them
+    post_response = (
+        supabase.table("news_posts")
+        .select("author, title")
+        .eq("id", post_id)
+        .single()
+        .execute()
+    )
+
+    if not post_response.data:
+        return None
+
+    author_id = post_response.data["author"]
+    post_title = post_response.data["title"]
+
+    # Step 2: Update post status to FLAGGED
+    supabase.table("news_posts").update(
+        {"status": "FLAGGED"}
+    ).eq("id", post_id).execute()
+
+    # Step 3: Send notification to the post author with the reason
+    supabase.table("notifications").insert({
+        "actor_user_id": admin_id,          # the admin who flagged
+        "notification_type": "POST_FLAGGED",
+        "reference_id": post_id,
+        "reference_table": "news_posts",
+        # Include reason in the message so author knows why
+        "message": f"Your post '{post_title}' has been flagged for review. Reason: {reason}",
+        "is_read": False,
+        "recipient_user_id": author_id,    # notify the post author
+    }).execute()
+
+    return {"status": "flagged"}
