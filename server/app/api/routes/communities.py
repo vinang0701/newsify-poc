@@ -12,7 +12,11 @@ from app.core.auth import get_current_user, get_current_app_user
 from pydantic import BaseModel
 from typing import Optional
 
-router = APIRouter(prefix="/{inst_id}/communities", tags=["communities"])
+router = APIRouter(
+    prefix="/{inst_id}/communities",
+    tags=["communities"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 class UpdatePostRequestStatus(BaseModel):
@@ -177,6 +181,4 @@ async def post_to_community(
         return news
     except Exception as e:
         print(f"Error posting to community: {e}")
-        raise HTTPException(
-            status_code=500, detail="Could not post to community"
-        )
+        raise HTTPException(status_code=500, detail="Could not post to community")
