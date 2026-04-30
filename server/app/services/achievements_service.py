@@ -2,25 +2,17 @@ from app.core.db import supabase
 
 
 async def get_user_achievement_metrics(user_id: str) -> dict:
-    posts = (
-        supabase.table("news_posts")
-        .select("id")
-        .eq("author_id", user_id)
-        .execute()
-    )
+    posts = supabase.table("news_posts").select("id").eq("author", user_id).execute()
 
     followers = (
-        supabase.table("user_followers")
+        supabase.table("user_follows")
         .select("follower_user_id")
         .eq("followed_user_id", user_id)
         .execute()
     )
 
     likes = (
-        supabase.table("post_likes")
-        .select("post_id")
-        .eq("user_id", user_id)
-        .execute()
+        supabase.table("post_likes").select("post_id").eq("user_id", user_id).execute()
     )
 
     comments = (
@@ -63,16 +55,18 @@ async def get_user_achievements(user_id: str) -> list[dict]:
         current = metrics.get(item.get("metric_key"), 0)
         required = item.get("required_count", 0)
 
-        result.append({
-            "id": item.get("achievement_id"),
-            "achievement_id": item.get("achievement_id"),
-            "achievement_name": item.get("achievement_name"),
-            "achievement_detail": item.get("achievement_detail"),
-            "metric_key": item.get("metric_key"),
-            "required_count": required,
-            "current_count": current,
-            "is_completed": current >= required,
-            "badge_url": item.get("badge_url"),
-        })
+        result.append(
+            {
+                "id": item.get("achievement_id"),
+                "achievement_id": item.get("achievement_id"),
+                "achievement_name": item.get("achievement_name"),
+                "achievement_detail": item.get("achievement_detail"),
+                "metric_key": item.get("metric_key"),
+                "required_count": required,
+                "current_count": current,
+                "is_completed": current >= required,
+                "badge_url": item.get("badge_url"),
+            }
+        )
 
     return result
