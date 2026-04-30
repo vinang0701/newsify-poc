@@ -7,10 +7,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 import uuid
 from app.services import news_service, comment_service, reports_service
 from app.core.db import supabase
-from app.core.auth import get_current_user, get_current_app_user, get_current_inst_id, UserPayload,
+from app.core.auth import (
+    get_current_user,
+    get_current_app_user,
+    get_current_inst_id,
+    UserPayload,
+)
 from app.schemas.reports import CreatePostReportRequest, CreatePostReportResponse
 from app.models.news_post import PostComment, PostCommentCreate, LikeToggleResponse
-
 
 router = APIRouter(
     prefix="/{inst_id}/news",
