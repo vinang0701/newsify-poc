@@ -70,3 +70,26 @@ async def get_user_achievements(user_id: str) -> list[dict]:
         )
 
     return result
+
+async def get_newly_unlocked_achievements(user_id: str) -> list[dict]:
+    metrics = await get_user_achievement_metrics(user_id)
+
+    response = (
+        supabase.table("achievements")
+        .select("*")
+        .execute()
+    )
+
+    unlocked = []
+
+    for item in response.data or []:
+        current = metrics.get(item.get("metric_key"), 0)
+        required = item.get("required_count", 0)
+
+        if current >= required:
+            unlocked.append({
+                "achievement_name": item.get("achievement_name"),
+                "badge_url": item.get("badge_url"),
+            })
+
+    return unlocked

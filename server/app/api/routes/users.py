@@ -596,3 +596,9 @@ async def get_user_data(current_user: UserPayload = Depends(get_current_app_user
 @router.get("/{inst_id}/users/{user_id}/achievements")
 async def get_user_achievements_route(inst_id: str, user_id: str):
     return await achievements_service.get_user_achievements(user_id)
+
+
+# achievement popup
+@router.get("/{inst_id}/users/{user_id}/achievements/unlocked")
+async def get_unlocked(inst_id: str, user_id: str):
+    return await achievements_service.get_newly_unlocked_achievements(user_id)
