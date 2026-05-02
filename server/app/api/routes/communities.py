@@ -47,9 +47,12 @@ async def get_communities(inst_id: str):
 
 @router.get("/{community_id}")
 async def get_community(community_id: str):
-    community = await communities_service.get_community(supabase, community_id)
+    try:
+        community = await communities_service.get_community(supabase, community_id)
 
-    return community
+        return community
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to fetch community data.")
 
 
 @router.get("/{community_id}/news")

@@ -292,33 +292,37 @@ async def get_my_news(app_user=Depends(get_current_app_user)):
 @router.post("/users/me/news")
 async def create_news_post(
     title: str = Form(...),
+    description: str = Form(...),
     content: str = Form(...),
+    category_id: str = Form(...),
     school: str = Form(...),
     communities: list[str] = Form(...),
-    image: UploadFile = File(...),
+    thumbnail: UploadFile = File(...),
+    content_images: list[UploadFile] = File(...),
     app_user=Depends(get_current_app_user),
-    category_id: str = Form(...),
 ):
     try:
         user_id = app_user["id"]
         inst_id = app_user["inst_id"]
-        isSchool = school == "true"
+        isSchool = school.lower() == "true"
 
         # Run moderation check on title + content
         moderation = moderate_text(f"{title} {content}")
 
-        # await news_service.create_post(
-        #     supabase,
-        #     inst_id,
-        #     user_id,
-        #     image,
-        #     title,
-        #     content,
-        #     isSchool,
-        #     communities,
-        #     category_id,
-        #     is_flagged,
-        # )
+        await news_service.create_post(
+            supabase=supabase,
+            inst_id=inst_id,
+            user_id=user_id,
+            thumbnail=thumbnail,
+            title=title,
+            description=description,
+            content=content,
+            school=isSchool,
+            communities=communities,
+            category_id=category_id,
+            content_images=content_images,
+            is_flagged=moderation["flagged"],
+        )
 
         if moderation["flagged"]:
             return {
@@ -337,23 +341,61 @@ async def create_news_post(
         raise HTTPException(status_code=500, detail="Failed to upload image")
 
 
+@router.delete("/users/me/news/{post_id}")
+async def suspend_news_post(
+    post_id: str, app_user: UserPayload = Depends(get_current_app_user)
+):
+    try:
+        suspend_result = await users_service.suspend_news_post(
+            supabase=supabase,
+            inst_id=app_user["inst_id"],
+            user_id=app_user["id"],
+            post_id=post_id,
+        )
+        if suspend_result is False:
+            return {
+                "status": "error",
+                "message": "Failed to suspend post.",
+            }
+        return {
+            "status": "success",
+            "message": "You have successfully suspended this news post.",
+        }
+    except Exception as e:
+        print(f"Failed to suspend post: {e}")
+        raise HTTPException(status_code=500, detail="Failed to suspend post")
+
+
 @router.post("/users/me/drafts")
 async def save_draft(
+    draft_id: Optional[str] = Form(None),
     title: str | None = Form(None),
     content: str | None = Form(None),
-    image: UploadFile | None = File(None),
+    thumbnail: UploadFile | None = File(None),
+    content_images: Optional[list[UploadFile]] = File([]),
     app_user=Depends(get_current_app_user),
 ):
     try:
         user_id = app_user["id"]
         response = await news_service.save_draft(
-            supabase, user_id, image, title, content
+            supabase=supabase,
+            user_id=user_id,
+            draft_id=draft_id,
+            thumbnail=thumbnail,
+            title=title,
+            content=content,
+            content_images=content_images,
         )
+
+        if response is None:
+            return {
+                "status": "error",
+                "message": "Failed to save draft. Please try again later.",
+            }
 
         return {
             "status": "success",
             "message": "Draft saved successfully",
-            "data": response[0] if response else None,
         }
 
     except Exception as e:
@@ -371,6 +413,48 @@ async def get_user_drafts(app_user=Depends(get_current_app_user)):
     if user_drafts is None:
         raise HTTPException(status_code=404, detail="No drafts found")
     return user_drafts
+
+
+@router.get("/users/me/drafts/{draft_id}")
+async def get_draft(
+    draft_id: str, app_user: UserPayload = Depends(get_current_app_user)
+):
+    try:
+        user_id = app_user["id"]
+        draft = await news_service.get_draft(
+            supabase=supabase, user_id=user_id, draft_id=draft_id
+        )
+        if not draft:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        return draft
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to fetch draft data.")
+
+
+@router.delete("/users/me/drafts/{draft_id}")
+async def delete_user_draft(
+    draft_id: str, app_user: UserPayload = Depends(get_current_app_user)
+):
+    try:
+        user_id = app_user["id"]
+        response = await news_service.delete_user_draft(
+            supabase=supabase, user_id=user_id, draft_id=draft_id
+        )
+        if response is True:
+            return {
+                "status": "Success",
+                "message": "You have successfully deleted the draft.",
+            }
+        return {
+            "status": "Error",
+            "message": "Failed to delete draft. Please try again later.",
+        }
+    except Exception as e:
+        print(f"Delete draft error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to delete draft. Please try again later.",
+        )
 
 
 @router.post("/users/me/following")

@@ -28,18 +28,19 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
 // });
 
 supabase.auth.onAuthStateChange((event, session) => {
-    const { setAuth, isVerified } = useAuthStore.getState();
+    // const { setAuth, isVerified } = useAuthStore.getState();
 
-    console.log("🔄 Auth Event:", event);
+    // console.log("🔄 Auth Event:", event);
 
-    if (
-        session &&
-        (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED")
-    ) {
-        setAuth(session, true);
-    } else if (event === "SIGNED_IN" && !isVerified) {
-        setAuth(session, false);
-    } else if (event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY") {
-        setAuth(null, false);
-    }
+    // if (
+    //     session &&
+    //     (event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED")
+    // ) {
+    //     setAuth(session, true);
+    // } else if (event === "SIGNED_IN" && !isVerified) {
+    //     setAuth(session, false);
+    // } else if (event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY") {
+    //     setAuth(null, false);
+    // }
+    useAuthStore.getState().setAuth(session, true);
 });

@@ -131,3 +131,19 @@ async def get_user_data(supabase: Client, inst_id: str, user_id: str):
     )
 
     return RegisteredUser(**user.data)
+
+
+async def suspend_news_post(supabase: Client, inst_id: str, user_id: str, post_id: str):
+    result = (
+        supabase.table("news_posts")
+        .update({"status": "suspended"})
+        .eq("inst_id", inst_id)
+        .eq("author", user_id)
+        .eq("id", post_id)
+        .execute()
+    )
+
+    if len(result.data) > 0:
+        return True
+
+    return False

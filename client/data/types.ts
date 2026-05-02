@@ -3,10 +3,10 @@ export interface News {
     title: string;
     author: string;
     author_id: string;
-    desc: string;
+    description: string;
     url: string;
     image_url: string;
-    content: string | any; // needs changing
+    content: string; // needs changing
     likes_count: number;
     comments_count: number;
     has_liked: boolean;
@@ -107,4 +107,29 @@ export interface UserPreference {
     };
     preference_type: string;
     created_at: string;
+}
+
+// Server response
+export interface ServerReponse {
+    status: string;
+    message: string;
+}
+
+export interface PostData {
+    title: string;
+    description: string;
+    content: string;
+    isSchoolChecked: boolean;
+    selectedCategoryId: string | null;
+    selectedIds: string[];
+    thumbnail: string;
+}
+
+export interface DraftData {
+    draft_id?: string;
+    thumbnail?: string;
+    title?: string;
+    content?: string;
+    created_at?: string;
+    updated_at?: string;
 }

@@ -11,6 +11,7 @@ import uuid
 from fastapi import File, UploadFile
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
+from datetime import datetime
 
 
 async def get_institution_news(
@@ -19,8 +20,7 @@ async def get_institution_news(
     # Logic: Fetch all news where the tenant matches
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             created_at,
             author,
@@ -33,10 +33,7 @@ async def get_institution_news(
             comments_count:post_comments(count),
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id})
-            """.format(
-                user_id=f"'{user_id}'"
-            )
-        )
+            """.format(user_id=f"'{user_id}'"))
         .eq("inst_id", inst_id)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
@@ -76,7 +73,7 @@ async def get_institution_news(
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"] or {},
+                content=post["content"] or "",
                 likes_count=likes,
                 comments_count=comments,
                 has_liked=has_liked,
@@ -89,26 +86,9 @@ async def get_institution_news(
 
 # Check where has this been posted to
 async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
-    # response = (
-    #     supabase.table("news_posts")
-    #     .select(
-    #         """
-    #         id,
-    #         title,
-    #         description,
-    #         image_url,
-    #         content,
-    #         users!news_posts_author_fkey!inner(name, image_url)
-    #     """
-    #     )
-    #     .eq("community_id", community_id)
-    #     .order("created_at", desc=True)
-    #     .execute()
-    # )
     response = (
         supabase.table("community_posts")
-        .select(
-            """
+        .select("""
                 community_id,
                 created_at,
                 news_posts!inner(id, title,
@@ -121,9 +101,9 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
                     image_url
                 )
             )
-        """
-        )
+        """)
         .eq("community_id", community_id)
+        .eq("news_posts.status", "PUBLISHED")
         .order("created_at", desc=True)
         .execute()
     )
@@ -137,8 +117,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
             title=post["news_posts"]["title"],
             description=post["news_posts"]["description"] or "",
             image_url=post["news_posts"]["image_url"] or "",
-            content=post["news_posts"]["content"]
-            or {},  # Pydantic handles JSONB to Dict[str, Any] automatically
+            content=post["news_posts"]["content"] or "",
         )
         for post in response.data
     ]
@@ -148,33 +127,59 @@ async def create_post(
     supabase: Client,
     inst_id: str,
     user_id: str,
-    image: File,
     title: str,
+    description: str,
     content: str,
+    category_id: str,
     school: str,
-    communities: List[str],
-    category_id: str | None = None,
+    communities: list[str],
+    thumbnail: UploadFile,
+    content_images: list[UploadFile],
     is_flagged: bool = False,
 ) -> List[dict]:
     try:
 
-        # upload image first
-        file_extension = image.filename.split(".")[-1]
+        # 1. Upload Thumbnail
+        file_extension = thumbnail.filename.split(".")[-1]
         storage_path = f"news_images/{uuid.uuid4()}.{file_extension}"
 
         # 2. Read the binary content of the uploaded file
-        file_content = await image.read()
+        file_content = await thumbnail.read()
         response = supabase.storage.from_("post_media").upload(
             path=storage_path,
             file=file_content,
-            file_options={"content-type": image.content_type},
+            file_options={"content-type": thumbnail.content_type},
         )
 
         # Get image url after inserting
         storage_res = supabase.storage.from_("post_media").get_public_url(storage_path)
 
-        """"""
-        # insert post
+        # Upload Content Images and Replace URIs in HTML
+        final_content_html = content
+
+        if content_images:
+            for img_file in content_images:
+                # Read file
+                img_ext = img_file.filename.split(".")[-1]
+                img_path = f"news_body/{uuid.uuid4()}.{img_ext}"
+                img_content = await img_file.read()
+
+                # Upload to Supabase
+                supabase.storage.from_("post_media").upload(
+                    path=img_path,
+                    file=img_content,
+                    file_options={"content-type": img_file.content_type},
+                )
+
+                # Get the new public URL
+                public_url = supabase.storage.from_("post_media").get_public_url(
+                    img_path
+                )
+
+                final_content_html = final_content_html.replace(
+                    img_file.filename, public_url
+                )
+
         news_res = (
             supabase.table("news_posts")
             .insert(
@@ -183,8 +188,8 @@ async def create_post(
                     "author": user_id,
                     "image_url": storage_res,
                     "title": title,
-                    "description": content[:100],
-                    "content": {"text": content},
+                    "description": description,
+                    "content": final_content_html,
                     "status": "FLAGGED" if is_flagged else "PUBLISHED",
                     "category_id": category_id,
                 }
@@ -195,17 +200,15 @@ async def create_post(
         # Insert to community_post
         new_post_id = news_res.data[0]["id"]
 
-        # 2. Insert to community_post using the extracted ID
-        all_results = []
-        for comm in communities:
-            comm_post_res = (
-                supabase.table("community_posts")
-                .insert({"community_id": comm, "post_id": new_post_id})
-                .execute()
-            )
-            all_results.append(comm_post_res.data[0])
+        junction_data = [
+            {"community_id": comm, "post_id": new_post_id} for comm in communities
+        ]
 
-        return all_results
+        comm_post_res = (
+            supabase.table("community_posts").insert(junction_data).execute()
+        )
+
+        return comm_post_res.data
     except Exception as e:
         raise e
 
@@ -213,59 +216,86 @@ async def create_post(
 async def save_draft(
     supabase: Client,
     user_id: str,
-    image: UploadFile | None = None,
+    draft_id: Optional[str] = None,
+    thumbnail: UploadFile | None = None,
     title: str | None = None,
     content: str | None = None,
+    content_images: Optional[list[UploadFile]] = None,
 ) -> List[dict]:
     try:
-        final_image_url = None  # Default to None for DB
+        draft_data = {"user_id": user_id, "updated_at": datetime.now().isoformat()}
+        final_image_url = None
 
         # 1. Handle Image Upload if it exists
-        if image is not None:
-            file_extension = image.filename.split(".")[-1]
+        if thumbnail is not None:
+            file_extension = thumbnail.filename.split(".")[-1]
             storage_path = f"draft_images/{uuid.uuid4()}.{file_extension}"
 
-            file_content = await image.read()
+            file_content = await thumbnail.read()
 
             # Perform upload
             supabase.storage.from_("post_media").upload(
                 path=storage_path,
                 file=file_content,
-                file_options={"content-type": image.content_type},
+                file_options={"content-type": thumbnail.content_type},
             )
 
             # Get public URL
             final_image_url = supabase.storage.from_("post_media").get_public_url(
                 storage_path
             )
+            draft_data["thumbnail"] = final_image_url
 
-        """"""
+        if title is not None:
+            draft_data["title"] = title
+
+        # Handle Content and Content Images
+        if content is not None:
+            final_content_html = content
+
+            if content_images:
+                for img_file in content_images:
+                    img_ext = img_file.filename.split(".")[-1]
+                    img_path = f"draft_images_body/{uuid.uuid4()}.{img_ext}"
+                    img_content = await img_file.read()
+
+                    supabase.storage.from_("post_media").upload(
+                        path=img_path,
+                        file=img_content,
+                        file_options={"content-type": img_file.content_type},
+                    )
+
+                    public_url = supabase.storage.from_("post_media").get_public_url(
+                        img_path
+                    )
+                    # Note: img_file.filename here matches the "placeholder" sent from frontend
+                    final_content_html = final_content_html.replace(
+                        img_file.filename, public_url
+                    )
+            draft_data["content"] = final_content_html
         # insert post
-        news_res = (
-            supabase.table("user_drafts")
-            .insert(
-                {
-                    "user_id": user_id,
-                    "image_url": final_image_url,
-                    "title": title,
-                    "content": {"text": content} if content else None,
-                }
+        if draft_id:
+            res = (
+                supabase.table("user_drafts")
+                .update(draft_data)
+                .eq("draft_id", draft_id)
+                .eq("user_id", user_id)
+                .execute()
             )
-            .execute()
-        )
+        else:
+            res = supabase.table("user_drafts").insert(draft_data).execute()
 
-        return news_res.data
+        return res.data[0] if res.data else None
 
     except Exception as e:
-        print(f"Draft Save Error: {e}")
+        print(f"Error saving draft: {e}")
         raise e
 
 
 async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             created_at,
             author,
@@ -278,10 +308,7 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
             comments_count:post_comments(count),
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id})
-            """.format(
-                user_id=f"'{user_id}'"
-            )
-        )
+            """.format(user_id=f"'{user_id}'"))
         .eq("author", user_id)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
@@ -307,7 +334,7 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"] or {},
+                content=post["content"] or "",
                 likes_count=likes,
                 comments_count=comments,
                 has_liked=has_liked,
@@ -321,30 +348,42 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
 async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:
     response = (
         supabase.table("user_drafts")
-        .select(
-            """
-            draft_id,
-            title, 
-            image_url,
-            content
-        """
-        )
+        .select("*")
         .eq("user_id", user_id)
-        .order("created_at", desc=False)
+        .order("updated_at", desc=True)
+        .order("created_at", desc=True)
         .execute()
     )
 
-    if len(response.data) != 0:
-        return [
-            Draft(
-                draft_id=draft["draft_id"],
-                title=draft["title"],
-                image_url=draft["image_url"],
-                content=draft["content"],
-            )
-            for draft in response.data
-        ]
-    return []
+    return [Draft(**draft) for draft in response.data]
+
+
+async def get_draft(supabase: Client, user_id: str, draft_id: str) -> Draft:
+    response = (
+        supabase.table("user_drafts")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("draft_id", draft_id)
+        .execute()
+    )
+
+    if response.data and len(response.data) > 0:
+        draft = response.data[0]
+        return Draft(**draft)
+    return None
+
+
+async def delete_user_draft(supabase: Client, user_id: str, draft_id: str):
+    response = (
+        supabase.table("user_drafts")
+        .delete()
+        .eq("draft_id", draft_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if response.data[0] is not None:
+        return True
+    return False
 
 
 async def get_personalised_news(
@@ -371,8 +410,7 @@ async def get_personalised_news(
     # category_id is now directly on news_posts so no joining needed!
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             created_at,
             author,
@@ -385,10 +423,7 @@ async def get_personalised_news(
             comments_count:post_comments(count),
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id})
-            """.format(
-                user_id=f"'{user_id}'"
-            )
-        )
+            """.format(user_id=f"'{user_id}'"))
         .eq("inst_id", inst_id)
         .in_("category_id", preferred_ids)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
@@ -418,7 +453,7 @@ async def get_personalised_news(
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"] or {},
+                content=post["content"]["text"] or "",
                 likes_count=likes,
                 comments_count=comments,
                 has_liked=has_liked,
@@ -537,7 +572,7 @@ async def get_saved_posts(supabase: Client, user_id: str) -> List[dict]:
                 title=p["title"],
                 description=p.get("description") or "",
                 image_url=p.get("image_url") or "",
-                content=p.get("content") or {},
+                content=p.get("content") or "",
                 likes_count=p["likes_count"][0]["count"] if p.get("likes_count") else 0,
                 comments_count=(
                     p["comments_count"][0]["count"] if p.get("comments_count") else 0
@@ -557,7 +592,7 @@ async def get_saved_posts(supabase: Client, user_id: str) -> List[dict]:
     #         title=row["news_posts"]["title"],
     #         description=row["news_posts"]["description"] or "",
     #         image_url=row["news_posts"]["image_url"] or "",
-    #         content=row["news_posts"]["content"] or {},
+    #         content=row["news_posts"]["content"] or "",
     #     )
     #     for row in response.data
     # ]
