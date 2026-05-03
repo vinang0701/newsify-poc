@@ -4,20 +4,29 @@ import { Image } from "expo-image";
 
 type Props = {
     visible: boolean;
-    title: string;
-    badge?: string;
+    achievementName?: string;
+    badgeUrl?: string | null;
 };
 
-export default function AchievementToast({ visible, title, badge }: Props) {
+export default function AchievementToast({
+    visible,
+    achievementName,
+    badgeUrl,
+}: Props) {
     if (!visible) return null;
 
     return (
         <View style={styles.container}>
-            {badge && (
-                <Image source={{ uri: badge }} style={styles.badge} />
-            )}
+            <Image
+                source={
+                    badgeUrl
+                        ? { uri: badgeUrl }
+                        : require("@/assets/images/profile.png")
+                }
+                style={styles.badge}
+            />
             <Text style={styles.text}>
-                🎉 Achievement Unlocked: {title}
+                🎉 {achievementName || "Achievement Unlocked"}
             </Text>
         </View>
     );
@@ -36,13 +45,15 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 10,
         zIndex: 999,
+        elevation: 999,
     },
     text: {
         color: "#fff",
         fontWeight: "600",
     },
     badge: {
-        width: 30,
-        height: 30,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
     },
 });

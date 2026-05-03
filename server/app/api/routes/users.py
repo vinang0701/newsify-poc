@@ -600,5 +600,5 @@ async def get_user_achievements_route(inst_id: str, user_id: str):
 
 # achievement popup
 @router.get("/{inst_id}/users/{user_id}/achievements/unlocked")
-async def get_unlocked(inst_id: str, user_id: str):
+async def get_unlocked_achievements(inst_id: str, user_id: str):
     return await achievements_service.get_newly_unlocked_achievements(user_id)
