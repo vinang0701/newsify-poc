@@ -27,37 +27,19 @@ import NewsPostCard from "@/components/news_post_card";
 // import CommentsModal from "@/components/comments_modal";
 import BottomSheet, {
     BottomSheetBackdrop,
+    BottomSheetModal,
     BottomSheetModalProvider,
+    BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useNavigation } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useNavigation, useRouter } from "expo-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { usePreferences } from "@/hooks/usePreferences";
+import Feather from "@expo/vector-icons/Feather";
 const HEADER_HEIGHT = 250;
-
-const DATA = [
-    {
-        id: "1",
-        title: "Recent",
-    },
-    {
-        id: "2",
-        title: "Important",
-    },
-
-    {
-        id: "3",
-        title: "For You",
-    },
-];
-
-// Substack like news feed
-// avatar, name, time ago, 3 dots on the right
-// title, image, preview text, read more
-// like, comment, repost, save
 
 export default function HomeScreen() {
     const { user, metadata, initialized } = useAuthStore();
@@ -70,11 +52,10 @@ export default function HomeScreen() {
         return null;
     }
     const inst_id = metadata.inst_id;
-
+    const router = useRouter();
+    const queryClient = useQueryClient();
     const colorScheme = useColorScheme() ?? "light";
     const [activeFilter, setActiveFilter] = useState("Recent");
-    // const snapPoints = useMemo(() => ["100%"], []);
-    const bottomSheetRef = useRef<BottomSheet>(null);
     const insets = useSafeAreaInsets();
     // Pull categories from the hook — we reuse this for both steps of the modal
     const { categories, selected, toggleCategory, loading } = usePreferences();
@@ -83,6 +64,26 @@ export default function HomeScreen() {
     }
 
     const [refreshing, setRefreshing] = React.useState(false);
+
+    // Bottom sheet
+    const [selectedNewsId, setSelectedNewsId] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
+    const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const handleSheetExpand = useCallback(
+        (news_id: string, news_author_id: string) => {
+            setSelectedNewsId(news_id);
+            setNewsAuthorId(news_author_id);
+            bottomSheetRef?.current?.present();
+        },
+        [],
+    );
+
+    const handleCloseSheet = useCallback(() => {
+        bottomSheetRef.current?.dismiss();
+    }, []);
+
+    // Suspend post
+    const [suspendModalVisible, setSuspendModalVisible] = useState(false);
 
     // Controls whether the preferences modal is visible
     const [showPrefsModal, setShowPrefsModal] = useState(false);
@@ -203,6 +204,53 @@ export default function HomeScreen() {
         }
     };
 
+    // report post
+    function handleReportPost() {
+        // setMenuVisible(false);
+        handleCloseSheet();
+
+        router.push({
+            pathname: "/report-post",
+            params: {
+                post_id: selectedNewsId,
+                inst_id: inst_id,
+            },
+        });
+    }
+
+    const { mutate: mu_suspendPost, isPending: isPendingSuspendPost } =
+        useMutation({
+            mutationFn: async () => {
+                const response = await api.delete(
+                    `/users/me/news/${selectedNewsId}`,
+                );
+                return response.data;
+            },
+            onSuccess: (data: { status: string; message: string }) => {
+                queryClient.invalidateQueries({ queryKey: ["news"] });
+                queryClient.invalidateQueries({ queryKey: ["user_news"] });
+                Alert.alert(data.status, data.message);
+                setSuspendModalVisible(false);
+            },
+
+            onError: (err: any) => {
+                Alert.alert("Error", err.message || "Failed to suspend post");
+            },
+        });
+
+    const handleSuspend = async () => {
+        // Add this safety check at the very top of handleSuspend:
+        if (!user.id) {
+            Alert.alert(
+                "Error",
+                "Could not verify your identity. Please try again.",
+            );
+            return;
+        }
+
+        mu_suspendPost();
+    };
+
     return (
         <SafeAreaView
             edges={["top"]}
@@ -282,9 +330,7 @@ export default function HomeScreen() {
                             renderItem={({ item }) => (
                                 <NewsPostCard
                                     news={item}
-                                    currentUserId={currentUser?.id}
-                                    inst_id={inst_id}
-                                    key={item.id}
+                                    handleSheetExpand={handleSheetExpand}
                                 />
                             )}
                         />
@@ -324,10 +370,9 @@ export default function HomeScreen() {
                                     </View>
                                 </Pressable>
                                 <ThemedText
-                                    type="default"
+                                    type="caption"
                                     style={{
-                                        fontSize: 10,
-                                        color: "hsl(0, 0%, 5%)",
+                                        color: Colors[colorScheme].text,
                                     }}
                                 >
                                     1d
@@ -460,7 +505,151 @@ export default function HomeScreen() {
                 )}
             </ScrollView>
             {/* BottomSheetModal */}
+            <BottomSheetModal
+                ref={bottomSheetRef}
+                backdropComponent={renderBackdrop}
+                enablePanDownToClose
+            >
+                <BottomSheetView
+                    style={[
+                        styles.bottomSheet,
+                        { paddingBottom: insets.bottom + 28 },
+                    ]}
+                >
+                    <Pressable style={styles.menuItem}>
+                        <Feather
+                            name="user-plus"
+                            size={24}
+                            color={Colors[colorScheme].text}
+                        />
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ color: Colors[colorScheme].text }}
+                        >
+                            Follow
+                        </ThemedText>
+                    </Pressable>
 
+                    <Pressable
+                        style={styles.menuItem}
+                        onPress={handleReportPost}
+                    >
+                        <Feather
+                            name="alert-circle"
+                            size={24}
+                            color={Colors[colorScheme].alert_red}
+                        />
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ color: Colors[colorScheme].text }}
+                        >
+                            Report post
+                        </ThemedText>
+                    </Pressable>
+                    {/* Only show suspend option if this is the user's own post */}
+                    {newsAuthorId === user.id && (
+                        <Pressable
+                            style={styles.menuItem}
+                            onPress={() => {
+                                bottomSheetRef.current?.dismiss();
+                                // setSuspendModalVisible(true); // show confirmation modal
+                            }}
+                        >
+                            <Feather
+                                name="x-circle"
+                                size={24}
+                                color={Colors[colorScheme].alert_red}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ color: Colors[colorScheme].alert_red }}
+                            >
+                                Suspend news post
+                            </ThemedText>
+                        </Pressable>
+                    )}
+                </BottomSheetView>
+            </BottomSheetModal>
+            {/* Suspned News confirmation modal */}
+            <Modal
+                visible={suspendModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setSuspendModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View
+                        style={[
+                            styles.modalCard,
+                            {
+                                backgroundColor: Colors[colorScheme].bg_light,
+                            },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ fontSize: 18 }}
+                        >
+                            Suspend News Post?
+                        </ThemedText>
+                        <ThemedText style={{ opacity: 0.6 }}>
+                            Are you sure you want to suspend this news post?
+                        </ThemedText>
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                gap: 12,
+                                width: "100%",
+                            }}
+                        >
+                            {/* Cancel button */}
+                            <Pressable
+                                style={[
+                                    styles.modalBtn,
+                                    {
+                                        flex: 1,
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() => setSuspendModalVisible(false)}
+                            >
+                                <ThemedText
+                                    style={{
+                                        color: Colors[colorScheme].button_text,
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            {/* Suspend button */}
+                            {
+                                <Pressable
+                                    style={[
+                                        styles.modalBtn,
+                                        { flex: 1, backgroundColor: "red" },
+                                    ]}
+                                    onPress={handleSuspend}
+                                    disabled={isPendingSuspendPost}
+                                >
+                                    <ThemedText
+                                        style={{
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        {isPendingSuspendPost
+                                            ? "Suspending..."
+                                            : "Suspend"}
+                                    </ThemedText>
+                                </Pressable>
+                            }
+                        </View>
+                    </View>
+                </View>
+            </Modal>
             {/* First-time preferences modal */}
             <Modal
                 visible={showPrefsModal}
@@ -799,5 +988,19 @@ const styles = StyleSheet.create({
         flexDirection: "row", // lay chips left to right
         flexWrap: "wrap", // wrap to next line when row is full
         gap: 10,
+    },
+
+    // BottomSheet
+    bottomSheet: {
+        flex: 0,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        gap: 24,
+    },
+    menuItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        // paddingVertical: 10,
     },
 });

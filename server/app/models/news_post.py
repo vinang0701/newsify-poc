@@ -13,7 +13,7 @@ class NewsPost(BaseModel):
     description: str = ""
     image_url: str = ""
     # content: Dict[str, Any]  # find a way to take in json to match DB / make new class
-    content: str
+    content: str | Dict[str, Any]
     likes_count: int = 0
     comments_count: int = 0
     has_liked: bool = False

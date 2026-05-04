@@ -12,6 +12,8 @@ from fastapi import File, UploadFile
 from fastapi import HTTPException
 from postgrest.exceptions import APIError
 from datetime import datetime
+from bs4 import BeautifulSoup
+import urllib.parse
 
 
 async def get_institution_news(
@@ -40,20 +42,6 @@ async def get_institution_news(
         .execute()
     )
 
-    # Map the list of dicts to a list of NewsPost objects
-    # return [
-    #     NewsPost(
-    #         id=post["id"],
-    #         author_id=post["author"],
-    #         author=post["users"]["name"],  # Map snake_case to camelCase
-    #         title=post["title"],
-    #         description=post["description"] or "",
-    #         image_url=post["image_url"] or "",
-    #         content=post["content"]
-    #         or {},  # Pydantic handles JSONB to Dict[str, Any] automatically
-    #     )
-    #     for post in response.data
-    # ]
     posts = []
     for post in response.data:
         # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
@@ -84,43 +72,65 @@ async def get_institution_news(
     return posts
 
 
-# Check where has this been posted to
-async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
+async def get_community_news(
+    supabase: Client, community_id: str, user_id: str
+) -> List[NewsPost]:
     response = (
-        supabase.table("community_posts")
+        supabase.table("news_posts")
         .select("""
-                community_id,
-                created_at,
-                news_posts!inner(id, title,
-                description,
-                image_url,
-                content,
-                author:users!news_posts_author_fkey(
-                    id,
-                    name, 
-                    image_url
-                )
-            )
-        """)
-        .eq("community_id", community_id)
-        .eq("news_posts.status", "PUBLISHED")
-        .order("created_at", desc=True)
+            id,
+            author,
+            title, 
+            description, 
+            image_url,
+            content,
+            users!news_posts_author_fkey!inner(name, image_url),
+            likes_count:post_likes(count),
+            comments_count:post_comments(count),
+            community_posts!inner(created_at, community_id, post_id)
+            user_liked:post_likes(count).eq(user_id, {user_id}),
+            user_saved:saved_post(count).eq(user_id, {user_id}),
+            """.format(user_id=f"'{user_id}'"))
+        .eq("community_posts.community_id", community_id)
+        .eq("status", "PUBLISHED")
+        .order("created_at", desc=True, foreign_table="community_posts")
         .execute()
     )
 
-    return [
-        NewsPost(
-            id=post["news_posts"]["id"],
-            created_at=post["created_at"],
-            author_id=post["news_posts"]["author"]["id"],
-            author=post["news_posts"]["author"]["name"],  # Map snake_case to camelCase
-            title=post["news_posts"]["title"],
-            description=post["news_posts"]["description"] or "",
-            image_url=post["news_posts"]["image_url"] or "",
-            content=post["news_posts"]["content"] or "",
+    posts = []
+    for post in response.data:
+        cp_data = post.get("community_posts", [{}])
+        created_at = (
+            cp_data[0].get("created_at")
+            if isinstance(cp_data, list)
+            else cp_data.get("created_at")
         )
-        for post in response.data
-    ]
+        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
+        likes = post.get("likes_count", [{}])[0].get("count", 0)
+        comments = post.get("comments_count", [{}])[0].get("count", 0)
+
+        # 3. Boolean check: if count > 0, the user has interacted with it
+        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
+        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
+
+        posts.append(
+            NewsPost(
+                id=post["id"],
+                created_at=created_at,
+                author_id=post["author"],
+                author=post["users"]["name"],
+                title=post["title"],
+                description=post["description"] or "",
+                image_url=post["image_url"] or "",
+                content=post["content"]["text"] or "",
+                likes_count=likes,
+                comments_count=comments,
+                has_liked=has_liked,
+                has_saved=has_saved,
+            )
+        )
+
+    return posts
 
 
 async def create_post(
@@ -373,7 +383,46 @@ async def get_draft(supabase: Client, user_id: str, draft_id: str) -> Draft:
     return None
 
 
+# helper function to extract src url from img tags
+def extract_storage_paths(html_content: str, bucket_name: str):
+    soup = BeautifulSoup(html_content, "html.parser")
+    images = soup.find_all("img")
+
+    paths = []
+    for img in images:
+        src = img.get("src")
+        if src and bucket_name in src:
+            # Extract the path after the bucket name
+            # Format: .../object/public/bucket_name/path/to/file
+            parts = src.split(f"{bucket_name}/")
+            if len(parts) > 1:
+                paths.append(parts[1])
+    return paths
+
+
 async def delete_user_draft(supabase: Client, user_id: str, draft_id: str):
+    draft = (
+        supabase.table("user_drafts")
+        .select("content, thumbnail")
+        .eq("draft_id", draft_id)
+        .eq("user_id", user_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if not draft.data:
+        return False
+
+    content = draft.data.get("content", "")
+    bucket_name = "post_media"
+
+    file_paths = extract_storage_paths(content, bucket_name)
+    thumbnail = draft.data.get("thumbnail")
+
+    if thumbnail:
+        clean_thumb = thumbnail.split(f"{bucket_name}/")[-1]
+        file_paths.append(clean_thumb)
+
     response = (
         supabase.table("user_drafts")
         .delete()
@@ -381,9 +430,14 @@ async def delete_user_draft(supabase: Client, user_id: str, draft_id: str):
         .eq("user_id", user_id)
         .execute()
     )
-    if response.data[0] is not None:
-        return True
-    return False
+
+    if file_paths:
+        try:
+            supabase.storage.from_(bucket_name).remove(file_paths)
+        except Exception as e:
+            print(f"Storage cleanup failed: {e}")
+
+    return True
 
 
 async def get_personalised_news(
@@ -421,8 +475,8 @@ async def get_personalised_news(
             users!news_posts_author_fkey!inner(name, image_url),
             likes_count:post_likes(count),
             comments_count:post_comments(count),
+            user_saved:saved_post(count)!inner(author),
             user_liked:post_likes(count).eq(user_id, {user_id}),
-            user_saved:saved_post(count).eq(user_id, {user_id})
             """.format(user_id=f"'{user_id}'"))
         .eq("inst_id", inst_id)
         .in_("category_id", preferred_ids)
@@ -453,7 +507,7 @@ async def get_personalised_news(
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"]["text"] or "",
+                content=post["content"] or {},
                 likes_count=likes,
                 comments_count=comments,
                 has_liked=has_liked,
@@ -492,29 +546,6 @@ async def unsave_post(supabase: Client, user_id: str, post_id: str) -> dict:
 
 
 async def get_saved_posts(supabase: Client, user_id: str) -> List[dict]:
-    # Fetch all posts saved by this user
-    # response = (
-    #     supabase.table("saved_post")
-    #     .select(
-    #         """
-    #         post_id,
-    #         news_posts!inner(
-    #             id,
-    #             author,
-    #             title,
-    #             description,
-    #             image_url,
-    #             content,
-    #             status,
-    #             users!news_posts_author_fkey!inner(name, image_url)
-    #         )
-    #         """
-    #     )
-    #     .eq("user_id", user_id)  # only this user's saved posts
-    #     .eq("news_posts.status", "PUBLISHED")  # only published posts
-    #     .order("saved_at", desc=True)  # most recently saved first
-    #     .execute()
-    # )
     query_columns = """
         post_id,
         news_posts!inner(
@@ -583,19 +614,6 @@ async def get_saved_posts(supabase: Client, user_id: str) -> List[dict]:
         )
 
     return posts
-
-    # return [
-    #     NewsPost(
-    #         id=row["news_posts"]["id"],
-    #         author_id=row["news_posts"]["author"],
-    #         author=row["news_posts"]["users"]["name"],
-    #         title=row["news_posts"]["title"],
-    #         description=row["news_posts"]["description"] or "",
-    #         image_url=row["news_posts"]["image_url"] or "",
-    #         content=row["news_posts"]["content"] or "",
-    #     )
-    #     for row in response.data
-    # ]
 
 
 async def is_post_saved(supabase: Client, user_id: str, post_id: str) -> bool:

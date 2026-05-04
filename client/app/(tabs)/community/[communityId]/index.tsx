@@ -10,8 +10,9 @@ import {
     ActivityIndicator,
     Alert,
 } from "react-native";
-import BottomSheet, {
+import {
     BottomSheetBackdrop,
+    BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import React, {
@@ -30,8 +31,10 @@ import {
 } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
@@ -43,6 +46,7 @@ import Loading from "@/components/loading";
 import { useCommunity } from "@/hooks/useCommunity";
 
 export default function CommunityPage() {
+    const { user, metadata } = useAuthStore();
     const colorScheme = useColorScheme() ?? "light";
     const params = useLocalSearchParams<{
         inst_id?: string;
@@ -51,13 +55,27 @@ export default function CommunityPage() {
     const communityId = params.communityId;
     const inst_id = params?.inst_id;
     const router = useRouter();
-    const bottomSheetRef = useRef<BottomSheet>(null);
-    const snapPoints = useMemo(() => ["25%"], []);
+    const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const insets = useSafeAreaInsets();
     const [modalVisible, setModalVisible] = useState(false);
     const [sortMenuVisible, setSortMenuVisible] = useState(false);
     const [selectedSort, setSelectedSort] = useState<
         "Newest" | "Oldest" | "A - Z" | "Z - A"
     >("Newest");
+
+    // News Post Bottom Sheet
+    const [selectedNewsId, setSelectedNewsId] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
+    const postBottomSheetRef = useRef<BottomSheetModal>(null);
+    const handlePostSheetExpand = useCallback(
+        (news_id: string, news_author_id: string) => {
+            setSelectedNewsId(news_id);
+            setNewsAuthorId(news_author_id);
+            postBottomSheetRef?.current?.present();
+        },
+        [],
+    );
+    const snapPoints = useMemo(() => ["100%"], []);
 
     const {
         community,
@@ -105,7 +123,10 @@ export default function CommunityPage() {
         return sorted;
     }, [news, selectedSort]);
 
-    const handleExpandSheet = () => bottomSheetRef.current?.expand();
+    const handleExpandSheet = useCallback(
+        () => bottomSheetRef.current?.present(),
+        [],
+    );
     const renderBackdrop = useCallback(
         (props: any) => (
             <BottomSheetBackdrop
@@ -119,7 +140,7 @@ export default function CommunityPage() {
 
     useFocusEffect(
         useCallback(() => {
-            refresh();
+            // refresh();
         }, []),
     );
 
@@ -163,40 +184,38 @@ export default function CommunityPage() {
     if (loading && !community) return <Loading />;
 
     return (
-        <GestureHandlerRootView>
-            {/* Header */}
-            <SafeAreaView>
-                <View
-                    style={[
-                        styles.headerContainer,
-                        {
-                            backgroundColor: Colors[colorScheme].tint,
-                        },
-                    ]}
-                >
-                    <Pressable onPress={() => router.back()}>
-                        <MaterialCommunityIcons
-                            name="arrow-left"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                            weight="bold"
-                        />
-                    </Pressable>
-
-                    <Image
-                        source={require("@/assets/images/icon_light.png")}
-                        style={{ width: 42, height: 20, resizeMode: "contain" }}
+        <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+            <View
+                style={[
+                    styles.headerContainer,
+                    {
+                        backgroundColor: Colors[colorScheme].tint,
+                    },
+                ]}
+            >
+                <Pressable onPress={() => router.back()}>
+                    <MaterialCommunityIcons
+                        name="arrow-left"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                        weight="bold"
                     />
+                </Pressable>
 
-                    <Pressable onPress={handleExpandSheet}>
-                        <MaterialCommunityIcons
-                            name="dots-vertical"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                        />
-                    </Pressable>
-                </View>
-            </SafeAreaView>
+                <Image
+                    source={require("@/assets/images/icon_light.png")}
+                    style={{ width: 42, height: 20, resizeMode: "contain" }}
+                />
+
+                <Pressable onPress={handleExpandSheet}>
+                    <MaterialCommunityIcons
+                        name="dots-vertical"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                    />
+                </Pressable>
+            </View>
+
             {/* Content Container */}
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -427,8 +446,9 @@ export default function CommunityPage() {
                                 renderItem={({ item, index }) => (
                                     <NewsPostCard
                                         news={item}
-                                        inst_id={inst_id as string}
-                                        key={index}
+                                        handleSheetExpand={
+                                            handlePostSheetExpand
+                                        }
                                     />
                                 )}
                             />
@@ -436,19 +456,23 @@ export default function CommunityPage() {
                     )}
                 </View>
             </ScrollView>
-            <BottomSheet
+            <BottomSheetModal
+                name="community_bottom_sheet"
                 ref={bottomSheetRef}
-                index={-1}
-                snapPoints={snapPoints}
                 backdropComponent={renderBackdrop}
                 enablePanDownToClose
             >
-                <BottomSheetView style={styles.bottomSheet}>
+                <BottomSheetView
+                    style={[
+                        styles.bottomSheet,
+                        { paddingBottom: insets.bottom + 28 },
+                    ]}
+                >
                     {userRole === "admin" && (
                         <Pressable
                             style={styles.modalActionButtonCtn}
                             onPress={() => {
-                                bottomSheetRef.current?.close();
+                                bottomSheetRef.current?.dismiss();
                                 router.push({
                                     pathname:
                                         "/community/[communityId]/post_requests",
@@ -494,7 +518,77 @@ export default function CommunityPage() {
                         <ThemedText type="defaultSemiBold">Join</ThemedText>
                     </Pressable>
                 </BottomSheetView>
-            </BottomSheet>
+            </BottomSheetModal>
+            {/* News Card Bottom Sheet */}
+            <BottomSheetModal
+                name="news_card_bottom_sheet"
+                ref={postBottomSheetRef}
+                backdropComponent={renderBackdrop}
+                enablePanDownToClose
+                enableDismissOnClose
+            >
+                <BottomSheetView
+                    style={[
+                        styles.bottomSheet,
+                        { paddingBottom: insets.bottom + 28 },
+                    ]}
+                >
+                    <Pressable style={styles.modalActionButtonCtn}>
+                        <Feather
+                            name="user-plus"
+                            size={20}
+                            color={Colors[colorScheme].text}
+                        />
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ color: Colors[colorScheme].text }}
+                        >
+                            Follow
+                        </ThemedText>
+                    </Pressable>
+
+                    <Pressable
+                        style={styles.modalActionButtonCtn}
+                        // onPress={handleReportPost}
+                    >
+                        <Feather
+                            name="alert-circle"
+                            size={20}
+                            color={Colors[colorScheme].alert_red}
+                        />
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ color: Colors[colorScheme].text }}
+                        >
+                            Report post
+                        </ThemedText>
+                    </Pressable>
+                    {/* Only show suspend option if this is the user's own post */}
+                    {newsAuthorId === user?.id && (
+                        <Pressable
+                            style={styles.modalActionButtonCtn}
+                            onPress={() => {
+                                postBottomSheetRef.current?.dismiss();
+                                // setSuspendModalVisible(true); // show confirmation modal
+                            }}
+                        >
+                            <Feather
+                                name="x-circle"
+                                size={20}
+                                color={Colors[colorScheme].alert_red}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{
+                                    color: Colors[colorScheme].alert_red,
+                                }}
+                            >
+                                Suspend news post
+                            </ThemedText>
+                        </Pressable>
+                    )}
+                </BottomSheetView>
+            </BottomSheetModal>
             {/* Join/Leave button Action*/}
             <Modal
                 animationType="slide"
@@ -568,7 +662,7 @@ export default function CommunityPage() {
                     </View>
                 </View>
             </Modal>
-        </GestureHandlerRootView>
+        </SafeAreaView>
     );
 }
 

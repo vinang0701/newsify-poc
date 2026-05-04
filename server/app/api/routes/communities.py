@@ -8,7 +8,7 @@ from app.services import communities_service, news_service
 from app.core.config import settings
 from app.core.db import supabase
 from app.models.community import CommunityApplication, CommunityApplicationReq
-from app.core.auth import get_current_user, get_current_app_user
+from app.core.auth import get_current_user, get_current_app_user, UserPayload
 from pydantic import BaseModel
 from typing import Optional
 
@@ -56,8 +56,13 @@ async def get_community(community_id: str):
 
 
 @router.get("/{community_id}/news")
-async def get_community_news(community_id: str):
-    community_news = await news_service.get_community_news(supabase, community_id)
+async def get_community_news(
+    community_id: str, app_user: UserPayload = Depends(get_current_app_user)
+):
+    user_id = app_user["id"]
+    community_news = await news_service.get_community_news(
+        supabase, community_id, user_id=user_id
+    )
     if community_news is None:
         raise HTTPException(status_code=404, detail="This community does not exist.")
 
