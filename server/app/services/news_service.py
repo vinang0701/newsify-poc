@@ -145,7 +145,7 @@ async def create_post(
     communities: list[str],
     thumbnail: UploadFile,
     content_images: list[UploadFile],
-    is_flagged: bool = False,
+    is_flagged: str,
 ) -> List[dict]:
     try:
 
@@ -200,7 +200,7 @@ async def create_post(
                     "title": title,
                     "description": description,
                     "content": final_content_html,
-                    "status": "FLAGGED" if is_flagged else "PUBLISHED",
+                    "status": is_flagged,
                     "category_id": category_id,
                 }
             )
@@ -209,16 +209,21 @@ async def create_post(
 
         # Insert to community_post
         new_post_id = news_res.data[0]["id"]
+        if communities:
+            junction_data = [
+                {"community_id": comm, "post_id": new_post_id} for comm in communities
+            ]
 
-        junction_data = [
-            {"community_id": comm, "post_id": new_post_id} for comm in communities
-        ]
+            comm_post_res = (
+                supabase.table("community_posts").insert(junction_data).execute()
+            )
+            return comm_post_res.data
 
-        comm_post_res = (
-            supabase.table("community_posts").insert(junction_data).execute()
-        )
+        return {
+            "status": "success",
+            "message": "You have successfully published the news post.",
+        }
 
-        return comm_post_res.data
     except Exception as e:
         raise e
 
@@ -475,12 +480,16 @@ async def get_personalised_news(
             users!news_posts_author_fkey!inner(name, image_url),
             likes_count:post_likes(count),
             comments_count:post_comments(count),
-            user_saved:saved_post(count)!inner(author),
-            user_liked:post_likes(count).eq(user_id, {user_id}),
-            """.format(user_id=f"'{user_id}'"))
+            user_saved:saved_post(count),
+            user_liked:post_likes(count)
+            """)
         .eq("inst_id", inst_id)
         .in_("category_id", preferred_ids)
-        .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
+        .eq("status", "PUBLISHED")
+        .eq("user_liked.user_id", user_id)
+        .eq(
+            "user_saved.user_id", user_id
+        )  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
         .execute()
     )

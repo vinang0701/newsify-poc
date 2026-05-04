@@ -134,13 +134,19 @@ export default function CommunitiesTab() {
         return `hsl(${hue}, 60%, 50%)`; // 60% saturation, 50% lightness
     };
 
-    const { status, data, error, isFetching, refetch } = useQuery<Community[]>({
+    const { data, error, isFetching, refetch } = useQuery<Community[]>({
         queryKey: ["communities"],
         queryFn: async (): Promise<Community[]> => {
-            const response = await api(`/${inst_id}/communities`);
+            const response = await api(`/${inst_id}/communities`, {
+                params: {
+                    search: searchQuery || undefined, // Don't send empty strings
+                },
+            });
 
-            return await response.data;
+            return response.data;
         },
+        enabled:
+            !!inst_id && (searchQuery.length === 0 || searchQuery.length > 2),
     });
 
     const {
@@ -200,12 +206,9 @@ export default function CommunitiesTab() {
         }, 2000);
     }, []);
 
-    if (isFetching || isFetchingCommMem) {
-        return <Loading />;
-    }
-
     return (
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+            {(isFetching || isFetchingCommMem) && <Loading />}
             <Header />
             <ScrollView
                 showsVerticalScrollIndicator={false}

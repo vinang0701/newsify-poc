@@ -5,7 +5,7 @@ import {
     useColorScheme,
     Alert,
 } from "react-native";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Colors } from "@/constants/theme";
 import Feather from "@expo/vector-icons/Feather";
 import { Image } from "expo-image";
@@ -18,6 +18,7 @@ import { useAuthStore } from "@/utils/authStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import api from "@/lib/axios";
+import Loading from "./loading";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 
@@ -41,6 +42,10 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
 
     const queryClient = useQueryClient();
 
+    const handlePress = useCallback(() => {
+        handleSheetExpand(news.id, news.author_id);
+    }, [news.id, news.author_id, handleSheetExpand]);
+
     // Toggle Like Mutation Function
     async function toggleLikePost(post_id: string) {
         const response = await api.post(
@@ -54,6 +59,7 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
         useMutation({
             mutationFn: toggleLikePost,
             onMutate: async (post_id: string) => {
+                console.log("onMutate triggered", post_id);
                 // Stop outgoing fetches for "news" so they don't overwrite our optimistic update
                 await queryClient.cancelQueries({ queryKey: ["news"] });
 
@@ -61,22 +67,25 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                 const previousNews = queryClient.getQueryData<News[]>(["news"]);
 
                 // Optimistically update the "news" list
-                queryClient.setQueryData<News[]>(["news"], (old) => {
-                    if (!old) return [];
-                    return old.map((post) => {
-                        if (post.id === post_id) {
-                            const isLiking = !post.has_liked;
-                            return {
-                                ...post,
-                                has_liked: isLiking,
-                                likes_count: isLiking
-                                    ? post.likes_count + 1
-                                    : Math.max(0, post.likes_count - 1),
-                            };
-                        }
-                        return post;
-                    });
-                });
+                queryClient.setQueriesData<News[]>(
+                    { queryKey: ["news"] },
+                    (old) => {
+                        if (!old) return [];
+                        return old.map((post) => {
+                            if (post.id === post_id) {
+                                const isLiking = !post.has_liked;
+                                return {
+                                    ...post,
+                                    has_liked: isLiking,
+                                    likes_count: isLiking
+                                        ? post.likes_count + 1
+                                        : Math.max(0, post.likes_count - 1),
+                                };
+                            }
+                            return post;
+                        });
+                    },
+                );
 
                 // Return snapshot to context for rollback
                 return { previousNews };
@@ -85,7 +94,10 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
             onError: (err, post_id, context) => {
                 // Rollback to the exact state before the click
                 if (context?.previousNews) {
-                    queryClient.setQueryData(["news"], context.previousNews);
+                    queryClient.setQueriesData<News[]>(
+                        { queryKey: ["news"] },
+                        context.previousNews,
+                    );
                 }
                 console.error(`Like failed for ${post_id}:`, err);
             },
@@ -148,19 +160,22 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                 const previousNews = queryClient.getQueryData<News[]>(["news"]);
 
                 // Optimistically update the "news" list
-                queryClient.setQueryData<News[]>(["news"], (old) => {
-                    if (!old) return [];
-                    return old.map((post) => {
-                        if (post.id === post_id) {
-                            const isSaving = !post.has_saved;
-                            return {
-                                ...post,
-                                has_saved: isSaving,
-                            };
-                        }
-                        return post;
-                    });
-                });
+                queryClient.setQueriesData<News[]>(
+                    { queryKey: ["news"] },
+                    (old) => {
+                        if (!old) return [];
+                        return old.map((post) => {
+                            if (post.id === post_id) {
+                                const isSaving = !post.has_saved;
+                                return {
+                                    ...post,
+                                    has_saved: isSaving,
+                                };
+                            }
+                            return post;
+                        });
+                    },
+                );
 
                 // Return snapshot to context for rollback
                 return { previousNews };
@@ -169,7 +184,10 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
             onError: (err, post_id, context) => {
                 // Rollback to the exact state before the click
                 if (context?.previousNews) {
-                    queryClient.setQueryData(["news"], context.previousNews);
+                    queryClient.setQueriesData<News[]>(
+                        { queryKey: ["news"] },
+                        context.previousNews,
+                    );
                 }
                 console.error(`Bookmark failed for ${post_id}:`, err);
             },
@@ -215,9 +233,10 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                     </ThemedText>
                     <Pressable
                         style={{ marginLeft: "auto" }}
-                        onPress={() => {
-                            handleSheetExpand(news.id, news.author_id);
-                        }}
+                        // onPress={() => {
+                        //     handleSheetExpand(news.id, news.author_id);
+                        // }}
+                        onPress={handlePress}
                     >
                         <Feather
                             name="more-vertical"

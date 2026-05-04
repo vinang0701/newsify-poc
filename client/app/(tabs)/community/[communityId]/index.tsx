@@ -44,9 +44,11 @@ import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
 import { useCommunity } from "@/hooks/useCommunity";
+import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
 
 export default function CommunityPage() {
     const { user, metadata } = useAuthStore();
+    const queryClient = useQueryClient();
     const colorScheme = useColorScheme() ?? "light";
     const params = useLocalSearchParams<{
         inst_id?: string;
@@ -64,18 +66,20 @@ export default function CommunityPage() {
     >("Newest");
 
     // News Post Bottom Sheet
-    const [selectedNewsId, setSelectedNewsId] = useState("");
-    const [newsAuthorId, setNewsAuthorId] = useState("");
+    const selectedNewsId = useRef("");
+    const newsAuthorId = useRef("");
+
     const postBottomSheetRef = useRef<BottomSheetModal>(null);
     const handlePostSheetExpand = useCallback(
         (news_id: string, news_author_id: string) => {
-            setSelectedNewsId(news_id);
-            setNewsAuthorId(news_author_id);
+            selectedNewsId.current = news_id;
+            newsAuthorId.current = news_author_id;
             postBottomSheetRef?.current?.present();
         },
         [],
     );
-    const snapPoints = useMemo(() => ["100%"], []);
+    // Suspend post
+    const [suspendModalVisible, setSuspendModalVisible] = useState(false);
 
     const {
         community,
@@ -140,7 +144,7 @@ export default function CommunityPage() {
 
     useFocusEffect(
         useCallback(() => {
-            // refresh();
+            refresh();
         }, []),
     );
 
@@ -179,6 +183,53 @@ export default function CommunityPage() {
             console.error(err);
             Alert.alert("Error", "Failed to leave the community.");
         }
+    };
+
+    function handleReportPost() {
+        // setMenuVisible(false);
+        bottomSheetRef.current?.dismiss();
+        postBottomSheetRef.current?.dismiss();
+
+        router.push({
+            pathname: "/report-post",
+            params: {
+                post_id: selectedNewsId.current,
+                inst_id: inst_id,
+            },
+        });
+    }
+
+    const { mutate: mu_suspendPost, isPending: isPendingSuspendPost } =
+        useMutation({
+            mutationFn: async () => {
+                const response = await api.delete(
+                    `/users/me/news/${selectedNewsId.current}`,
+                );
+                return response.data;
+            },
+            onSuccess: (data: { status: string; message: string }) => {
+                queryClient.invalidateQueries({ queryKey: ["news"] });
+                queryClient.invalidateQueries({ queryKey: ["user_news"] });
+                Alert.alert(data.status, data.message);
+                setSuspendModalVisible(false);
+            },
+
+            onError: (err: any) => {
+                Alert.alert("Error", err.message || "Failed to suspend post");
+            },
+        });
+
+    const handleSuspend = async () => {
+        // Add this safety check at the very top of handleSuspend:
+        if (!user?.id) {
+            Alert.alert(
+                "Error",
+                "Could not verify your identity. Please try again.",
+            );
+            return;
+        }
+
+        mu_suspendPost();
     };
 
     if (loading && !community) return <Loading />;
@@ -461,6 +512,7 @@ export default function CommunityPage() {
                 ref={bottomSheetRef}
                 backdropComponent={renderBackdrop}
                 enablePanDownToClose
+                enableDismissOnClose
             >
                 <BottomSheetView
                     style={[
@@ -520,7 +572,7 @@ export default function CommunityPage() {
                 </BottomSheetView>
             </BottomSheetModal>
             {/* News Card Bottom Sheet */}
-            <BottomSheetModal
+            {/* <BottomSheetModal
                 name="news_card_bottom_sheet"
                 ref={postBottomSheetRef}
                 backdropComponent={renderBackdrop}
@@ -549,7 +601,7 @@ export default function CommunityPage() {
 
                     <Pressable
                         style={styles.modalActionButtonCtn}
-                        // onPress={handleReportPost}
+                        onPress={handleReportPost}
                     >
                         <Feather
                             name="alert-circle"
@@ -562,9 +614,9 @@ export default function CommunityPage() {
                         >
                             Report post
                         </ThemedText>
-                    </Pressable>
-                    {/* Only show suspend option if this is the user's own post */}
-                    {newsAuthorId === user?.id && (
+                    </Pressable> */}
+            {/* Only show suspend option if this is the user's own post */}
+            {/* {newsAuthorId === user?.id && (
                         <Pressable
                             style={styles.modalActionButtonCtn}
                             onPress={() => {
@@ -588,7 +640,98 @@ export default function CommunityPage() {
                         </Pressable>
                     )}
                 </BottomSheetView>
-            </BottomSheetModal>
+            </BottomSheetModal> */}
+            <NewsPostBottomSheet
+                ref={postBottomSheetRef}
+                newsAuthorId={newsAuthorId}
+                userId={user?.id ?? ""}
+                colorScheme={colorScheme}
+                onReport={handleReportPost}
+                onSuspend={() => {
+                    bottomSheetRef.current?.dismiss();
+                    setSuspendModalVisible(true);
+                }}
+            />
+            {/* Suspned News confirmation modal */}
+            <Modal
+                visible={suspendModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setSuspendModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View
+                        style={[
+                            styles.modalCard,
+                            {
+                                backgroundColor: Colors[colorScheme].bg_light,
+                            },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ fontSize: 18 }}
+                        >
+                            Suspend News Post?
+                        </ThemedText>
+                        <ThemedText style={{ opacity: 0.6 }}>
+                            Are you sure you want to suspend this news post?
+                        </ThemedText>
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                gap: 12,
+                                width: "100%",
+                            }}
+                        >
+                            {/* Cancel button */}
+                            <Pressable
+                                style={[
+                                    styles.modalBtn,
+                                    {
+                                        flex: 1,
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() => setSuspendModalVisible(false)}
+                            >
+                                <ThemedText
+                                    style={{
+                                        color: Colors[colorScheme].button_text,
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            {/* Suspend button */}
+                            {
+                                <Pressable
+                                    style={[
+                                        styles.modalBtn,
+                                        { flex: 1, backgroundColor: "red" },
+                                    ]}
+                                    onPress={handleSuspend}
+                                    disabled={isPendingSuspendPost}
+                                >
+                                    <ThemedText
+                                        style={{
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        {isPendingSuspendPost
+                                            ? "Suspending..."
+                                            : "Suspend"}
+                                    </ThemedText>
+                                </Pressable>
+                            }
+                        </View>
+                    </View>
+                </View>
+            </Modal>
             {/* Join/Leave button Action*/}
             <Modal
                 animationType="slide"
@@ -694,7 +837,6 @@ const styles = StyleSheet.create({
     modalView: {
         width: "100%",
         gap: 16,
-
         borderRadius: 8,
         paddingHorizontal: 24,
         paddingVertical: 16,
@@ -754,5 +896,27 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         zIndex: 100,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)", // dark transparent background
+        justifyContent: "flex-end", // card sticks to bottom like a bottom sheet
+    },
+
+    modalCard: {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        maxHeight: "80%", // takes up 80% of screen height
+        gap: 12,
+    },
+    modalTitle: { fontSize: 22, fontWeight: "bold" },
+    modalSubtitle: { fontSize: 14, opacity: 0.6 },
+    modalGrid: { paddingVertical: 8 },
+    modalBtn: {
+        padding: 14,
+        borderRadius: 10,
+        alignItems: "center",
+        marginTop: 8,
     },
 });

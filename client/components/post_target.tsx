@@ -1,4 +1,5 @@
 import {
+    ActivityIndicator,
     Pressable,
     StyleSheet,
     Text,
@@ -32,6 +33,7 @@ interface PostTargetProps {
     communities: UserCommunities[] | undefined;
     onBack: () => void;
     onSubmit: () => void;
+    isPendingSubmit: boolean;
 }
 
 const PostTarget = ({
@@ -47,6 +49,7 @@ const PostTarget = ({
     communities,
     onBack,
     onSubmit,
+    isPendingSubmit,
 }: PostTargetProps) => {
     const colorScheme = useColorScheme() ?? "light";
 
@@ -354,10 +357,12 @@ const PostTarget = ({
                     ]}
                 >
                     <ThemedText
+                        disabled={isPendingSubmit}
                         type="defaultSemiBold"
                         style={{
                             color: Colors[colorScheme].button_text,
                             textAlign: "center",
+                            opacity: isPendingSubmit ? 0.7 : 1,
                         }}
                         onPress={onBack}
                     >
@@ -365,9 +370,13 @@ const PostTarget = ({
                     </ThemedText>
                 </Pressable>
                 <Pressable
+                    disabled={isPendingSubmit}
                     style={[
                         styles.button,
-                        { backgroundColor: Colors[colorScheme].tint },
+                        {
+                            backgroundColor: Colors[colorScheme].tint,
+                            opacity: isPendingSubmit ? 0.7 : 1,
+                        },
                     ]}
                     onPress={() => onSubmit()}
                 >
@@ -378,7 +387,7 @@ const PostTarget = ({
                             textAlign: "center",
                         }}
                     >
-                        Publish
+                        {isPendingSubmit ? <ActivityIndicator /> : "Publish"}
                     </ThemedText>
                 </Pressable>
             </View>

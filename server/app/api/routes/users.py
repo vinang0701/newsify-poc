@@ -35,7 +35,9 @@ from app.schemas.notifications import (
 )
 from app.core.auth import get_current_user, get_current_app_user, UserPayload
 from app.models.registeredUsers import SavePreferencesRequest
-from app.core.auth import UserPayload
+from bs4 import BeautifulSoup
+import base64
+import asyncio
 
 router = APIRouter(tags=["users"], dependencies=[Depends(get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -62,16 +64,41 @@ class FollowRequest(BaseModel):
     followed_user_id: uuid.UUID
 
 
-# def moderate_text(text: str):
-#     print("Moderating text...")
-#     response = client.moderations.create(
-#         model="omni-moderation-latest",
-#         input=text,
-#     )
-#     print(response.results)
-#     print("Checking for flag...")
-#     print(response.results[0].flagged)
-#     return response.results[0].flagged
+# helper function to extract src url from img tags
+def extract_text_content(html_content: str):
+    if not html_content:
+        return ""
+
+    # 'lxml' is faster, but 'html.parser' is built-in to Python
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Remove script and style elements so their code isn't treated as text
+    for script_or_style in soup(["script", "style"]):
+        script_or_style.decompose()
+
+    # get_text() extracts all text; strip=True removes leading/trailing whitespace
+    # separator=" " ensures words don't get stuck together when tags are removed
+    text = soup.get_text(separator=" ", strip=True)
+
+    return text
+
+
+THRESHOLDS = {
+    # Non-negotiable safety
+    "sexual/minors": 0.01,
+    "hate/threatening": 0.05,
+    "violence_graphic": 0.05,
+    # Professionalism filters
+    "sexual": 0.15,
+    "hate": 0.15,
+    "self-harm": 0.20,
+    # Discussion filters (Allows for "heated" but not "abusive" talk)
+    "harassment": 0.35,
+    "violence": 0.40,
+    "harassment_threatening": 0.15,
+}
+
+
 def moderate_text(text: str):
     try:
         print(f"Moderating text: {text[:50]}...")  # Log a snippet
@@ -89,18 +116,6 @@ def moderate_text(text: str):
         for category, score in scores_dict.items():
             # Formatting to 6 decimal places to make it readable
             print(f"  {category.ljust(25)}: {score:.6f}")
-        THRESHOLDS = {
-            "sexual": 0.05,  # Very strict
-            "sexual/minors": 0.01,  # Absolute zero tolerance
-            "harassment": 0.1,  # Strict for gossips/scandals
-            "hate": 0.1,
-            "hate/threatening": 0.01,
-            "harassment_threatening": 0.2,
-            "self_harm_instructions": 0.1,
-            "violence_graphic": 0.01,
-            "self-harm": 0.1,
-            "violence": 0.2,
-        }
 
         custom_flagged = False
         flagged_categories = []
@@ -129,6 +144,96 @@ def moderate_text(text: str):
         print(f"Moderation error: {e}")
         # Return a safe default to avoid breaking the calling code
         return {"flagged": False, "error": str(e)}
+
+
+async def moderate_image(file: UploadFile):
+    # 1. Read file into memory
+    file_bytes = await file.read()
+
+    # 2. Encode to Base64
+    base64_image = base64.b64encode(file_bytes).decode("utf-8")
+
+    # 3. Request moderation
+    response = client.moderations.create(
+        model="omni-moderation-latest",
+        input=[
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{file.content_type};base64,{base64_image}"},
+            }
+        ],
+    )
+
+    result = response.results[0]
+    scores_dict = result.category_scores.model_dump()
+
+    for category, score in scores_dict.items():
+        # Formatting to 6 decimal places to make it readable
+        print(f"  {category.ljust(25)}: {score:.6f}")
+
+    custom_flagged = False
+    flagged_categories = []
+
+    print("\n--- Threshold Evaluation ---")
+    for category, score in scores_dict.items():
+        # Check if we have a custom threshold for this category
+        threshold = THRESHOLDS.get(category, 0.5)  # Default to 0.5 if not listed
+
+        if score > threshold:
+            custom_flagged = True
+            flagged_categories.append(category)
+            print(f"  [!] TRIGGERED: {category}")
+            print(f"      Score {score:.6f} > Threshold {threshold}")
+
+    print(f"\nFinal Custom Flag Status: {custom_flagged}")
+    print("--- Moderation Complete ---\n")
+
+    return {
+        "flagged": custom_flagged,
+        "categories": flagged_categories,
+        "scores": scores_dict,
+    }
+
+
+def calculate_safety_score(moderation_results: list) -> int:
+    """
+    Takes a list of moderation dicts and returns a safety score from 0-100.
+    100 = Perfectly Safe, 0 = Extremely Harmful.
+    """
+    if not moderation_results:
+        return 100
+
+    max_violation_ratio = 0.0
+
+    for res in moderation_results:
+        scores = res.get("scores", {})
+        # We compare the score against your specific thresholds
+        # to see how "far over the line" it is.
+        for category, score in scores.items():
+            # Using the same thresholds from your functions
+            threshold = THRESHOLDS.get(category, 0.5)
+
+            # Ratio > 1.0 means it is flagged
+            violation_ratio = score / threshold
+            if violation_ratio > max_violation_ratio:
+                max_violation_ratio = violation_ratio
+
+    # If the worst violation is 0 (no probability), score is 100.
+    # If the violation is exactly the threshold, score starts dropping fast.
+    if max_violation_ratio <= 0.5:
+        # Very safe: Map 0.0-0.5 ratio to 100%-90%
+        # (max_ratio 0.0 = 100, max_ratio 0.5 = 90)
+        score = 100 - (max_violation_ratio * 20)
+    elif max_violation_ratio <= 1.0:
+        # Near threshold: Map 0.5-1.0 ratio to 90%-85%
+        # (max_ratio 0.5 = 90, max_ratio 1.0 = 85)
+        score = 95 - (max_violation_ratio * 10)
+    else:
+        # Flagged: Map 1.0+ ratio to 84% and below
+        # Each point over the threshold drops the score further
+        score = 85 - (min(max_violation_ratio - 1.0, 4.0) * 20)
+
+    return int(max(0, min(100, score)))
 
 
 @router.post("/users/create")
@@ -296,18 +401,41 @@ async def create_news_post(
     content: str = Form(...),
     category_id: str = Form(...),
     school: str = Form(...),
-    communities: list[str] = Form(...),
+    communities: list[str] = Form([]),
     thumbnail: UploadFile = File(...),
-    content_images: list[UploadFile] = File(...),
+    content_images: list[UploadFile] = File([]),
     app_user=Depends(get_current_app_user),
 ):
     try:
         user_id = app_user["id"]
         inst_id = app_user["inst_id"]
         isSchool = school.lower() == "true"
+        if not school and not communities:
+            raise HTTPException(
+                status_code=400,
+                detail="Target is empty. Please select at least one target audience.",
+            )
 
-        # Run moderation check on title + content
-        moderation = moderate_text(f"{title} {content}")
+        extracted_text = extract_text_content(content)
+        text_res = moderate_text(title + " " + extracted_text)
+        thumb_res = await moderate_image(thumbnail)
+        content_img_res = await asyncio.gather(
+            *[moderate_image(img) for img in content_images]
+        )
+
+        all_results = [text_res, thumb_res] + content_img_res
+
+        # 2. Check if globally flagged
+        is_flagged = any(r["flagged"] for r in all_results)
+
+        # 3. Calculate the 0-100 score
+        safety_score = calculate_safety_score(all_results)
+        if safety_score >= 90:
+            post_status = "PUBLISHED"
+        elif 80 <= safety_score < 90:
+            post_status = "PENDING REVIEW"
+        else:
+            post_status = "REJECTED"
 
         await news_service.create_post(
             supabase=supabase,
@@ -321,24 +449,33 @@ async def create_news_post(
             communities=communities,
             category_id=category_id,
             content_images=content_images,
-            is_flagged=moderation["flagged"],
+            is_flagged=post_status,
         )
 
-        if moderation["flagged"]:
-            return {
-                "status": "flagged",
-                "flagged": True,
-                "message": "This post is being reviewed by staff to ensure it follows school community guidelines.",
-            }
-
         return {
-            "status": "success",
-            "message": "You have successfully published your news post.",
+            "status": post_status,
+            "score": f"{safety_score}%",
+            "is_flagged": safety_score < 80,
+            "flagged_categories": list(
+                set([c for r in all_results for c in r["categories"]])
+            ),
         }
+
+        # if moderation["flagged"]:
+        #     return {
+        #         "status": "flagged",
+        #         "flagged": True,
+        #         "message": "This post is being reviewed by staff to ensure it follows school community guidelines.",
+        #     }
+
+        # return {
+        #     "status": "success",
+        #     "message": "You have successfully published your news post.",
+        # }
 
     except Exception as e:
         print(f"Upload error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload image")
+        raise HTTPException(status_code=500, detail="Failed to publish news post.")
 
 
 @router.delete("/users/me/news/{post_id}")

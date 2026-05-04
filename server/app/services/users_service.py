@@ -115,7 +115,6 @@ async def find_users_by_name(supabase: Client, inst_id: str, name: str | None):
         query = query.ilike("name", f"%{name}%")
 
     response = query.execute()
-    print(response.data)
     return response.data
 
 

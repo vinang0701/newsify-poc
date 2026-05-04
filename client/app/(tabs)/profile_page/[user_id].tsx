@@ -37,7 +37,6 @@ import api from "@/lib/axios";
 export default function Profile() {
     const { user, metadata } = useAuthStore();
 
-    const snapPoints = useMemo(() => ["20%"], []);
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const insets = useSafeAreaInsets();
     const colorScheme = useColorScheme() ?? "light";
@@ -48,9 +47,6 @@ export default function Profile() {
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-    const [selectedNewsId, setSelectedNewsId] = useState("");
-    const [newsAuthorId, setNewsAuthorId] = useState("");
 
     const signOut = useAuthStore((state) => state.signOut);
     const router = useRouter();
@@ -66,7 +62,9 @@ export default function Profile() {
             setIsLoggingOut(false);
         }
     };
-
+    // bottom sheet ref
+    const selectedNewsId = useRef("");
+    const newsAuthorId = useRef("");
     const handleExpandSheet = useCallback(() => {
         bottomSheetRef.current?.present();
     }, []);
@@ -78,8 +76,8 @@ export default function Profile() {
     const postBottomSheetRef = useRef<BottomSheetModal>(null);
     const handlePostSheetExpand = useCallback(
         (news_id: string, news_author_id: string) => {
-            setSelectedNewsId(news_id);
-            setNewsAuthorId(news_author_id);
+            selectedNewsId.current = news_id;
+            newsAuthorId.current = news_author_id;
             postBottomSheetRef?.current?.present();
         },
         [],
@@ -197,7 +195,7 @@ export default function Profile() {
     });
 
     const { status, data, error, isFetching, refetch } = useQuery<News[]>({
-        queryKey: ["user_news", user_id],
+        queryKey: ["news", user_id],
         queryFn: fetchUserNews,
         enabled: !!user_id,
     });
@@ -442,7 +440,6 @@ export default function Profile() {
                 <BottomSheetModal
                     ref={postBottomSheetRef}
                     backdropComponent={renderBackdrop}
-                    enablePanDownToClose
                 >
                     <BottomSheetView
                         style={[
@@ -481,7 +478,7 @@ export default function Profile() {
                             </ThemedText>
                         </Pressable>
                         {/* Only show suspend option if this is the user's own post */}
-                        {newsAuthorId === user?.id && (
+                        {newsAuthorId.current === user?.id && (
                             <Pressable
                                 style={styles.modalActionButtonCtn}
                                 onPress={() => {
@@ -510,7 +507,7 @@ export default function Profile() {
                 <BottomSheetModal
                     ref={bottomSheetRef}
                     backdropComponent={renderBackdrop}
-                    enablePanDownToClose
+                    enableDynamicSizing
                 >
                     <BottomSheetView
                         style={[

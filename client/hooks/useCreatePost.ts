@@ -40,9 +40,7 @@ const appendFileToFormData = (formData: FormData, uri: string, key: string) => {
 
 export default function useCreatePost() {
     const { user, metadata } = useAuthStore();
-    if (!user || !metadata) {
-        return null;
-    }
+
     const queryClient = useQueryClient();
 
     const { mutate, isPending, error } = useMutation({
@@ -85,9 +83,11 @@ export default function useCreatePost() {
                 formData.append("category_id", data.selectedCategoryId);
             }
 
-            data.selectedIds.forEach((id) =>
-                formData.append("communities", id),
-            );
+            if (data.selectedIds.length > 0) {
+                data.selectedIds.forEach((id) => {
+                    formData.append("communities", id);
+                });
+            }
 
             // 2. Append Thumbnail
             if (data.thumbnail) {

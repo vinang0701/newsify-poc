@@ -30,13 +30,9 @@ class PostToCommunityRequest(BaseModel):
 
 # Return an array of institution news
 @router.get("")
-async def get_communities(inst_id: str):
-    # Add JWT Decode later
-
-    # Use user_email in request body first
-
+async def get_communities(inst_id: str, search: Optional[str] = None):
     # call DB
-    posts = await communities_service.get_communities(supabase, inst_id)
+    posts = await communities_service.get_communities(supabase, inst_id, search)
     if posts is None:
         raise HTTPException(
             status_code=404, detail="No communities found for this institution"

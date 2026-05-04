@@ -1,5 +1,5 @@
 from supabase import Client
-from typing import List
+from typing import List, Optional
 from app.models.community import (
     Community,
     CommunityMembership,
@@ -12,15 +12,20 @@ import uuid
 from datetime import datetime
 
 
-async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
-    response = (
+async def get_communities(
+    supabase: Client, inst_id: str, search: Optional[str] = None
+) -> List[dict]:
+    query = (
         supabase.table("communities")
         .select("*")
         .eq("inst_id", inst_id)
         .eq("status", "active")
         .order("name", desc=False)
-        .execute()
     )
+    if search:
+        query = query.ilike("name", f"%{search}%")
+
+    response = query.execute()
     return [Community(**comm) for comm in response.data]
 
 

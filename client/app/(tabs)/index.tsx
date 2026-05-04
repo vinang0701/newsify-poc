@@ -39,6 +39,8 @@ import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { usePreferences } from "@/hooks/usePreferences";
 import Feather from "@expo/vector-icons/Feather";
+import Loading from "@/components/loading";
+import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
 const HEADER_HEIGHT = 250;
 
 export default function HomeScreen() {
@@ -66,13 +68,14 @@ export default function HomeScreen() {
     const [refreshing, setRefreshing] = React.useState(false);
 
     // Bottom sheet
-    const [selectedNewsId, setSelectedNewsId] = useState("");
-    const [newsAuthorId, setNewsAuthorId] = useState("");
+    const selectedNewsId = useRef("");
+    const newsAuthorId = useRef("");
+
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const handleSheetExpand = useCallback(
         (news_id: string, news_author_id: string) => {
-            setSelectedNewsId(news_id);
-            setNewsAuthorId(news_author_id);
+            selectedNewsId.current = news_id;
+            newsAuthorId.current = news_author_id;
             bottomSheetRef?.current?.present();
         },
         [],
@@ -124,9 +127,11 @@ export default function HomeScreen() {
     });
 
     // Fetch personalised posts — only runs once we have the user's id
-    const { data: personalisedData, refetch: refetchPersonalised } = useQuery<
-        News[]
-    >({
+    const {
+        data: personalisedData,
+        refetch: refetchPersonalised,
+        isFetching: isFetchingPersonalised,
+    } = useQuery<News[]>({
         queryKey: ["news"],
         queryFn: async (): Promise<News[]> => {
             const response = await api.get(
@@ -212,7 +217,7 @@ export default function HomeScreen() {
         router.push({
             pathname: "/report-post",
             params: {
-                post_id: selectedNewsId,
+                post_id: selectedNewsId.current,
                 inst_id: inst_id,
             },
         });
@@ -222,7 +227,7 @@ export default function HomeScreen() {
         useMutation({
             mutationFn: async () => {
                 const response = await api.delete(
-                    `/users/me/news/${selectedNewsId}`,
+                    `/users/me/news/${selectedNewsId.current}`,
                 );
                 return response.data;
             },
@@ -250,6 +255,15 @@ export default function HomeScreen() {
 
         mu_suspendPost();
     };
+
+    if (
+        isFetchingPersonalised ||
+        !personalisedData ||
+        savingPrefs ||
+        isPendingSuspendPost
+    ) {
+        return <Loading />;
+    }
 
     return (
         <SafeAreaView
@@ -508,7 +522,8 @@ export default function HomeScreen() {
             <BottomSheetModal
                 ref={bottomSheetRef}
                 backdropComponent={renderBackdrop}
-                enablePanDownToClose
+                enablePanDownToClose={true}
+                enableDynamicSizing
             >
                 <BottomSheetView
                     style={[
@@ -547,7 +562,7 @@ export default function HomeScreen() {
                         </ThemedText>
                     </Pressable>
                     {/* Only show suspend option if this is the user's own post */}
-                    {newsAuthorId === user.id && (
+                    {newsAuthorId.current === user.id && (
                         <Pressable
                             style={styles.menuItem}
                             onPress={() => {
@@ -562,7 +577,9 @@ export default function HomeScreen() {
                             />
                             <ThemedText
                                 type="defaultSemiBold"
-                                style={{ color: Colors[colorScheme].alert_red }}
+                                style={{
+                                    color: Colors[colorScheme].alert_red,
+                                }}
                             >
                                 Suspend news post
                             </ThemedText>
@@ -570,6 +587,7 @@ export default function HomeScreen() {
                     )}
                 </BottomSheetView>
             </BottomSheetModal>
+
             {/* Suspned News confirmation modal */}
             <Modal
                 visible={suspendModalVisible}
@@ -992,7 +1010,7 @@ const styles = StyleSheet.create({
 
     // BottomSheet
     bottomSheet: {
-        flex: 0,
+        flex: 1,
         paddingHorizontal: 16,
         paddingVertical: 12,
         gap: 24,

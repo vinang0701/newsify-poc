@@ -21,7 +21,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/header";
 import { Colors } from "@/constants/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigation, useRouter } from "expo-router";
 import DraftsTab from "@/components/drafts";
 import {
@@ -41,10 +41,8 @@ import { useCommunity, UserCommunities } from "@/hooks/useCommunity";
 import useCreatePost from "@/hooks/useCreatePost";
 import useDrafts from "@/hooks/useDrafts";
 import { DraftData, PostData, ServerReponse } from "@/data/types";
+import { ModerationData, ModerationModal } from "./moderation_modal";
 
-// const BASE_URL = "http://10.0.2.2:8000/api/v1";
-// const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-// const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
 export default function CreatePost() {
     // get user data
     const { metadata } = useAuthStore();
@@ -66,6 +64,10 @@ export default function CreatePost() {
     // custom hooks
     const { categories } = usePreferences();
     const { mutate, isPending } = useCreatePost();
+    const [moderationData, setModerationData] = useState<ModerationData | null>(
+        null,
+    );
+    const [moderationModalVisible, setModerationModalVisible] = useState(false);
     const { queryClient, mu_saveDraft, isPendingSaveDraft } = useDrafts();
     const {
         data: myDrafts,
@@ -111,6 +113,7 @@ export default function CreatePost() {
 
     // content html
     const [contentHtml, setContentHtml] = useState("");
+    const contentRef = useRef("");
 
     // States to pass to PostTarget
     // School checkbox
@@ -146,7 +149,7 @@ export default function CreatePost() {
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"], // Use the enum for clarity
+            mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [16, 9],
             quality: 1,
@@ -162,41 +165,45 @@ export default function CreatePost() {
         }
     };
     const pickThumbnail = async () => {
-        const uri = await pickMedia(); // Maybe a wider aspect for headers?
+        const uri = await pickMedia();
         if (uri) {
             setThumbnail(uri);
         }
     };
 
     const handleNavigateToTarget = async () => {
-        if (images?.length === 0 || images === null) {
-            Alert.alert("Please add an image.");
+        if (thumbnail === "" || thumbnail === undefined) {
+            Alert.alert("Error", "Please add a thumbnail.");
             return;
         }
         if (!titleInputValue.trim()) {
-            Alert.alert("Please include a title.");
-            return;
-        }
-        if (!inputValue.trim()) {
-            Alert.alert("Please enter your news content.");
+            Alert.alert("Error", "Please include a title.");
             return;
         }
 
         const content = await ref.current?.getHTML();
 
-        if (!content) {
-            Alert.alert("Failed to get content HTML.");
+        if (!content || !content.trim()) {
+            Alert.alert("Error", "Please include a body.");
             return;
         }
-
+        contentRef.current = content;
         setContentHtml(content);
-        console.log(content);
-
         setActiveFilter("target");
     };
 
     // Upload post
     const handlePublish = () => {
+        if (!isSchoolChecked && selectedIds.length === 0) {
+            Alert.alert("Error", "Please select at least one target audience.");
+            return;
+        }
+
+        if (selectedCategoryId === "" || selectedCategoryId === null) {
+            Alert.alert("Error", "Please select a category.");
+            return;
+        }
+
         const payload: PostData = {
             title: titleInputValue,
             description: descriptionValue,
@@ -206,14 +213,14 @@ export default function CreatePost() {
             selectedIds: selectedIds,
             thumbnail: thumbnail,
         };
-        console.log(payload);
-
+        // {
+        //                 status: string;
+        //                 score: string;
+        //                 is_flagged: boolean;
+        //                 flagged_categories: { category: string; score: string }[];
+        //             }
         mutate(payload, {
-            onSuccess: (data: {
-                status: string;
-                flagged?: string;
-                message: string;
-            }) => {
+            onSuccess: (data: ModerationData) => {
                 // Success logic here (e.g., redirecting)
                 setThumbnail("");
                 setTitleInputValue("");
@@ -223,7 +230,11 @@ export default function CreatePost() {
                 setSelectedCategoryId("");
                 setSelectedCategoryName("");
                 setSelectedIds([]);
-                Alert.alert("Post created!", data.message);
+                setContentHtml("");
+                contentRef.current = "";
+                setModerationData(data);
+                setModerationModalVisible(true);
+                // Alert.alert("Post created!", data.message);
             },
             onError: (err: any) => {
                 // Specific UI feedback
@@ -254,6 +265,15 @@ export default function CreatePost() {
             },
         });
     };
+
+    useEffect(() => {
+        if (activeFilter === "new" && contentRef.current) {
+            const timeout = setTimeout(() => {
+                ref.current?.setValue(contentRef.current);
+            }, 100);
+            return () => clearTimeout(timeout);
+        }
+    }, [activeFilter]);
 
     if (isFetchingMyDrafts) {
         return (
@@ -660,12 +680,21 @@ export default function CreatePost() {
                             categories={categories}
                             communities={myCommunities}
                             // communities={[]}
-                            onBack={() => setActiveFilter("new")}
+                            onBack={() => {
+                                setActiveFilter("new");
+                                ref.current?.setValue(contentHtml);
+                            }}
                             onSubmit={handlePublish}
+                            isPendingSubmit={isPending}
                         />
                     )}
                 </View>
             </ScrollView>
+            <ModerationModal
+                visible={moderationModalVisible}
+                setVisible={setModerationModalVisible}
+                data={moderationData}
+            />
         </KeyboardAvoidingView>
     );
 }
