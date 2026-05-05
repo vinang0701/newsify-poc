@@ -56,6 +56,9 @@ const Login = () => {
                 .eq("id", data.user.id)
                 .single(); // returns one row instead of an array
 
+            console.log("userData:", userData);
+            console.log("user id:", data.user.id);
+
             if (userData?.status === "banned") {
                 // Sign them out and show ban message
                 await supabase.auth.signOut();
@@ -209,7 +212,7 @@ const Login = () => {
                             </ThemedText>
                         </View>
                     )}
-                    <Link href={{ pathname: "/forgot_password"}} push asChild>
+                    <Link href="/forgot_password" push asChild>
                         <ThemedText
                             type="body_medium"
                             style={{

@@ -60,6 +60,57 @@ async def get_published_posts(inst_id: str):
         return posts
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+# Get all reported posts for this institution
+@router.get("/moderation/reports")
+async def get_reported_posts(inst_id: str):
+    try:
+        reports = await users_service.get_reported_posts(supabase, inst_id)
+        return reports
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Dismiss a report
+@router.patch("/moderation/reports/{report_id}/dismiss")
+async def dismiss_report(
+    report_id: str,
+    reason: str = Form(...),
+    current_user: UserPayload = Depends(get_current_app_user),
+):
+    try:
+        admin_id = current_user["id"]
+        result = await users_service.dismiss_report(supabase, report_id, reason, admin_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Report not found")
+        return {"message": "Report dismissed successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Flag a post from a report
+@router.patch("/moderation/reports/{report_id}/flag")
+async def flag_reported_post(
+    report_id: str,
+    post_id: str,
+    reason: str = Form(...),
+    current_user: UserPayload = Depends(get_current_app_user),
+):
+    try:
+        admin_id = current_user["id"]
+        result = await users_service.flag_reported_post(
+            supabase, report_id, post_id, reason, admin_id
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="Post not found")
+        return {"message": "Post flagged successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Approve a flagged post
@@ -200,6 +251,20 @@ async def suspend_user(user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Lift suspension
+@router.patch("/{user_id}/lift-suspension")
+async def lift_suspension(user_id: str):
+    try:
+        result = await users_service.lift_suspension(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "Suspension has been lifted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Update user details
 @router.patch("/{user_id}")
 async def update_user(
@@ -219,4 +284,6 @@ async def update_user(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
     

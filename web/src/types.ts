@@ -86,12 +86,12 @@ export const createUserSchema = z.object({
 export type CreateUserFormData = z.infer<typeof createUserSchema>;
 
 export interface CategoryTable {
-	id: string;
+	category_id: string;
 	category_name: string;
-	status: string;
-	created_by: string;
 	created_at: string;
+	status: string;
 	updated_at: string;
+	created_by: string;
 }
 
 export interface CommunityCreationRequest {

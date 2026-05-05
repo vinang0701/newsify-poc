@@ -9,6 +9,7 @@ class Category(BaseModel):
     category_name: str
     created_at: Optional[datetime] = None
     status: Optional[str] = None
+    created_by: Optional[str] = None
 
     class Config:
         from_attributes = True
