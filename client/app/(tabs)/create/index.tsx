@@ -41,7 +41,7 @@ import { useCommunity, UserCommunities } from "@/hooks/useCommunity";
 import useCreatePost from "@/hooks/useCreatePost";
 import useDrafts from "@/hooks/useDrafts";
 import { DraftData, PostData, ServerReponse } from "@/data/types";
-import { ModerationData, ModerationModal } from "./moderation_modal";
+import { ModerationData, ModerationModal } from "@/components/moderation_modal";
 
 export default function CreatePost() {
     // get user data

@@ -1,6 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
-import communityData from "@/data/communities.json";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
 import * as React from "react";
