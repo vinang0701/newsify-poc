@@ -149,3 +149,11 @@ async def report_post(
     except Exception as e:
         print(f"Report Post Error: {repr(e)}")
         raise HTTPException(status_code=500, detail="Failed to report post")
+
+
+# Categories
+@router.get("/categories")
+async def get_categories(inst_id: str):
+    response = await news_service.get_categories(supabase=supabase)
+
+    return response

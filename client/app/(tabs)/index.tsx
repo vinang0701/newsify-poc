@@ -42,31 +42,7 @@ import Feather from "@expo/vector-icons/Feather";
 import Loading from "@/components/loading";
 import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
 
-// UPDATED: used to remember which achievement toast has already been shown
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-// UPDATED: achievement unlock popup component
-import AchievementToast from "@/components/achievement_toast";
-
 const HEADER_HEIGHT = 250;
-
-const DATA = [
-    { id: "1", title: "Recent" },
-    { id: "2", title: "Important" },
-    { id: "3", title: "For You" },
-];
-
-// UPDATED: achievement type for unlock popup
-type Achievement = {
-    achievement_id: string;
-    achievement_name: string;
-    achievement_detail: string;
-    metric_key: string;
-    required_count: number;
-    current_count: number;
-    is_completed: boolean;
-    badge_url?: string | null;
-};
 
 export default function HomeScreen() {
     const { user, metadata, initialized } = useAuthStore();
@@ -93,14 +69,14 @@ export default function HomeScreen() {
     const [refreshing, setRefreshing] = React.useState(false);
 
     // Bottom sheet
-    const selectedNewsId = useRef("");
-    const newsAuthorId = useRef("");
+    const [selectedNewsId, setSelectedNewsId] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
 
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const handleSheetExpand = useCallback(
         (news_id: string, news_author_id: string) => {
-            selectedNewsId.current = news_id;
-            newsAuthorId.current = news_author_id;
+            setSelectedNewsId(news_id);
+            setNewsAuthorId(news_author_id);
             bottomSheetRef?.current?.present();
         },
         [],
@@ -132,12 +108,6 @@ export default function HomeScreen() {
     // Tracks if we are currently saving to DB
     const [savingPrefs, setSavingPrefs] = useState(false);
 
-    // UPDATED: controls top achievement unlock popup
-    const [achievementPopupVisible, setAchievementPopupVisible] =
-        useState(false);
-    const [unlockedAchievement, setUnlockedAchievement] =
-        useState<Achievement | null>(null);
-
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         refetchPersonalised();
@@ -145,23 +115,6 @@ export default function HomeScreen() {
             setRefreshing(false);
         }, 2000);
     }, []);
-
-    // Testing
-    const {
-        data: news = [],
-        isLoading,
-        error,
-        refetch,
-    } = useQuery<News[]>({
-        queryKey: ["news", inst_id],
-        queryFn: async () => {
-            const response = await api.get(`${inst_id}/news/feed`);
-            // Optional: Zod validation here
-            // return NewsSchema.array().parse(response.data);
-            return response.data;
-        },
-        enabled: !!inst_id,
-    });
 
     // Get the currently logged in user from Supabase auth
     const { data: currentUser } = useQuery({
@@ -189,19 +142,6 @@ export default function HomeScreen() {
             return await response.data;
         },
         enabled: !!currentUser?.id, // only fetch once we have the user id
-    });
-
-    // UPDATED: fetch completed achievements regularly so unlock toast can appear
-    const { data: achievementsData = [] } = useQuery<Achievement[]>({
-        queryKey: ["achievements_progress", inst_id, currentUser?.id],
-        queryFn: async () => {
-            const response = await api.get(
-                `/${inst_id}/users/${currentUser?.id}/achievements/unlocked`,
-            );
-            return response.data;
-        },
-        enabled: !!inst_id && !!currentUser?.id,
-        refetchInterval: 5000, // UPDATED: checks every 5 seconds
     });
 
     const renderBackdrop = useCallback(
@@ -232,40 +172,6 @@ export default function HomeScreen() {
 
         checkPreferences();
     }, [currentUser?.id]);
-
-    // UPDATED: show toast only for achievements not shown before
-    useEffect(() => {
-        const checkUnlockedAchievements = async () => {
-            if (!currentUser?.id || achievementsData.length === 0) return;
-
-            const storageKey = `seen_achievements_${currentUser.id}`;
-
-            const stored = await AsyncStorage.getItem(storageKey);
-            const seenIds: string[] = stored ? JSON.parse(stored) : [];
-
-            const newlyUnlocked = achievementsData.find(
-                (achievement) =>
-                    achievement.is_completed &&
-                    !seenIds.includes(achievement.achievement_id),
-            );
-
-            if (!newlyUnlocked) return;
-
-            await AsyncStorage.setItem(
-                storageKey,
-                JSON.stringify([...seenIds, newlyUnlocked.achievement_id]),
-            );
-
-            setUnlockedAchievement(newlyUnlocked);
-            setAchievementPopupVisible(true);
-
-            setTimeout(() => {
-                setAchievementPopupVisible(false);
-            }, 3000);
-        };
-
-        checkUnlockedAchievements();
-    }, [achievementsData, currentUser?.id]);
 
     const handleSavePreferences = async () => {
         if (!currentUser?.id) return;
@@ -311,7 +217,7 @@ export default function HomeScreen() {
         router.push({
             pathname: "/report-post",
             params: {
-                post_id: selectedNewsId.current,
+                post_id: selectedNewsId,
                 inst_id: inst_id,
             },
         });
@@ -321,7 +227,7 @@ export default function HomeScreen() {
         useMutation({
             mutationFn: async () => {
                 const response = await api.delete(
-                    `/users/me/news/${selectedNewsId.current}`,
+                    `/users/me/news/${selectedNewsId}`,
                 );
                 return response.data;
             },
@@ -370,14 +276,6 @@ export default function HomeScreen() {
             ]}
         >
             <Header />
-
-            {/* UPDATED: top achievement unlock popup */}
-            <AchievementToast
-                visible={achievementPopupVisible}
-                achievementName={unlockedAchievement?.achievement_name}
-                badgeUrl={unlockedAchievement?.badge_url}
-            />
-
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 style={{
@@ -620,75 +518,17 @@ export default function HomeScreen() {
                 )}
             </ScrollView>
             {/* BottomSheetModal */}
-            <BottomSheetModal
+            <NewsPostBottomSheet
                 ref={bottomSheetRef}
-                backdropComponent={renderBackdrop}
-                enablePanDownToClose={true}
-                enableDynamicSizing
-            >
-                <BottomSheetView
-                    style={[
-                        styles.bottomSheet,
-                        { paddingBottom: insets.bottom + 28 },
-                    ]}
-                >
-                    <Pressable style={styles.menuItem}>
-                        <Feather
-                            name="user-plus"
-                            size={24}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].text }}
-                        >
-                            Follow
-                        </ThemedText>
-                    </Pressable>
-
-                    <Pressable
-                        style={styles.menuItem}
-                        onPress={handleReportPost}
-                    >
-                        <Feather
-                            name="alert-circle"
-                            size={24}
-                            color={Colors[colorScheme].alert_red}
-                        />
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].text }}
-                        >
-                            Report post
-                        </ThemedText>
-                    </Pressable>
-                    {/* Only show suspend option if this is the user's own post */}
-                    {newsAuthorId.current === user.id && (
-                        <Pressable
-                            style={styles.menuItem}
-                            onPress={() => {
-                                bottomSheetRef.current?.dismiss();
-                                // setSuspendModalVisible(true); // show confirmation modal
-                            }}
-                        >
-                            <Feather
-                                name="x-circle"
-                                size={24}
-                                color={Colors[colorScheme].alert_red}
-                            />
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{
-                                    color: Colors[colorScheme].alert_red,
-                                }}
-                            >
-                                Suspend news post
-                            </ThemedText>
-                        </Pressable>
-                    )}
-                </BottomSheetView>
-            </BottomSheetModal>
-
+                newsAuthorId={newsAuthorId}
+                userId={user.id}
+                onReport={handleReportPost}
+                onSuspend={() => {
+                    bottomSheetRef.current?.dismiss();
+                    setSuspendModalVisible(true);
+                }}
+                colorScheme={"light"}
+            />
             {/* Suspned News confirmation modal */}
             <Modal
                 visible={suspendModalVisible}

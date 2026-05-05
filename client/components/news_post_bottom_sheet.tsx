@@ -12,7 +12,7 @@ import { Colors } from "@/constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type Props = {
-    newsAuthorId: RefObject<string>;
+    newsAuthorId: string;
     userId: string;
     colorScheme: "light" | "dark";
     onReport: () => void;
@@ -32,9 +32,6 @@ const NewsPostBottomSheet = forwardRef<BottomSheetModal, Props>(
             ),
             [],
         );
-        useEffect(() => {
-            console.log(newsAuthorId);
-        }, [newsAuthorId]);
 
         return (
             <BottomSheetModal
@@ -49,35 +46,39 @@ const NewsPostBottomSheet = forwardRef<BottomSheetModal, Props>(
                         { paddingBottom: insets.bottom + 28 },
                     ]}
                 >
-                    <Pressable style={styles.menuItem}>
-                        <Feather
-                            name="user-plus"
-                            size={24}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].text }}
-                        >
-                            Follow
-                        </ThemedText>
-                    </Pressable>
+                    {newsAuthorId !== userId && (
+                        <Pressable style={styles.menuItem}>
+                            <Feather
+                                name="user-plus"
+                                size={24}
+                                color={Colors[colorScheme].text}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Follow
+                            </ThemedText>
+                        </Pressable>
+                    )}
 
-                    <Pressable style={styles.menuItem} onPress={onReport}>
-                        <Feather
-                            name="alert-circle"
-                            size={24}
-                            color={Colors[colorScheme].alert_red}
-                        />
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].text }}
-                        >
-                            Report post
-                        </ThemedText>
-                    </Pressable>
+                    {newsAuthorId !== userId && (
+                        <Pressable style={styles.menuItem} onPress={onReport}>
+                            <Feather
+                                name="alert-circle"
+                                size={24}
+                                color={Colors[colorScheme].alert_red}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Report post
+                            </ThemedText>
+                        </Pressable>
+                    )}
                     {/* Only show suspend option if this is the user's own post */}
-                    {newsAuthorId.current === userId && (
+                    {newsAuthorId === userId && (
                         <Pressable style={styles.menuItem} onPress={onSuspend}>
                             <Feather
                                 name="x-circle"

@@ -5,11 +5,6 @@ import React, { useState } from "react";
 import { Alert } from "react-native";
 
 export default function usePosts() {
-    const { user, metadata } = useAuthStore();
-    if (!user || !metadata) {
-        return;
-    }
-
     const queryClient = useQueryClient();
 
     const [suspendModalVisible, setSuspendModalVisible] = useState(false);
@@ -32,16 +27,23 @@ export default function usePosts() {
             },
         });
 
-    const handleSuspend = async (news_id: string) => {
-        // Add this safety check at the very top of handleSuspend:
-        if (!user.id) {
-            Alert.alert(
-                "Error",
-                "Could not verify your identity. Please try again.",
-            );
-            return;
-        }
+    // const handleSuspend = async (news_id: string) => {
+    //     // Add this safety check at the very top of handleSuspend:
+    //     if (!user.id) {
+    //         Alert.alert(
+    //             "Error",
+    //             "Could not verify your identity. Please try again.",
+    //         );
+    //         return;
+    //     }
 
-        mu_suspendPost(news_id);
+    //     mu_suspendPost(news_id);
+    // };
+
+    return {
+        suspendModalVisible,
+        setSuspendModalVisible,
+        mu_suspendPost,
+        isPendingSuspendPost,
     };
 }

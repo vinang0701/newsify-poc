@@ -16,17 +16,7 @@ import { ThemedText } from "@/components/themed-text";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
-
-type Achievement = {
-    achievement_id: string;
-    achievement_name: string;
-    achievement_detail: string;
-    metric_key: string;
-    required_count: number;
-    current_count: number;
-    is_completed: boolean;
-    badge_url?: string | null;
-};
+import { Achievement } from "@/hooks/useAchievements";
 
 export default function AchievementsScreen() {
     const router = useRouter();
@@ -38,7 +28,7 @@ export default function AchievementsScreen() {
 
     console.log("Achievements screen opened");
     console.log("received user_id:", user_id);
-    
+
     const {
         data: achievements = [],
         isLoading,
@@ -104,8 +94,7 @@ export default function AchievementsScreen() {
                         const progress =
                             item.required_count > 0
                                 ? Math.min(
-                                      item.current_count /
-                                          item.required_count,
+                                      item.current_count / item.required_count,
                                       1,
                                   )
                                 : 0;
@@ -118,8 +107,7 @@ export default function AchievementsScreen() {
                                     {
                                         backgroundColor:
                                             Colors[colorScheme].bg_light,
-                                        borderColor:
-                                            Colors[colorScheme].border,
+                                        borderColor: Colors[colorScheme].border,
                                     },
                                 ]}
                             >

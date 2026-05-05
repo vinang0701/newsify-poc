@@ -30,9 +30,15 @@ class PostToCommunityRequest(BaseModel):
 
 # Return an array of institution news
 @router.get("")
-async def get_communities(inst_id: str, search: Optional[str] = None):
-    # call DB
-    posts = await communities_service.get_communities(supabase, inst_id, search)
+async def get_communities(
+    inst_id: str,
+    search: Optional[str] = None,
+    app_user: UserPayload = Depends(get_current_app_user),
+):
+    user_id = app_user["id"]
+    posts = await communities_service.get_communities(
+        supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+    )
     if posts is None:
         raise HTTPException(
             status_code=404, detail="No communities found for this institution"

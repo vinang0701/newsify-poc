@@ -14,6 +14,9 @@ class Community(BaseModel):
     image_url: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
+    role: str | None = None
+    isMember: bool = False
+    member_count: int = 0
 
     class Config:
         from_attributes = True

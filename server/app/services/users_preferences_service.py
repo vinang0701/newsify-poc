@@ -6,13 +6,11 @@ from app.models.registeredUsers import UserPreference, PreferenceItem
 import uuid
 
 
-async def get_user_preferences(
-    supabase: Client, user_id: uuid.UUID
-) -> List[UserPreference]:
+async def get_user_preferences(supabase: Client, user_id: str) -> List[UserPreference]:
     results = (
         supabase.table("user_preferences")
-        .select("*, category:categories(category_id,category_name, status)")
-        .eq("user_id", str(user_id))
+        .select("*, category:categories!inner(category_id,category_name, status)")
+        .eq("user_id", user_id)
         .eq("preference_type", "include")
         .eq("category.status", "active")
         .order("category(category_name)")

@@ -11,26 +11,42 @@ from app.core.db import supabase
 
 
 # join table between communities and community_members
-async def get_user_communities(supabase: Client, user_id: str) -> List[dict]:
-    response = (
+async def get_user_communities(
+    supabase: Client, inst_id: str, user_id: str, search: Optional[str] = None
+) -> List[Community]:
+    query = (
         supabase.table("communities")
-        .select("*, community_members!inner(*)")
-        .eq("community_members.user_id", user_id)
-        .execute()
-    )
-    communities = []
-    return [
-        CommunityMembers(
-            community_id=comm_mem["id"],
-            community_name=comm_mem["name"],
-            role=(
-                comm_mem["community_members"][0]["role"]
-                if comm_mem.get("community_members")
-                else "unknown"
-            ),
+        .select(
+            "*, member_info:community_members!inner(role), member_count:community_members(count)"
         )
-        for comm_mem in response.data
-    ]
+        .eq("inst_id", inst_id)
+        .eq("community_members.user_id", user_id)
+        .eq("status", "active")
+        .order("name", desc=False)
+    )
+    if search:
+        query = query.ilike("name", f"%{search}%")
+
+    response = query.execute()
+
+    formatted_communities = []
+    for comm in response.data:
+        # 1. Extract user role from the filtered join
+        # Because of !inner and the .eq filter, this will always have 1 item
+        user_info = comm.get("member_info", [{}])[0]
+
+        # 2. Extract total community member count
+        count_list = comm.get("member_count", [])
+        total_count = count_list[0].get("count", 0) if count_list else 0
+
+        # 3. Flatten into Pydantic model
+        comm["role"] = user_info.get("role")
+        comm["isMember"] = True  # Implicitly true because of !inner join
+        comm["member_count"] = total_count
+
+        formatted_communities.append(Community(**comm))
+
+    return formatted_communities
 
 
 async def get_user_profile(supabase: Client, inst_id: str, user_id: str) -> List[dict]:

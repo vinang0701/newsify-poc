@@ -14,13 +14,27 @@ export interface News {
     created_at: string;
 }
 
+// export interface Community {
+//     id: string;
+//     name: string;
+//     description: string;
+//     category: string;
+//     public: boolean;
+//     joined: boolean;
+// }
 export interface Community {
     id: string;
+    inst_id: string;
+    created_by_user_id: string;
     name: string;
     description: string;
-    category: string;
-    public: boolean;
-    joined: boolean;
+    status: string;
+    image_url: string | null;
+    created_at: string;
+    updated_at: string | null;
+    role: string | null;
+    isMember: boolean;
+    member_count: number;
 }
 
 export interface ModalProps {

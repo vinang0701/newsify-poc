@@ -368,12 +368,16 @@ async def respond_to_my_invitation(
 
 @router.get("/users/me/communities")
 async def get_my_communities(
+    search: Optional[str] = None,
     app_user=Depends(get_current_app_user),
 ):
     try:
         user_id = app_user["id"]
-        user_communities = await users_service.get_user_communities(supabase, user_id)
-        if not user_communities:
+        inst_id = app_user["inst_id"]
+        user_communities = await users_service.get_user_communities(
+            supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+        )
+        if user_communities is None:
             raise HTTPException(
                 status_code=404, detail="No commmunity membership data found."
             )

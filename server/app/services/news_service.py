@@ -6,6 +6,7 @@ from app.models.news_post import (
     LikeToggleResponse,
     LikeToggleResponseData,
 )
+from app.models.category import Category
 from app.core.db import supabase
 import uuid
 from fastapi import File, UploadFile
@@ -658,3 +659,9 @@ async def toggle_post_like(post_id: uuid.UUID, user_id: str):
     except APIError as e:
         # Log the error and raise a clean message
         raise HTTPException(status_code=400, detail=f"Database error: {e.message}")
+
+
+async def get_categories(supabase: Client) -> List[dict]:
+    response = supabase.table("categories").select("*").eq("status", "active").execute()
+
+    return [Category(**category) for category in response.data]

@@ -42,9 +42,9 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
 
     const queryClient = useQueryClient();
 
-    const handlePress = useCallback(() => {
-        handleSheetExpand(news.id, news.author_id);
-    }, [news.id, news.author_id, handleSheetExpand]);
+    // const handlePress = useCallback(() => {
+    //     handleSheetExpand(news.id, news.author_id);
+    // }, [news.id, news.author_id, handleSheetExpand]);
 
     // Toggle Like Mutation Function
     async function toggleLikePost(post_id: string) {
@@ -236,7 +236,9 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                         // onPress={() => {
                         //     handleSheetExpand(news.id, news.author_id);
                         // }}
-                        onPress={handlePress}
+                        onPress={() =>
+                            handleSheetExpand(news.id, news.author_id)
+                        }
                     >
                         <Feather
                             name="more-vertical"

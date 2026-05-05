@@ -60,11 +60,7 @@ interface UserCommunities {
     role: string;
 }
 
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-// const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-// const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
-
-export default function CommunitiesTab() {
+export default function UserCommunitiesList() {
     const colorScheme = useColorScheme() ?? "light";
     const [comm, setComm] = useState<Community[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -137,7 +133,7 @@ export default function CommunitiesTab() {
     const { data, error, isFetching, refetch } = useQuery<Community[]>({
         queryKey: ["communities"],
         queryFn: async (): Promise<Community[]> => {
-            const response = await api(`/${inst_id}/communities`, {
+            const response = await api(`/users/me/communities`, {
                 params: {
                     search: searchQuery || undefined, // Don't send empty strings
                 },
@@ -148,21 +144,6 @@ export default function CommunitiesTab() {
         enabled:
             !!inst_id && (searchQuery.length === 0 || searchQuery.length > 2),
     });
-
-    // const {
-    //     data: comm_mem_data,
-    //     error: comm_mem_error,
-    //     refetch: comm_mem_refetch,
-    //     isFetching: isFetchingCommMem,
-    // } = useQuery<UserCommunities[]>({
-    //     queryKey: ["user_communities", user_id],
-    //     queryFn: async () => {
-    //         // axios try catch
-    //         const response = await api.get(`/users/me/communities`);
-
-    //         return response.data;
-    //     },
-    // });
 
     async function leaveCommunity(community_id: string) {
         console.log("Leaving community");
@@ -187,10 +168,6 @@ export default function CommunitiesTab() {
         },
     });
 
-    // const joinedCommunityIds = React.useMemo(() => {
-    //     return new Set(comm_mem_data?.map((c) => c.community_id) || []);
-    // }, [comm_mem_data]);
-
     // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
     const filteredCommunities =
         data?.filter((community) =>
@@ -209,7 +186,23 @@ export default function CommunitiesTab() {
     return (
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
             {isFetching && <Loading />}
-            <Header />
+            <View
+                style={[
+                    styles.headerContainer,
+                    {
+                        backgroundColor: Colors[colorScheme].tint,
+                    },
+                ]}
+            >
+                <Pressable onPress={() => router.back()}>
+                    <MaterialCommunityIcons
+                        name="arrow-left"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                        weight="bold"
+                    />
+                </Pressable>
+            </View>
             <ScrollView
                 showsVerticalScrollIndicator={false}
                 style={{
@@ -238,28 +231,6 @@ export default function CommunitiesTab() {
                     >
                         Communities
                     </ThemedText>
-
-                    <Pressable
-                        style={{
-                            backgroundColor: Colors[colorScheme].tint,
-                            paddingHorizontal: 12,
-                            paddingVertical: 4,
-                            borderRadius: 20,
-                        }}
-                        onPress={() => {
-                            router.navigate("/(tabs)/community/request_form");
-                        }}
-                    >
-                        <ThemedText
-                            type="caption"
-                            emphasized
-                            style={{
-                                color: Colors[colorScheme].button_text,
-                            }}
-                        >
-                            Apply
-                        </ThemedText>
-                    </Pressable>
                 </View>
                 <View
                     style={[
@@ -381,6 +352,7 @@ export default function CommunitiesTab() {
                                         Colors[colorScheme].bg_light,
                                 },
                             ]}
+                            replace={true}
                         >
                             <View
                                 style={[
@@ -403,19 +375,6 @@ export default function CommunitiesTab() {
                                             { gap: 8 },
                                         ]}
                                     >
-                                        {/* <Image
-                                                source={require("@/assets/images/icon.png")}
-                                                style={{
-                                                    height: 36,
-                                                    width: 36,
-                                                    borderRadius: 100,
-                                                    borderWidth: 1,
-                                                    borderColor:
-                                                        Colors[colorScheme]
-                                                            .border,
-                                                }}
-                                            /> */}
-
                                         <View
                                             style={{
                                                 width: 36,
@@ -512,11 +471,14 @@ export default function CommunitiesTab() {
 }
 
 const styles = StyleSheet.create({
-    header: {
-        height: HEADER_HEIGHT,
-        overflow: "hidden",
+    headerContainer: {
+        flex: 0,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        alignItems: "center",
     },
-
     bodyContainer: {
         paddingHorizontal: 16,
         paddingTop: 8,

@@ -66,14 +66,14 @@ export default function CommunityPage() {
     >("Newest");
 
     // News Post Bottom Sheet
-    const selectedNewsId = useRef("");
-    const newsAuthorId = useRef("");
+    const [selectedNewsId, setSelectedNewsID] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
 
     const postBottomSheetRef = useRef<BottomSheetModal>(null);
     const handlePostSheetExpand = useCallback(
         (news_id: string, news_author_id: string) => {
-            selectedNewsId.current = news_id;
-            newsAuthorId.current = news_author_id;
+            setSelectedNewsID(news_id);
+            setNewsAuthorId(news_author_id);
             postBottomSheetRef?.current?.present();
         },
         [],
@@ -193,7 +193,7 @@ export default function CommunityPage() {
         router.push({
             pathname: "/report-post",
             params: {
-                post_id: selectedNewsId.current,
+                post_id: selectedNewsId,
                 inst_id: inst_id,
             },
         });
@@ -203,7 +203,7 @@ export default function CommunityPage() {
         useMutation({
             mutationFn: async () => {
                 const response = await api.delete(
-                    `/users/me/news/${selectedNewsId.current}`,
+                    `/users/me/news/${selectedNewsId}`,
                 );
                 return response.data;
             },
@@ -572,75 +572,6 @@ export default function CommunityPage() {
                 </BottomSheetView>
             </BottomSheetModal>
             {/* News Card Bottom Sheet */}
-            {/* <BottomSheetModal
-                name="news_card_bottom_sheet"
-                ref={postBottomSheetRef}
-                backdropComponent={renderBackdrop}
-                enablePanDownToClose
-                enableDismissOnClose
-            >
-                <BottomSheetView
-                    style={[
-                        styles.bottomSheet,
-                        { paddingBottom: insets.bottom + 28 },
-                    ]}
-                >
-                    <Pressable style={styles.modalActionButtonCtn}>
-                        <Feather
-                            name="user-plus"
-                            size={20}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].text }}
-                        >
-                            Follow
-                        </ThemedText>
-                    </Pressable>
-
-                    <Pressable
-                        style={styles.modalActionButtonCtn}
-                        onPress={handleReportPost}
-                    >
-                        <Feather
-                            name="alert-circle"
-                            size={20}
-                            color={Colors[colorScheme].alert_red}
-                        />
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].text }}
-                        >
-                            Report post
-                        </ThemedText>
-                    </Pressable> */}
-            {/* Only show suspend option if this is the user's own post */}
-            {/* {newsAuthorId === user?.id && (
-                        <Pressable
-                            style={styles.modalActionButtonCtn}
-                            onPress={() => {
-                                postBottomSheetRef.current?.dismiss();
-                                // setSuspendModalVisible(true); // show confirmation modal
-                            }}
-                        >
-                            <Feather
-                                name="x-circle"
-                                size={20}
-                                color={Colors[colorScheme].alert_red}
-                            />
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{
-                                    color: Colors[colorScheme].alert_red,
-                                }}
-                            >
-                                Suspend news post
-                            </ThemedText>
-                        </Pressable>
-                    )}
-                </BottomSheetView>
-            </BottomSheetModal> */}
             <NewsPostBottomSheet
                 ref={postBottomSheetRef}
                 newsAuthorId={newsAuthorId}

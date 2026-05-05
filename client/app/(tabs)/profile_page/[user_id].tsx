@@ -7,6 +7,7 @@ import {
     RefreshControl,
     ActivityIndicator,
     Modal,
+    Alert,
 } from "react-native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Colors } from "@/constants/theme";
@@ -31,8 +32,9 @@ import {
 } from "@gorhom/bottom-sheet";
 
 import { useAuthStore } from "@/utils/authStore";
-import { supabase } from "@/lib/supabase";
 import api from "@/lib/axios";
+import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
+import usePosts from "@/hooks/usePosts";
 
 export default function Profile() {
     const { user, metadata } = useAuthStore();
@@ -47,6 +49,16 @@ export default function Profile() {
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    // suspend modal
+    // const [suspendModalVisible, setSuspendModalVisible] = useState(false);
+    // usePosts Hook
+    const {
+        suspendModalVisible,
+        setSuspendModalVisible,
+        isPendingSuspendPost,
+        mu_suspendPost,
+    } = usePosts();
 
     const signOut = useAuthStore((state) => state.signOut);
     const router = useRouter();
@@ -63,8 +75,8 @@ export default function Profile() {
         }
     };
     // bottom sheet ref
-    const selectedNewsId = useRef("");
-    const newsAuthorId = useRef("");
+    const [selectedNewsId, setSelectedNewsId] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
     const handleExpandSheet = useCallback(() => {
         bottomSheetRef.current?.present();
     }, []);
@@ -76,12 +88,15 @@ export default function Profile() {
     const postBottomSheetRef = useRef<BottomSheetModal>(null);
     const handlePostSheetExpand = useCallback(
         (news_id: string, news_author_id: string) => {
-            selectedNewsId.current = news_id;
-            newsAuthorId.current = news_author_id;
+            setSelectedNewsId(news_id);
+            setNewsAuthorId(news_author_id);
             postBottomSheetRef?.current?.present();
         },
         [],
     );
+    const handlePostCloseSheet = useCallback(() => {
+        postBottomSheetRef.current?.dismiss();
+    }, []);
 
     const renderBackdrop = useCallback(
         (props: any) => (
@@ -151,6 +166,12 @@ export default function Profile() {
             params: { user_id: targetUserId, inst_id: inst_id },
         });
     }
+    function goToCommunities(targetUserId: string) {
+        router.push({
+            pathname: "/(tabs)/profile_page/communities",
+            params: { user_id: targetUserId, inst_id: inst_id },
+        });
+    }
 
     const {
         data: following_count,
@@ -200,15 +221,33 @@ export default function Profile() {
         enabled: !!user_id,
     });
 
-    const { data: currentUser } = useQuery({
-        queryKey: ["current_user"],
-        queryFn: async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            return user;
-        },
-    });
+    // report post
+    function handleReportPost() {
+        handlePostCloseSheet();
+
+        router.push({
+            pathname: "/report-post",
+            params: {
+                post_id: selectedNewsId,
+                inst_id: inst_id,
+            },
+        });
+    }
+
+    function handleSuspend(news_id: string) {
+        if (!user?.id) {
+            Alert.alert(
+                "Error",
+                "Could not verify your identity. Please try again.",
+            );
+            return;
+        }
+
+        if (news_id === "" || !news_id) {
+            Alert.alert("Error", "No selected news given. Please try again.");
+        }
+        mu_suspendPost(news_id);
+    }
 
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
@@ -335,16 +374,23 @@ export default function Profile() {
                         </View>
 
                         <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">4</ThemedText>
-                            <ThemedText
-                                type="caption"
-                                style={{
-                                    color: Colors[colorScheme].caption,
-                                    fontWeight: "500",
-                                }}
+                            <Pressable
+                                onPress={() => goToCommunities(user_id)}
+                                style={styles.statsInfoContainer}
                             >
-                                Communities
-                            </ThemedText>
+                                <ThemedText type="defaultSemiBold">
+                                    4
+                                </ThemedText>
+                                <ThemedText
+                                    type="caption"
+                                    style={{
+                                        color: Colors[colorScheme].caption,
+                                        fontWeight: "500",
+                                    }}
+                                >
+                                    Communities
+                                </ThemedText>
+                            </Pressable>
                         </View>
 
                         <View style={styles.statsInfoContainer}>
@@ -437,72 +483,17 @@ export default function Profile() {
                     )}
                 </View>
                 {/* News Card Bottom Sheet */}
-                <BottomSheetModal
+                <NewsPostBottomSheet
                     ref={postBottomSheetRef}
-                    backdropComponent={renderBackdrop}
-                >
-                    <BottomSheetView
-                        style={[
-                            styles.bottomSheet,
-                            { paddingBottom: insets.bottom + 28 },
-                        ]}
-                    >
-                        <Pressable style={styles.modalActionButtonCtn}>
-                            <Feather
-                                name="user-plus"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{ color: Colors[colorScheme].text }}
-                            >
-                                Follow
-                            </ThemedText>
-                        </Pressable>
-
-                        <Pressable
-                            style={styles.modalActionButtonCtn}
-                            // onPress={handleReportPost}
-                        >
-                            <Feather
-                                name="alert-circle"
-                                size={24}
-                                color={Colors[colorScheme].alert_red}
-                            />
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{ color: Colors[colorScheme].text }}
-                            >
-                                Report post
-                            </ThemedText>
-                        </Pressable>
-                        {/* Only show suspend option if this is the user's own post */}
-                        {newsAuthorId.current === user?.id && (
-                            <Pressable
-                                style={styles.modalActionButtonCtn}
-                                onPress={() => {
-                                    bottomSheetRef.current?.dismiss();
-                                    // setSuspendModalVisible(true); // show confirmation modal
-                                }}
-                            >
-                                <Feather
-                                    name="x-circle"
-                                    size={24}
-                                    color={Colors[colorScheme].alert_red}
-                                />
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={{
-                                        color: Colors[colorScheme].alert_red,
-                                    }}
-                                >
-                                    Suspend news post
-                                </ThemedText>
-                            </Pressable>
-                        )}
-                    </BottomSheetView>
-                </BottomSheetModal>
+                    newsAuthorId={newsAuthorId}
+                    userId={user?.id || ""}
+                    onReport={handleReportPost}
+                    onSuspend={() => {
+                        bottomSheetRef.current?.dismiss();
+                        setSuspendModalVisible(true);
+                    }}
+                    colorScheme={"light"}
+                />
 
                 <BottomSheetModal
                     ref={bottomSheetRef}
@@ -615,6 +606,92 @@ export default function Profile() {
                         </Pressable>
                     </BottomSheetView>
                 </BottomSheetModal>
+                {/* Suspned News confirmation modal */}
+                <Modal
+                    visible={suspendModalVisible}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setSuspendModalVisible(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View
+                            style={[
+                                styles.modalCard,
+                                {
+                                    backgroundColor:
+                                        Colors[colorScheme].bg_light,
+                                },
+                            ]}
+                        >
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ fontSize: 18 }}
+                            >
+                                Suspend News Post?
+                            </ThemedText>
+                            <ThemedText style={{ opacity: 0.6 }}>
+                                Are you sure you want to suspend this news post?
+                            </ThemedText>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    gap: 12,
+                                    width: "100%",
+                                }}
+                            >
+                                {/* Cancel button */}
+                                <Pressable
+                                    style={[
+                                        styles.modalBtn,
+                                        {
+                                            flex: 1,
+                                            backgroundColor:
+                                                Colors[colorScheme].text,
+                                        },
+                                    ]}
+                                    onPress={() =>
+                                        setSuspendModalVisible(false)
+                                    }
+                                >
+                                    <ThemedText
+                                        style={{
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        Cancel
+                                    </ThemedText>
+                                </Pressable>
+                                {/* Suspend button */}
+                                {
+                                    <Pressable
+                                        style={[
+                                            styles.modalBtn,
+                                            { flex: 1, backgroundColor: "red" },
+                                        ]}
+                                        onPress={() =>
+                                            handleSuspend(selectedNewsId)
+                                        }
+                                        disabled={isPendingSuspendPost}
+                                    >
+                                        <ThemedText
+                                            style={{
+                                                color: Colors[colorScheme]
+                                                    .button_text,
+                                                textAlign: "center",
+                                            }}
+                                        >
+                                            {isPendingSuspendPost
+                                                ? "Suspending..."
+                                                : "Suspend"}
+                                        </ThemedText>
+                                    </Pressable>
+                                }
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
 
                 <Modal
                     animationType="slide"
@@ -762,6 +839,26 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         gap: 24,
     },
+    // Suspend Modal
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)", // dark transparent background
+        justifyContent: "flex-end", // card sticks to bottom like a bottom sheet
+    },
+    modalCard: {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        maxHeight: "80%", // takes up 80% of screen height
+        gap: 12,
+    },
+    modalBtn: {
+        padding: 14,
+        borderRadius: 10,
+        alignItems: "center",
+        marginTop: 8,
+    },
+
     modalActionButtonCtn: {
         flex: 0,
         flexDirection: "row",
