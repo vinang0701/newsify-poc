@@ -5,16 +5,16 @@ import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-	RefreshControl,
-	Text,
-	Pressable,
-	ScrollView,
-	StyleSheet,
-	Alert,
-	Modal,
-	TouchableOpacity,
-	useColorScheme,
-	View,
+    RefreshControl,
+    Text,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Alert,
+    Modal,
+    TouchableOpacity,
+    useColorScheme,
+    View,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { News } from "@/data/types";
@@ -137,7 +137,7 @@ export default function HomeScreen() {
         useState(false);
     const [unlockedAchievement, setUnlockedAchievement] =
         useState<Achievement | null>(null);
-        
+
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         refetchPersonalised();
@@ -146,22 +146,22 @@ export default function HomeScreen() {
         }, 2000);
     }, []);
 
-	// Testing
-	const {
-		data: news = [],
-		isLoading,
-		error,
-		refetch,
-	} = useQuery<News[]>({
-		queryKey: ["news", inst_id],
-		queryFn: async () => {
-			const response = await api.get(`${inst_id}/news/feed`);
-			// Optional: Zod validation here
-			// return NewsSchema.array().parse(response.data);
-			return response.data;
-		},
-		enabled: !!inst_id,
-	});
+    // Testing
+    const {
+        data: news = [],
+        isLoading,
+        error,
+        refetch,
+    } = useQuery<News[]>({
+        queryKey: ["news", inst_id],
+        queryFn: async () => {
+            const response = await api.get(`${inst_id}/news/feed`);
+            // Optional: Zod validation here
+            // return NewsSchema.array().parse(response.data);
+            return response.data;
+        },
+        enabled: !!inst_id,
+    });
 
     // Get the currently logged in user from Supabase auth
     const { data: currentUser } = useQuery({
@@ -360,84 +360,82 @@ export default function HomeScreen() {
     }
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <SafeAreaView
-                edges={["top"]}
-                style={[
-                    {
-                        flex: 1,
-                        backgroundColor: Colors[colorScheme].bg_light,
-                    },
-                ]}
+        <SafeAreaView
+            edges={["top"]}
+            style={[
+                {
+                    flex: 1,
+                    backgroundColor: Colors[colorScheme].bg_light,
+                },
+            ]}
+        >
+            <Header />
+
+            {/* UPDATED: top achievement unlock popup */}
+            <AchievementToast
+                visible={achievementPopupVisible}
+                achievementName={unlockedAchievement?.achievement_name}
+                badgeUrl={unlockedAchievement?.badge_url}
+            />
+
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                style={{
+                    flex: 1,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    paddingBottom: insets.bottom,
+                    backgroundColor: Colors[colorScheme].bg,
+                }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                    />
+                }
             >
-                <Header />
-
-                {/* UPDATED: top achievement unlock popup */}
-                <AchievementToast
-                    visible={achievementPopupVisible}
-                    achievementName={unlockedAchievement?.achievement_name}
-                    badgeUrl={unlockedAchievement?.badge_url}
-                />
-
-                <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    style={{
-                        flex: 1,
-                        paddingHorizontal: 16,
-                        paddingVertical: 12,
-                        paddingBottom: insets.bottom,
-                        backgroundColor: Colors[colorScheme].bg,
-                    }}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                        />
-                    }
-                >
-                    <FlashList
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        style={{ marginBottom: 12, elevation: 10 }}
-                        data={categories}
-                        renderItem={({ item }) => (
-                            <Pressable
+                <FlashList
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    style={{ marginBottom: 12, elevation: 10 }}
+                    data={categories}
+                    renderItem={({ item }) => (
+                        <Pressable
+                            style={{
+                                backgroundColor:
+                                    activeFilter === item.category_name
+                                        ? Colors[colorScheme].tint
+                                        : Colors[colorScheme].bg_light,
+                                paddingHorizontal: 12,
+                                paddingVertical: 4,
+                                borderColor: Colors[colorScheme].border,
+                                borderWidth: 1,
+                                marginRight: 8,
+                                borderRadius: 4,
+                            }}
+                            onPress={() => {
+                                if (activeFilter === item.category_name) {
+                                    return;
+                                } else {
+                                    setActiveFilter(item.category_name);
+                                }
+                            }}
+                        >
+                            <ThemedText
+                                type="body_small"
+                                emphasized={true}
                                 style={{
-                                    backgroundColor:
+                                    color:
                                         activeFilter === item.category_name
-                                            ? Colors[colorScheme].tint
-                                            : Colors[colorScheme].bg_light,
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 4,
-                                    borderColor: Colors[colorScheme].border,
-                                    borderWidth: 1,
-                                    marginRight: 8,
-                                    borderRadius: 4,
-                                }}
-                                onPress={() => {
-                                    if (activeFilter === item.category_name) {
-                                        return;
-                                    } else {
-                                        setActiveFilter(item.category_name);
-                                    }
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].tint,
                                 }}
                             >
-                                <ThemedText
-                                    type="body_small"
-                                    emphasized={true}
-                                    style={{
-                                        color:
-                                            activeFilter === item.category_name
-                                                ? Colors[colorScheme]
-                                                      .button_text
-                                                : Colors[colorScheme].tint,
-                                    }}
-                                >
-                                    {item.category_name}
-                                </ThemedText>
-                            </Pressable>
-                        )}
-                    />
+                                {item.category_name}
+                            </ThemedText>
+                        </Pressable>
+                    )}
+                />
 
                 {activeFilter === "Recent" ? (
                     <View style={{ paddingBottom: insets.bottom + 20 }}>
