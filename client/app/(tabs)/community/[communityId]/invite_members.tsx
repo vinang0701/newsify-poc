@@ -18,6 +18,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import axios from "axios";
 import { Image } from "expo-image";
 import React, { useMemo, useState } from "react";
+import api from "@/lib/axios";
+import Feather from "@expo/vector-icons/Feather";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -32,19 +34,21 @@ const InviteMemberPage = () => {
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
     const { communityId: communityIdParam } = useLocalSearchParams();
-    const communityId = Array.isArray(communityIdParam) ? communityIdParam[0] : communityIdParam;
+    const communityId = Array.isArray(communityIdParam)
+        ? communityIdParam[0]
+        : communityIdParam;
     const queryClient = useQueryClient();
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
 
-    // Fetch all invitable users (non-members of this community)
     const { data: users, isLoading } = useQuery<InvitableUser[]>({
         queryKey: ["invitable_users", communityId],
         queryFn: async () => {
-            const res = await axios.get(
-                `${BASE_URL}/${inst_id}/communities/${communityId}/invitable-members`,
+            const res = await api.get(
+                `/${inst_id}/communities/${communityId}/invitable-members`,
             );
             return res.data;
         },
@@ -52,14 +56,19 @@ const InviteMemberPage = () => {
 
     const inviteMutation = useMutation({
         mutationFn: async (userIds: string[]) => {
-            await axios.post(
-                `${BASE_URL}/${inst_id}/communities/${communityId}/members/invite`,
+            await api.post(
+                `/${inst_id}/communities/${communityId}/members/invite`,
                 { user_ids: userIds },
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["community_members", communityId] });
+            queryClient.invalidateQueries({
+                queryKey: ["community_members", communityId],
+            });
             setShowSuccess(true);
+        },
+        onError: () => {
+            setShowError(true);
         },
     });
 
@@ -90,11 +99,17 @@ const InviteMemberPage = () => {
         router.back();
     };
 
+    const handleErrorClose = () => {
+        setShowSuccess(false);
+        setShowError(false);
+        router.back();
+    };
+
     const hasSelected = selectedIds.size > 0;
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <SafeAreaView style={{ flex: 1 }}>
+            <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
                 {/* Header */}
                 <View
                     style={[
@@ -111,7 +126,13 @@ const InviteMemberPage = () => {
                     </Pressable>
                 </View>
 
-                <View style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 12 }}>
+                <View
+                    style={{
+                        flex: 1,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                    }}
+                >
                     {/* Page title */}
                     <View
                         style={{
@@ -121,14 +142,18 @@ const InviteMemberPage = () => {
                             marginBottom: 10,
                         }}
                     >
-                        <ThemedText type="defaultSemiBold">Invite members</ThemedText>
+                        <ThemedText type="defaultSemiBold">
+                            Invite members
+                        </ThemedText>
                     </View>
 
                     {/* Search bar */}
                     <View
                         style={[
                             styles.searchContainer,
-                            { backgroundColor: Colors[colorScheme].border + "55" },
+                            {
+                                backgroundColor: Colors[colorScheme].bg_dark,
+                            },
                         ]}
                     >
                         <MaterialCommunityIcons
@@ -137,7 +162,10 @@ const InviteMemberPage = () => {
                             color={Colors[colorScheme].caption}
                         />
                         <TextInput
-                            style={[styles.searchInput, { color: Colors[colorScheme].text }]}
+                            style={[
+                                styles.searchInput,
+                                { color: Colors[colorScheme].text },
+                            ]}
                             placeholder="Search"
                             placeholderTextColor={Colors[colorScheme].caption}
                             value={searchQuery}
@@ -147,8 +175,31 @@ const InviteMemberPage = () => {
 
                     {/* User list */}
                     <FlashList
+                        showsVerticalScrollIndicator={false}
                         data={filteredUsers}
                         keyExtractor={(item) => item.user_id}
+                        contentContainerStyle={{
+                            flexGrow: 1,
+                        }}
+                        ListEmptyComponent={() => (
+                            <View
+                                style={{
+                                    flex: 1,
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    gap: 16,
+                                }}
+                            >
+                                <Feather
+                                    name="user-x"
+                                    size={80}
+                                    color={Colors[colorScheme].caption}
+                                />
+                                <ThemedText type="sub_heading">
+                                    No available users to invite.
+                                </ThemedText>
+                            </View>
+                        )}
                         renderItem={({ item }) => {
                             const isSelected = selectedIds.has(item.user_id);
                             return (
@@ -160,7 +211,8 @@ const InviteMemberPage = () => {
                                     <View
                                         style={[
                                             styles.checkbox,
-                                            isSelected && styles.checkboxSelected,
+                                            isSelected &&
+                                                styles.checkboxSelected,
                                         ]}
                                     >
                                         {isSelected && (
@@ -182,13 +234,6 @@ const InviteMemberPage = () => {
                                             {item.name}
                                         </ThemedText>
                                     </View>
-
-                                    {/* Dots menu (decorative, matching design) */}
-                                    <MaterialCommunityIcons
-                                        name="dots-vertical"
-                                        size={24}
-                                        color={Colors[colorScheme].caption}
-                                    />
                                 </Pressable>
                             );
                         }}
@@ -203,22 +248,42 @@ const InviteMemberPage = () => {
                     ]}
                 >
                     <Pressable
-                        style={styles.cancelButton}
+                        style={[
+                            {
+                                backgroundColor: Colors[colorScheme].text,
+                            },
+                            styles.button,
+                        ]}
                         onPress={() => router.back()}
                     >
-                        <Text style={styles.cancelText}>Cancel</Text>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{
+                                color: Colors[colorScheme].button_text,
+                            }}
+                        >
+                            Cancel
+                        </ThemedText>
                     </Pressable>
                     <Pressable
                         style={[
-                            styles.inviteButton,
-                            !hasSelected && styles.inviteButtonDisabled,
+                            styles.button,
+                            {
+                                backgroundColor: Colors[colorScheme].tint,
+                                opacity: hasSelected ? 1 : 0.7,
+                            },
                         ]}
                         onPress={handleInvite}
                         disabled={!hasSelected || inviteMutation.isPending}
                     >
-                        <Text style={styles.inviteButtonText}>
-                            {hasSelected ? "Invite members" : "Add members"}
-                        </Text>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{
+                                color: Colors[colorScheme].button_text,
+                            }}
+                        >
+                            Invite members
+                        </ThemedText>
                     </Pressable>
                 </View>
 
@@ -240,18 +305,98 @@ const InviteMemberPage = () => {
                                 <MaterialCommunityIcons
                                     name="check-circle"
                                     size={20}
-                                    color="#2E7D32"
+                                    color={Colors[colorScheme].secondary}
                                 />
-                                <Text style={styles.successTitle}>Success</Text>
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Success
+                                </ThemedText>
                             </View>
-                            <Text style={[styles.successMessage, { color: Colors[colorScheme].caption }]}>
-                                Successfully invited {selectedIds.size} member{selectedIds.size !== 1 ? "s" : ""}.
-                            </Text>
+                            <ThemedText
+                                type="body_medium"
+                                style={[{ color: Colors[colorScheme].caption }]}
+                            >
+                                Successfully invited {selectedIds.size} member
+                                {selectedIds.size !== 1 ? "s" : ""}.
+                            </ThemedText>
                             <Pressable
-                                style={styles.closeButton}
+                                style={[
+                                    styles.closeButton,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
                                 onPress={handleSuccessClose}
                             >
-                                <Text style={styles.closeButtonText}>Close</Text>
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized
+                                    style={{
+                                        color: Colors[colorScheme].button_text,
+                                    }}
+                                >
+                                    Close
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </Modal>
+                {/* Error Modal */}
+                <Modal
+                    visible={showError}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={handleSuccessClose}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View
+                            style={[
+                                styles.modalCard,
+                                { backgroundColor: Colors[colorScheme].bg },
+                            ]}
+                        >
+                            <View style={styles.successHeader}>
+                                <MaterialCommunityIcons
+                                    name="alert-circle"
+                                    size={20}
+                                    color={Colors[colorScheme].alert_red}
+                                />
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Error
+                                </ThemedText>
+                            </View>
+                            <ThemedText
+                                type="body_medium"
+                                style={[{ color: Colors[colorScheme].caption }]}
+                            >
+                                Failed to invite members. Please try again
+                                later.
+                            </ThemedText>
+                            <Pressable
+                                style={[
+                                    styles.closeButton,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={handleSuccessClose}
+                            >
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized
+                                    style={{
+                                        color: Colors[colorScheme].button_text,
+                                    }}
+                                >
+                                    Close
+                                </ThemedText>
                             </Pressable>
                         </View>
                     </View>
@@ -275,7 +420,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
-        borderRadius: 8,
+        borderRadius: 20,
         paddingHorizontal: 10,
         paddingVertical: 6,
         marginBottom: 8,
@@ -317,37 +462,17 @@ const styles = StyleSheet.create({
     },
     bottomBar: {
         flexDirection: "row",
+        justifyContent: "space-between",
         gap: 12,
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderTopWidth: 1,
     },
-    cancelButton: {
+    button: {
         flex: 1,
-        backgroundColor: "#111",
-        borderRadius: 999,
-        paddingVertical: 13,
+        borderRadius: 4,
+        paddingVertical: 8,
         alignItems: "center",
-    },
-    cancelText: {
-        color: "#fff",
-        fontWeight: "600",
-        fontSize: 14,
-    },
-    inviteButton: {
-        flex: 1,
-        backgroundColor: "#1976D2",
-        borderRadius: 999,
-        paddingVertical: 13,
-        alignItems: "center",
-    },
-    inviteButtonDisabled: {
-        backgroundColor: "#90CAF9",
-    },
-    inviteButtonText: {
-        color: "#fff",
-        fontWeight: "600",
-        fontSize: 14,
     },
     // Modal
     modalOverlay: {
@@ -366,32 +491,16 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
+        gap: 8,
     },
     successHeader: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-        marginBottom: 6,
-    },
-    successTitle: {
-        fontSize: 16,
-        fontWeight: "700",
-        color: "#2E7D32",
-    },
-    successMessage: {
-        fontSize: 13,
-        marginBottom: 20,
-        lineHeight: 18,
+        gap: 4,
     },
     closeButton: {
-        backgroundColor: "#111",
-        borderRadius: 8,
-        paddingVertical: 12,
+        borderRadius: 4,
+        paddingVertical: 8,
         alignItems: "center",
-    },
-    closeButtonText: {
-        color: "#fff",
-        fontWeight: "600",
-        fontSize: 14,
     },
 });

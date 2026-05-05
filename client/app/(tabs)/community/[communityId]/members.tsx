@@ -24,8 +24,11 @@ import { Image } from "expo-image";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import BottomSheet, {
     BottomSheetBackdrop,
+    BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
+import api from "@/lib/axios";
+import Feather from "@expo/vector-icons/Feather";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -45,18 +48,22 @@ const MembersPage = () => {
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
     const { communityId: communityIdParam } = useLocalSearchParams();
-    const communityId = Array.isArray(communityIdParam) ? communityIdParam[0] : communityIdParam;
+    const communityId = Array.isArray(communityIdParam)
+        ? communityIdParam[0]
+        : communityIdParam;
     const queryClient = useQueryClient();
+    const insets = useSafeAreaInsets();
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedMember, setSelectedMember] = useState<CommunityMembers | null>(null);
+    const [selectedMember, setSelectedMember] =
+        useState<CommunityMembers | null>(null);
     const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
     const { data: members, isLoading } = useQuery<CommunityMembers[]>({
         queryKey: ["community_members", communityId],
         queryFn: async () => {
-            const res = await axios.get(
-                `${BASE_URL}/${inst_id}/communities/${communityId}/members`,
+            const res = await api.get(
+                `/${inst_id}/communities/${communityId}/members`,
             );
             return res.data;
         },
@@ -66,12 +73,14 @@ const MembersPage = () => {
 
     const banMutation = useMutation({
         mutationFn: async (targetUserId: string) => {
-            await axios.post(
-                `${BASE_URL}/${inst_id}/communities/${communityId}/members/${targetUserId}/ban`,
+            await api.post(
+                `/${inst_id}/communities/${communityId}/members/${targetUserId}/ban`,
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["community_members", communityId] });
+            queryClient.invalidateQueries({
+                queryKey: ["community_members", communityId],
+            });
             setConfirmAction(null);
             setSelectedMember(null);
             bottomSheetRef.current?.close();
@@ -83,12 +92,14 @@ const MembersPage = () => {
 
     const removeMutation = useMutation({
         mutationFn: async (targetUserId: string) => {
-            await axios.delete(
-                `${BASE_URL}/${inst_id}/communities/${communityId}/members/${targetUserId}`,
+            await api.delete(
+                `/${inst_id}/communities/${communityId}/members/${targetUserId}`,
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["community_members", communityId] });
+            queryClient.invalidateQueries({
+                queryKey: ["community_members", communityId],
+            });
             setConfirmAction(null);
             setSelectedMember(null);
             bottomSheetRef.current?.close();
@@ -106,7 +117,9 @@ const MembersPage = () => {
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["community_members", communityId] });
+            queryClient.invalidateQueries({
+                queryKey: ["community_members", communityId],
+            });
             setConfirmAction(null);
             setSelectedMember(null);
             bottomSheetRef.current?.close();
@@ -124,25 +137,28 @@ const MembersPage = () => {
             );
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["community_members", communityId] });
+            queryClient.invalidateQueries({
+                queryKey: ["community_members", communityId],
+            });
             setConfirmAction(null);
             setSelectedMember(null);
             bottomSheetRef.current?.close();
         },
         onError: () => {
-            Alert.alert("Error", "Failed to revoke admin privileges. Please try again.");
+            Alert.alert(
+                "Error",
+                "Failed to revoke admin privileges. Please try again.",
+            );
         },
     });
 
     // --- Bottom Sheet ---
+    const bottomSheetRef = useRef<BottomSheetModal>(null);
 
-    const snapPoints = useMemo(() => ["15%"], []);
-    const bottomSheetRef = useRef<BottomSheet>(null);
-
-    const handleExpandSheet = (member: CommunityMembers) => {
+    const handleExpandSheet = useCallback((member: CommunityMembers) => {
         setSelectedMember(member);
-        bottomSheetRef.current?.expand();
-    };
+        bottomSheetRef.current?.present();
+    }, []);
 
     const handleSheetChange = (index: number) => {
         if (index === -1) {
@@ -170,14 +186,22 @@ const MembersPage = () => {
     const handleConfirm = () => {
         if (!selectedMember) return;
         if (confirmAction === "ban") banMutation.mutate(selectedMember.user_id);
-        else if (confirmAction === "remove") removeMutation.mutate(selectedMember.user_id);
-        else if (confirmAction === "promote") promoteMutation.mutate(selectedMember.user_id);
-        else if (confirmAction === "revoke") revokeMutation.mutate(selectedMember.user_id);
+        else if (confirmAction === "remove")
+            removeMutation.mutate(selectedMember.user_id);
+        else if (confirmAction === "promote")
+            promoteMutation.mutate(selectedMember.user_id);
+        else if (confirmAction === "revoke")
+            revokeMutation.mutate(selectedMember.user_id);
     };
 
     const confirmConfig: Record<
         Exclude<ConfirmAction, null>,
-        { title: string; message: string; actionLabel: string; actionColor: string }
+        {
+            title: string;
+            message: string;
+            actionLabel: string;
+            actionColor: string;
+        }
     > = {
         ban: {
             title: "Ban user?",
@@ -219,222 +243,309 @@ const MembersPage = () => {
         member.role === "community_admin" || member.role === "admin";
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <SafeAreaView style={{ flex: 1 }}>
-                {/* Header */}
+        <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+            {/* Header */}
+            <View
+                style={[
+                    styles.headerContainer,
+                    { backgroundColor: Colors[colorScheme].tint },
+                ]}
+            >
+                <Pressable onPress={() => router.back()}>
+                    <MaterialCommunityIcons
+                        name="arrow-left"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                    />
+                </Pressable>
+            </View>
+
+            <View
+                style={{
+                    flex: 1,
+                    paddingHorizontal: 16,
+                    paddingTop: 12,
+                }}
+            >
+                {/* Members header */}
                 <View
-                    style={[
-                        styles.headerContainer,
-                        { backgroundColor: Colors[colorScheme].tint },
-                    ]}
+                    style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        borderBottomWidth: 1,
+                        borderColor: Colors[colorScheme].border,
+                        paddingVertical: 8,
+                        marginBottom: 8,
+                    }}
                 >
-                    <Pressable onPress={() => router.back()}>
-                        <MaterialCommunityIcons
-                            name="arrow-left"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                        />
-                    </Pressable>
+                    <ThemedText type="defaultSemiBold">Members</ThemedText>
                     <Pressable
-                        style={styles.inviteButton}
+                        style={{
+                            flexDirection: "row",
+                            backgroundColor: Colors[colorScheme].tint,
+                            alignItems: "center",
+                            paddingVertical: 4,
+                            paddingHorizontal: 8,
+                            borderRadius: 4,
+                            gap: 4,
+                        }}
                         onPress={() =>
                             router.push({
-                                pathname: "/(tabs)/community/[communityId]/invite_members",
+                                pathname:
+                                    "/(tabs)/community/[communityId]/invite_members",
                                 params: { communityId },
                             })
                         }
                     >
-                        <MaterialCommunityIcons
-                            name="account-plus"
+                        <Feather
+                            name="user-plus"
                             size={16}
-                            color="#fff"
+                            color={Colors[colorScheme].button_text}
                         />
-                        <Text style={styles.inviteText}>Invite</Text>
+                        <ThemedText
+                            type="body_small"
+                            emphasized
+                            style={{
+                                color: Colors[colorScheme].button_text,
+                            }}
+                        >
+                            Invite
+                        </ThemedText>
                     </Pressable>
                 </View>
 
-                <View style={{ flex: 1, paddingHorizontal: 16, paddingVertical: 12 }}>
-                    {/* Members header */}
-                    <View
-                        style={{
-                            borderBottomWidth: 1,
-                            borderColor: Colors[colorScheme].border,
-                            paddingVertical: 4,
-                            marginBottom: 8,
-                        }}
-                    >
-                        <ThemedText type="defaultSemiBold">Members</ThemedText>
-                    </View>
-
-                    {/* Search bar */}
-                    <View
+                {/* Search bar */}
+                <View
+                    style={[
+                        styles.searchContainer,
+                        {
+                            backgroundColor: Colors[colorScheme].bg_dark,
+                        },
+                    ]}
+                >
+                    <MaterialCommunityIcons
+                        name="magnify"
+                        size={18}
+                        color={Colors[colorScheme].caption}
+                    />
+                    <TextInput
                         style={[
-                            styles.searchContainer,
-                            { backgroundColor: Colors[colorScheme].border + "55" },
+                            styles.searchInput,
+                            { color: Colors[colorScheme].text },
                         ]}
-                    >
-                        <MaterialCommunityIcons
-                            name="magnify"
-                            size={18}
-                            color={Colors[colorScheme].caption}
-                        />
-                        <TextInput
-                            style={[styles.searchInput, { color: Colors[colorScheme].text }]}
-                            placeholder="Search"
-                            placeholderTextColor={Colors[colorScheme].caption}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                    </View>
-
-                    {/* Member List */}
-                    <FlashList
-                        data={filteredMembers}
-                        keyExtractor={(item) => item.user_id}
-                        renderItem={({ item }) => (
-                            <View style={styles.memberRow}>
-                                <View style={styles.memberInfo}>
-                                    <Image
-                                        source={require("@/assets/images/profile.png")}
-                                        style={styles.avatar}
-                                    />
-                                    <ThemedText type="defaultSemiBold">{item.name}</ThemedText>
-                                    {isAdmin(item) && (
-                                        <View style={styles.adminBadge}>
-                                            <Text style={styles.adminBadgeText}>Admin</Text>
-                                        </View>
-                                    )}
-                                </View>
-                                <Pressable onPress={() => handleExpandSheet(item)}>
-                                    <MaterialCommunityIcons
-                                        name="dots-vertical"
-                                        size={24}
-                                        color={Colors[colorScheme].caption}
-                                    />
-                                </Pressable>
-                            </View>
-                        )}
+                        placeholder="Search"
+                        placeholderTextColor={Colors[colorScheme].caption}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
                     />
                 </View>
 
-                {/* Bottom Sheet */}
-                <BottomSheet
-                    ref={bottomSheetRef}
-                    index={-1}
-                    snapPoints={snapPoints}
-                    backdropComponent={renderBackdrop}
-                    enablePanDownToClose
-                    onChange={handleSheetChange}
+                {/* Member List */}
+                <FlashList
+                    data={filteredMembers}
+                    keyExtractor={(item) => item.user_id}
+                    renderItem={({ item }) => (
+                        <View style={styles.memberRow}>
+                            <View style={styles.memberInfo}>
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={styles.avatar}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    {item.name}
+                                </ThemedText>
+                                {isAdmin(item) && (
+                                    <View
+                                        style={[
+                                            styles.adminBadge,
+                                            {
+                                                backgroundColor:
+                                                    Colors[colorScheme].tint,
+                                            },
+                                        ]}
+                                    >
+                                        <ThemedText
+                                            type="caption"
+                                            emphasized
+                                            style={{
+                                                color: Colors[colorScheme]
+                                                    .button_text,
+                                            }}
+                                        >
+                                            Admin
+                                        </ThemedText>
+                                    </View>
+                                )}
+                            </View>
+                            <Pressable onPress={() => handleExpandSheet(item)}>
+                                <MaterialCommunityIcons
+                                    name="dots-vertical"
+                                    size={24}
+                                    color={Colors[colorScheme].caption}
+                                />
+                            </Pressable>
+                        </View>
+                    )}
+                />
+            </View>
+
+            {/* Bottom Sheet */}
+            <BottomSheetModal
+                ref={bottomSheetRef}
+                backdropComponent={renderBackdrop}
+                enablePanDownToClose
+                onChange={handleSheetChange}
+            >
+                <BottomSheetView
+                    style={[
+                        styles.bottomSheet,
+                        {
+                            backgroundColor: Colors[colorScheme].bg_light,
+                            paddingBottom: insets.bottom + 28,
+                        },
+                    ]}
                 >
-                    <BottomSheetView
+                    {/* Ban */}
+                    <Pressable
+                        style={styles.sheetOption}
+                        onPress={() => setConfirmAction("ban")}
+                    >
+                        <MaterialCommunityIcons
+                            name="close-octagon-outline"
+                            size={24}
+                            color={Colors[colorScheme].text}
+                        />
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ color: Colors[colorScheme].text }}
+                        >
+                            Ban
+                        </ThemedText>
+                    </Pressable>
+
+                    {/* Remove */}
+                    <Pressable
+                        style={styles.sheetOption}
+                        onPress={() => setConfirmAction("remove")}
+                    >
+                        <MaterialCommunityIcons
+                            name="account-remove-outline"
+                            size={24}
+                            color={Colors[colorScheme].text}
+                        />
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ color: Colors[colorScheme].text }}
+                        >
+                            Remove
+                        </ThemedText>
+                    </Pressable>
+
+                    {/* Promote / Revoke */}
+                    {isSelectedMemberAdmin ? (
+                        <Pressable
+                            style={styles.sheetOption}
+                            onPress={() => setConfirmAction("revoke")}
+                        >
+                            <MaterialCommunityIcons
+                                name="shield-off-outline"
+                                size={24}
+                                color={Colors[colorScheme].text}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Revoke admin
+                            </ThemedText>
+                        </Pressable>
+                    ) : (
+                        <Pressable
+                            style={styles.sheetOption}
+                            onPress={() => setConfirmAction("promote")}
+                        >
+                            <MaterialCommunityIcons
+                                name="shield-outline"
+                                size={24}
+                                color={Colors[colorScheme].text}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Promote to admin
+                            </ThemedText>
+                        </Pressable>
+                    )}
+                </BottomSheetView>
+            </BottomSheetModal>
+
+            {/* Confirmation Modal */}
+            <Modal
+                visible={confirmAction !== null}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setConfirmAction(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View
                         style={[
-                            styles.bottomSheet,
-                            { backgroundColor: Colors[colorScheme].bg_light },
+                            styles.modalCard,
+                            { backgroundColor: Colors[colorScheme].bg },
                         ]}
                     >
-                        {/* Ban */}
-                        <Pressable
-                            style={styles.sheetOption}
-                            onPress={() => setConfirmAction("ban")}
-                        >
-                            <MaterialCommunityIcons
-                                name="close-circle-outline"
-                                size={20}
-                                color={Colors[colorScheme].text}
-                            />
-                            <ThemedText>Ban</ThemedText>
-                        </Pressable>
-
-                        {/* Remove */}
-                        <Pressable
-                            style={styles.sheetOption}
-                            onPress={() => setConfirmAction("remove")}
-                        >
-                            <MaterialCommunityIcons
-                                name="account-remove-outline"
-                                size={20}
-                                color={Colors[colorScheme].text}
-                            />
-                            <ThemedText>Remove</ThemedText>
-                        </Pressable>
-
-                        {/* Promote / Revoke */}
-                        {isSelectedMemberAdmin ? (
-                            <Pressable
-                                style={styles.sheetOption}
-                                onPress={() => setConfirmAction("revoke")}
-                            >
-                                <MaterialCommunityIcons
-                                    name="shield-off-outline"
-                                    size={20}
-                                    color={Colors[colorScheme].text}
-                                />
-                                <ThemedText>Revoke admin</ThemedText>
-                            </Pressable>
-                        ) : (
-                            <Pressable
-                                style={styles.sheetOption}
-                                onPress={() => setConfirmAction("promote")}
-                            >
-                                <MaterialCommunityIcons
-                                    name="shield-outline"
-                                    size={20}
-                                    color={Colors[colorScheme].text}
-                                />
-                                <ThemedText>Promote to admin</ThemedText>
-                            </Pressable>
-                        )}
-                    </BottomSheetView>
-                </BottomSheet>
-
-                {/* Confirmation Modal */}
-                <Modal
-                    visible={confirmAction !== null}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setConfirmAction(null)}
-                >
-                    <View style={styles.modalOverlay}>
-                        <View
+                        <Text
                             style={[
-                                styles.modalCard,
-                                { backgroundColor: Colors[colorScheme].bg },
+                                styles.modalTitle,
+                                { color: Colors[colorScheme].text },
                             ]}
                         >
-                            <Text style={[styles.modalTitle, { color: Colors[colorScheme].text }]}>
-                                {confirmAction ? confirmConfig[confirmAction].title : ""}
-                            </Text>
-                            <Text style={[styles.modalMessage, { color: Colors[colorScheme].caption }]}>
-                                {confirmAction ? confirmConfig[confirmAction].message : ""}
-                            </Text>
-                            <View style={styles.modalActions}>
-                                <Pressable
-                                    style={styles.cancelButton}
-                                    onPress={() => setConfirmAction(null)}
-                                >
-                                    <Text style={styles.cancelText}>Cancel</Text>
-                                </Pressable>
-                                <Pressable
-                                    style={[
-                                        styles.confirmButton,
-                                        {
-                                            backgroundColor: confirmAction
-                                                ? confirmConfig[confirmAction].actionColor
-                                                : "#000",
-                                        },
-                                    ]}
-                                    onPress={handleConfirm}
-                                >
-                                    <Text style={styles.confirmText}>
-                                        {confirmAction ? confirmConfig[confirmAction].actionLabel : ""}
-                                    </Text>
-                                </Pressable>
-                            </View>
+                            {confirmAction
+                                ? confirmConfig[confirmAction].title
+                                : ""}
+                        </Text>
+                        <Text
+                            style={[
+                                styles.modalMessage,
+                                { color: Colors[colorScheme].caption },
+                            ]}
+                        >
+                            {confirmAction
+                                ? confirmConfig[confirmAction].message
+                                : ""}
+                        </Text>
+                        <View style={styles.modalActions}>
+                            <Pressable
+                                style={styles.cancelButton}
+                                onPress={() => setConfirmAction(null)}
+                            >
+                                <Text style={styles.cancelText}>Cancel</Text>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.confirmButton,
+                                    {
+                                        backgroundColor: confirmAction
+                                            ? confirmConfig[confirmAction]
+                                                  .actionColor
+                                            : "#000",
+                                    },
+                                ]}
+                                onPress={handleConfirm}
+                            >
+                                <Text style={styles.confirmText}>
+                                    {confirmAction
+                                        ? confirmConfig[confirmAction]
+                                              .actionLabel
+                                        : ""}
+                                </Text>
+                            </Pressable>
                         </View>
                     </View>
-                </Modal>
-            </SafeAreaView>
-        </GestureHandlerRootView>
+                </View>
+            </Modal>
+        </SafeAreaView>
     );
 };
 
@@ -466,7 +577,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
-        borderRadius: 8,
+        borderRadius: 20,
         paddingHorizontal: 10,
         paddingVertical: 6,
         marginBottom: 8,
@@ -507,13 +618,12 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        gap: 4,
+        gap: 24,
     },
     sheetOption: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        paddingVertical: 10,
+        gap: 8,
     },
     // Modal
     modalOverlay: {

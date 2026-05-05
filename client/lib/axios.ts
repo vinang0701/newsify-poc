@@ -1,6 +1,8 @@
 import axios from "axios";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
+import { Alert } from "react-native";
+import { useAuthStore } from "@/utils/authStore";
 
 const router = useRouter();
 
@@ -29,6 +31,17 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             await supabase.auth.signOut();
             router.navigate("/login");
+        } else if (
+            error.response?.status === 403 ||
+            error.response?.data?.detail === "User account is banned" ||
+            error.response?.data?.detail === "User account is suspended"
+        ) {
+            await supabase.auth.signOut();
+            useAuthStore.getState().signOut();
+            Alert.alert(
+                "Access Denied",
+                "Your account has been restricted. Please contact your institution admin",
+            );
         }
         return Promise.reject(error);
     },
