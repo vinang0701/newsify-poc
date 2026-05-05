@@ -1,5 +1,5 @@
 from supabase import Client
-from typing import List
+from typing import List, Optional
 from app.models.community import Community, CommunityMembers
 from app.models.registeredUsers import (
     UserProfileDetails,
