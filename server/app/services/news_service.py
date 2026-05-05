@@ -19,8 +19,7 @@ async def get_institution_news(
     # Logic: Fetch all news where the tenant matches
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             created_at,
             author,
@@ -33,10 +32,7 @@ async def get_institution_news(
             comments_count:post_comments(count),
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id})
-            """.format(
-                user_id=f"'{user_id}'"
-            )
-        )
+            """.format(user_id=f"'{user_id}'"))
         .eq("inst_id", inst_id)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
@@ -105,10 +101,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
     #     .order("created_at", desc=True)
     #     .execute()
     # )
-    response = (
-        supabase.table("community_posts")
-        .select(
-            """
+    response = supabase.table("community_posts").select("""
                 community_id,
                 created_at,
                 news_posts!inner(id, title,
@@ -121,12 +114,7 @@ async def get_community_news(supabase: Client, community_id: str) -> List[dict]:
                     image_url
                 )
             )
-        """
-        )
-        .eq("community_id", community_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
+        """).eq("community_id", community_id).order("created_at", desc=True).execute()
 
     return [
         NewsPost(
@@ -264,8 +252,7 @@ async def save_draft(
 async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             created_at,
             author,
@@ -278,10 +265,7 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
             comments_count:post_comments(count),
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id})
-            """.format(
-                user_id=f"'{user_id}'"
-            )
-        )
+            """.format(user_id=f"'{user_id}'"))
         .eq("author", user_id)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts
         .order("created_at", desc=True)
@@ -319,20 +303,12 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
 
 
 async def get_user_drafts(supabase: Client, user_id: str) -> List[dict]:
-    response = (
-        supabase.table("user_drafts")
-        .select(
-            """
+    response = supabase.table("user_drafts").select("""
             draft_id,
             title, 
             image_url,
             content
-        """
-        )
-        .eq("user_id", user_id)
-        .order("created_at", desc=False)
-        .execute()
-    )
+        """).eq("user_id", user_id).order("created_at", desc=False).execute()
 
     if len(response.data) != 0:
         return [
@@ -371,8 +347,7 @@ async def get_personalised_news(
     # category_id is now directly on news_posts so no joining needed!
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             created_at,
             author,
@@ -385,10 +360,7 @@ async def get_personalised_news(
             comments_count:post_comments(count),
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id})
-            """.format(
-                user_id=f"'{user_id}'"
-            )
-        )
+            """.format(user_id=f"'{user_id}'"))
         .eq("inst_id", inst_id)
         .in_("category_id", preferred_ids)
         .eq("status", "PUBLISHED")  # <- show only published posts. no suspended posts

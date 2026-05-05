@@ -1,3 +1,5 @@
+// import {registerGlobals} from "@livekit/react-native";
+// registerGlobals();
 import { HapticTab } from "@/components/haptic-tab";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
