@@ -133,6 +133,11 @@ async def create_community_application(
         .execute()
     )
 
+    supabase.table("community_admins").insert({
+        "community_id": response.data[0]["id"],
+        "user_id": response.data[0]["created_by_user_id"],
+    }).execute()
+
     return response.data, None
 
 

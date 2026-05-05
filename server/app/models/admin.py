@@ -44,6 +44,7 @@ class Community(BaseModel):
     status: str
     created_at: str
     updated_at: str | None = None
+    member_count: int = 0
 
 
 #

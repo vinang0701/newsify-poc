@@ -32,6 +32,69 @@ async def get_student_users(supabase: Client, inst_id: str) -> List[dict]:
     return [User(**user) for user in response.data]
 
 
+async def get_staff_users(supabase: Client, inst_id: str) -> List[dict]:
+    response = (
+        supabase.table("users")
+        .select(
+            """
+            id,
+            inst_id,
+            name,
+            email,
+            role,
+            status,
+            created_at,
+            updated_at
+        """
+        )
+        .eq("inst_id", inst_id)
+        .eq("role", "staff")  # only staff
+        .execute()
+    )
+    return [User(**user) for user in response.data]
+
+
+async def get_admin_users(supabase: Client, inst_id: str) -> List[dict]:
+    # Fetch institution and platform admins from users table
+    response = (
+        supabase.table("users")
+        .select("id, inst_id, name, email, role, status, created_at, updated_at")
+        .eq("inst_id", inst_id)
+        .in_("role", ["institution_admin", "platform_admin"])
+        .execute()
+    )
+    admins = [User(**user) for user in response.data]
+
+    # Fetch community admins from community_admins table
+    comm_admin_response = (
+        supabase.table("community_admins")
+        .select(
+            """
+            user_id,
+            users!community_admins_user_id_fkey(
+                id, inst_id, name, email, role, status, created_at, updated_at
+            ),
+            communities!community_admins_community_id_fkey(inst_id)
+            """
+        )
+        .execute()
+    )
+
+    # Filter by inst_id and add community_admin role label
+    for row in comm_admin_response.data:
+        if (
+            row.get("communities") and
+            row["communities"].get("inst_id") == inst_id and
+            row.get("users")
+        ):
+            user_data = row["users"]
+            # Override role to show as community_admin
+            user_data["role"] = "community_admin"
+            admins.append(User(**user_data))
+
+    return admins
+
+
 async def create_new_user(
     supabase: Client,
     inst_id: uuid.UUID,

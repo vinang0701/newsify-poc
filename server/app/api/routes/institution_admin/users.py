@@ -42,6 +42,33 @@ async def get_student_users(inst_id: str):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/staff")
+async def get_staff_users(inst_id: str):
+    try:
+        staff_users = await users_service.get_staff_users(supabase, inst_id)
+        if staff_users is None or len(staff_users) == 0:
+            raise HTTPException(status_code=404, detail="No staff found")
+        return staff_users
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@router.get("/admins")
+async def get_admin_users(inst_id: str):
+    try:
+        admin_users = await users_service.get_admin_users(supabase, inst_id)
+        if admin_users is None or len(admin_users) == 0:
+            raise HTTPException(status_code=404, detail="No admins found")
+        return admin_users
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Get all flagged posts for this institution
 @router.get("/moderation")

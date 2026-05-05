@@ -13,7 +13,7 @@ from app.core.db import supabase
 async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
     response = (
         supabase.table("communities")
-        .select("*, created_by:created_by_user_id(name, image_url)")
+        .select("*, created_by:created_by_user_id(name, image_url), community_members(count)")
         .eq("inst_id", inst_id)
         .order("created_at", desc=True)
         .execute()
@@ -24,6 +24,8 @@ async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
         created_by = comm.get("created_by") or {}
         comm["created_by_user_name"] = created_by.get("name", "Unknown User")
         comm["created_by_user_image_url"] = created_by.get("image_url", "")
+        # Extract member count from nested result
+        comm["member_count"] = comm.get("community_members", [{}])[0].get("count", 0)
         communities.append(Community(**comm))
 
     return communities
@@ -109,3 +111,171 @@ async def respond_to_community_creation_request(
 
     # If rejected, return the updated request info
     return request_data
+
+async def update_community_status(
+    supabase: Client,
+    community_id: str,
+    status: str,
+) -> dict:
+    response = (
+        supabase.table("communities")
+        .update({"status": status})
+        .eq("id", community_id)
+        .execute()
+    )
+    return response.data
+
+
+async def get_community_admins(supabase: Client, community_id: str) -> List[dict]:
+    # Fetch all members with admin role in this community
+    response = (
+        supabase.table("community_members")
+        .select("user_id, role, users(id, name, email)")
+        .eq("community_id", community_id)
+        .eq("role", "admin")
+        .execute()
+    )
+    return response.data
+
+
+async def promote_to_admin(
+    supabase: Client,
+    community_id: str,
+    user_id: str,
+) -> dict:
+    # Step 1: Update role in community_members
+    supabase.table("community_members").update(
+        {"role": "admin"}
+    ).eq("community_id", community_id).eq("user_id", user_id).execute()
+
+    # Step 2: Insert into community_admins table
+    response = (
+        supabase.table("community_admins")
+        .insert({
+            "community_id": community_id,
+            "user_id": user_id,
+        })
+        .execute()
+    )
+
+    # Step 3: Notify the promoted user
+    supabase.table("notifications").insert({
+        "actor_user_id": user_id,
+        "notification_type": "ROLE_CHANGE",
+        "reference_id": community_id,
+        "reference_table": "communities",
+        "message": "You have been promoted to community admin.",
+        "is_read": False,
+        "recipient_user_id": user_id,
+    }).execute()
+
+    return response.data
+
+
+async def revoke_admin(
+    supabase: Client,
+    community_id: str,
+    user_id: str,
+) -> dict:
+    # Step 1: Update role in community_members
+    supabase.table("community_members").update(
+        {"role": "member"}
+    ).eq("community_id", community_id).eq("user_id", user_id).execute()
+
+    # Step 2: Remove from community_admins table
+    response = (
+        supabase.table("community_admins")
+        .delete()
+        .eq("community_id", community_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    # Step 3: Notify the user whose admin rights were revoked
+    supabase.table("notifications").insert({
+        "actor_user_id": user_id,
+        "notification_type": "ROLE_CHANGE",
+        "reference_id": community_id,
+        "reference_table": "communities",
+        "message": "Your community admin rights have been revoked.",
+        "is_read": False,
+        "recipient_user_id": user_id,
+    }).execute()
+
+    return response.data
+
+
+async def notify_community_admins(
+    supabase: Client,
+    community_id: str,
+    admin_id: str,
+    message: str,
+) -> None:
+    # Get all community admins
+    admins = await get_community_admins(supabase, community_id)
+
+    # Send notification to each admin
+    for admin in admins:
+        supabase.table("notifications").insert({
+            "actor_user_id": admin_id,
+            "notification_type": "COMMUNITY_STATUS_CHANGE",
+            "reference_id": community_id,
+            "reference_table": "communities",
+            "message": message,
+            "is_read": False,
+            "recipient_user_id": admin["user_id"],
+        }).execute()
+
+
+async def get_community_with_members(
+    supabase: Client,
+    community_id: str,
+) -> dict:
+    # Get community details
+    comm_response = (
+        supabase.table("communities")
+        .select(
+            """
+            id,
+            name,
+            description,
+            status,
+            image_url,
+            created_at,
+            users!communities_created_by_user_id_fkey(name, email)
+            """
+        )
+        .eq("id", community_id)
+        .single()
+        .execute()
+    )
+
+    if not comm_response.data:
+        return None
+
+    # Get all members
+    members_response = (
+        supabase.table("community_members")
+        .select("user_id, role, joined_at, users(id, name, email)")
+        .eq("community_id", community_id)
+        .order("joined_at", desc=False)
+        .execute()
+    )
+
+    return {
+        "community": comm_response.data,
+        "members": members_response.data,
+    }
+
+async def get_community(supabase: Client, community_id: str):
+    response = (
+        supabase.table("communities")
+        .select("id, name, description, status, image_url")
+        .eq("id", community_id)
+        .single()
+        .execute()
+    )
+    if not response.data:
+        return None
+    return response.data
+

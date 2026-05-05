@@ -13,6 +13,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup, FieldError } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { ButtonGroup } from "@/components/ui/button-group";
 import type { User } from "@/types";
 import { UserMgmtColumns } from "./columns";
@@ -34,18 +42,22 @@ const createUserSchema = z.object({
     email: z.email("Please enter a valid email address").toLowerCase().trim(),
     password: z.string().min(8, "Password must be at least 8 characters long"),
     role: z.enum(
-        ["student", "staff", "institution_admin"],
+        ["institution_admin", "platform_admin"],
         Error("Please select a valid user role."),
     ),
 });
 
-const StaffUsersMgmtPage = () => {
+type FilterStatus = "all" | "active" | "suspended" | "banned";
+type FilterRole = "all_roles" | "community_admin" | "institution_admin" | "platform_admin";
+
+const AdminUsersMgmtPage = () => {
     const { user } = useAuth();
     const queryClient = useQueryClient();
     const [showPassword, setShowPassword] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [sortStatus, setSortStatus] = useState<"all" | "active" | "suspended" | "banned">("all");
+    const [sortStatus, setSortStatus] = useState<FilterStatus>("all");
+    const [sortRole, setSortRole] = useState<FilterRole>("all_roles");
 
     const form = useForm<z.infer<typeof createUserSchema>>({
         resolver: zodResolver(createUserSchema),
@@ -53,7 +65,7 @@ const StaffUsersMgmtPage = () => {
             name: "",
             email: "",
             password: "",
-            role: "staff",
+            role: "institution_admin",
         },
         mode: "onSubmit",
     });
@@ -76,9 +88,9 @@ const StaffUsersMgmtPage = () => {
         return password;
     };
 
-    async function fetchStaffUsers(): Promise<User[]> {
+    async function fetchAdminUsers(): Promise<User[]> {
         try {
-            const response = await api.get<User[]>(`/${inst_id}/admin/users/staff`);
+            const response = await api.get<User[]>(`/${inst_id}/admin/users/admins`);
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error)) throw error;
@@ -87,8 +99,8 @@ const StaffUsersMgmtPage = () => {
     }
 
     const { isLoading, data, error } = useQuery<User[]>({
-        queryKey: ["staffUsers", inst_id],
-        queryFn: fetchStaffUsers,
+        queryKey: ["adminUsers", inst_id],
+        queryFn: fetchAdminUsers,
     });
 
     const filteredData = data?.filter((user) => {
@@ -97,7 +109,8 @@ const StaffUsersMgmtPage = () => {
             : user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
               user.email.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = sortStatus === "all" ? true : user.status === sortStatus;
-        return matchesSearch && matchesStatus;
+        const matchesRole = sortRole === "all_roles" ? true : user.role === sortRole;
+        return matchesSearch && matchesStatus && matchesRole;
     }) ?? [];
 
     const onSubmit = async (data: z.infer<typeof createUserSchema>) => {
@@ -117,7 +130,7 @@ const StaffUsersMgmtPage = () => {
             if (response.status === 201) {
                 form.reset();
                 handleDialogClose();
-                queryClient.invalidateQueries({ queryKey: ["staffUsers"] });
+                queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
             }
         } catch (error: any) {
             const errorMessage =
@@ -131,7 +144,7 @@ const StaffUsersMgmtPage = () => {
             {isLoading && <Loading />}
             <div className="flex flex-col gap-3">
                 <div className="px-4 py-6 text-2xl font-bold border-b border-border">
-                    Staff Account Management
+                    Admin Account Management
                 </div>
                 <section className="flex flex-col py-3 px-4 gap-6">
                     {/* Search and Add */}
@@ -159,7 +172,7 @@ const StaffUsersMgmtPage = () => {
                                 dialogOpen ? handleDialogClose() : setDialogOpen(true);
                             }}
                         >
-                            <form id="create-staff-form" onSubmit={form.handleSubmit(onSubmit)}>
+                            <form id="create-admin-form" onSubmit={form.handleSubmit(onSubmit)}>
                                 <DialogTrigger asChild>
                                     <Button className="rounded-sm font-semibold border border-border" type="button">
                                         Add
@@ -168,9 +181,9 @@ const StaffUsersMgmtPage = () => {
                                 </DialogTrigger>
                                 <DialogContent className="py-6 px-8">
                                     <DialogHeader>
-                                        <DialogTitle className="text-2xl">Add Staff</DialogTitle>
+                                        <DialogTitle className="text-2xl">Add Admin</DialogTitle>
                                         <DialogDescription>
-                                            Please fill in staff account details and click add to create a new account.
+                                            Please fill in admin account details and click add to create a new account.
                                         </DialogDescription>
                                     </DialogHeader>
                                     <FieldGroup>
@@ -179,7 +192,7 @@ const StaffUsersMgmtPage = () => {
                                             control={form.control}
                                             render={({ field, fieldState }) => (
                                                 <Field data-invalid={fieldState.invalid} className="flex flex-col items-center">
-                                                    <Label htmlFor="name-2" className="w-xs">
+                                                    <Label htmlFor="name-3" className="w-xs">
                                                         Name <span className="text-destructive">*</span>
                                                     </Label>
                                                     <Input
@@ -187,7 +200,7 @@ const StaffUsersMgmtPage = () => {
                                                         {...field}
                                                         aria-invalid={fieldState.invalid}
                                                         type="text"
-                                                        id="name-2"
+                                                        id="name-3"
                                                         placeholder="Enter a name"
                                                         autoComplete="off"
                                                     />
@@ -200,7 +213,7 @@ const StaffUsersMgmtPage = () => {
                                             control={form.control}
                                             render={({ field, fieldState }) => (
                                                 <Field className="flex flex-col items-center">
-                                                    <Label htmlFor="email-2" className="w-xs">
+                                                    <Label htmlFor="email-3" className="w-xs">
                                                         Email <span className="text-destructive">*</span>
                                                     </Label>
                                                     <Input
@@ -208,7 +221,7 @@ const StaffUsersMgmtPage = () => {
                                                         required
                                                         aria-invalid={fieldState.invalid}
                                                         type="text"
-                                                        id="email-2"
+                                                        id="email-3"
                                                         placeholder="Enter an email"
                                                         autoComplete="off"
                                                     />
@@ -221,7 +234,7 @@ const StaffUsersMgmtPage = () => {
                                             control={form.control}
                                             render={({ field, fieldState }) => (
                                                 <Field data-invalid={fieldState.invalid} className="flex flex-col items-center">
-                                                    <Label htmlFor="password-2" className="w-xs">
+                                                    <Label htmlFor="password-3" className="w-xs">
                                                         Password <span className="text-destructive">*</span>
                                                     </Label>
                                                     <div className="flex flex-row items-center gap-2">
@@ -229,7 +242,7 @@ const StaffUsersMgmtPage = () => {
                                                             <Input
                                                                 {...field}
                                                                 type={showPassword ? "text" : "password"}
-                                                                id="password-2"
+                                                                id="password-3"
                                                                 autoComplete="off"
                                                                 className="pr-10"
                                                                 placeholder="Enter a strong password"
@@ -268,14 +281,28 @@ const StaffUsersMgmtPage = () => {
                                                 </Field>
                                             )}
                                         />
-
-                                            <Field className="flex flex-col items-center">
-                                                <Label className="w-xs">Role</Label>
-                                                <div className="w-full border border-input rounded-md px-3 py-2 text-sm bg-muted text-muted-foreground">
-                                                    Staff
-                                                </div>
-                                            </Field>
-                                            
+                                        <Controller
+                                            name="role"
+                                            control={form.control}
+                                            render={({ field, fieldState }) => (
+                                                <Field data-invalid={fieldState.invalid} className="flex flex-col items-center">
+                                                    <Label htmlFor="role-3" className="w-xs">
+                                                        Role <span className="text-destructive">*</span>
+                                                    </Label>
+                                                    <Select required value={field.value} onValueChange={field.onChange}>
+                                                        <SelectTrigger className="w-full grow-2" aria-invalid={fieldState.invalid}>
+                                                            <SelectValue placeholder="Select a role" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectGroup>
+                                                                <SelectItem value="institution_admin">Institution Admin</SelectItem>
+                                                                <SelectItem value="platform_admin">Platform Admin</SelectItem>
+                                                            </SelectGroup>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </Field>
+                                            )}
+                                        />
                                         {form.formState.errors.root && (
                                             <p className="text-sm text-destructive">
                                                 {form.formState.errors.root.message}
@@ -288,7 +315,7 @@ const StaffUsersMgmtPage = () => {
                                                 Cancel
                                             </Button>
                                         </DialogClose>
-                                        <Button variant="outline" type="submit" form="create-staff-form" className="rounded-sm justify-self-end">
+                                        <Button variant="outline" type="submit" form="create-admin-form" className="rounded-sm justify-self-end">
                                             Add
                                         </Button>
                                     </DialogFooter>
@@ -298,13 +325,13 @@ const StaffUsersMgmtPage = () => {
                     </div>
 
                     {/* Filter by status */}
-                    <div className="flex flex-row gap-2 items-center">
-                        <span className="text-sm text-muted-foreground">Filter:</span>
+                    <div className="flex flex-row gap-2 items-center flex-wrap">
+                        <span className="text-sm text-muted-foreground">Status:</span>
                         {(["all", "active", "suspended", "banned"] as const).map((status) => (
                             <Button
                                 key={status}
                                 variant="outline"
-                                className={`rounded-sm text-sm capitalize ${
+                                className={`rounded-sm text-sm ${
                                     sortStatus === status
                                         ? "bg-primary text-primary-foreground"
                                         : "bg-card text-foreground"
@@ -312,6 +339,30 @@ const StaffUsersMgmtPage = () => {
                                 onClick={() => setSortStatus(status)}
                             >
                                 {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </Button>
+                        ))}
+                    </div>
+
+                    {/* Filter by role */}
+                    <div className="flex flex-row gap-2 items-center flex-wrap">
+                        <span className="text-sm text-muted-foreground">Role:</span>
+                        {([
+                            { value: "all_roles", label: "All" },
+                            { value: "community_admin", label: "Community Admin" },
+                            { value: "institution_admin", label: "Institution Admin" },
+                            { value: "platform_admin", label: "Platform Admin" },
+                        ] as const).map(({ value, label }) => (
+                            <Button
+                                key={value}
+                                variant="outline"
+                                className={`rounded-sm text-sm ${
+                                    sortRole === value
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-card text-foreground"
+                                }`}
+                                onClick={() => setSortRole(value)}
+                            >
+                                {label}
                             </Button>
                         ))}
                     </div>
@@ -329,4 +380,4 @@ const StaffUsersMgmtPage = () => {
     );
 };
 
-export default StaffUsersMgmtPage;
+export default AdminUsersMgmtPage;

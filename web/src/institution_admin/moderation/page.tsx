@@ -15,6 +15,7 @@ import { Check, X, Flag } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import Loading from "@/components/loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearchParams } from "react-router";
 
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
@@ -74,6 +75,9 @@ const ContentModerationPage = () => {
 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [selectedReportPost, setSelectedReportPost] = useState<Report | null>(null);
+
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get("tab") ?? "reported";
 
     const { data: flaggedPosts, isLoading: loadingFlagged } = useQuery<Post[]>({
         queryKey: ["flaggedPosts", inst_id],
@@ -350,7 +354,7 @@ const ContentModerationPage = () => {
                 </div>
 
                 <section className="flex flex-col py-3 px-4 gap-4">
-                    <Tabs defaultValue="reported">
+                    <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
                         <TabsList className="mb-4">
                             <TabsTrigger value="reported">
                                 Reported ({reportedPosts?.length ?? 0})
