@@ -43,6 +43,73 @@ async def get_student_users(inst_id: str):
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Get all flagged posts for this institution
+@router.get("/moderation")
+async def get_flagged_posts(inst_id: str):
+    try:
+        posts = await users_service.get_flagged_posts(supabase, inst_id)
+        return posts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Get all published posts for admin to review
+@router.get("/moderation/published")
+async def get_published_posts(inst_id: str):
+    try:
+        posts = await users_service.get_published_posts(supabase, inst_id)
+        return posts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Approve a flagged post
+@router.patch("/moderation/{post_id}/approve")
+async def approve_post(post_id: str):
+    try:
+        result = await users_service.approve_post(supabase, post_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Post not found")
+        return {"message": "Post approved and published successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Reject a flagged post
+@router.patch("/moderation/{post_id}/reject")
+async def reject_post(post_id: str):
+    try:
+        result = await users_service.reject_post(supabase, post_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Post not found")
+        return {"message": "Post rejected successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+# Manually flag a published post with a reason
+@router.patch("/moderation/{post_id}/flag")
+async def flag_post(
+    post_id: str,
+    inst_id: str,
+    reason: str = Form(...),
+    current_user: UserPayload = Depends(get_current_app_user),
+):
+    try:
+        admin_id = current_user["id"]
+        result = await users_service.flag_post(
+            supabase, post_id, reason, admin_id, inst_id
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="Post not found")
+        return {"message": "Post flagged and author notified successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("", status_code=201)
 async def create_user_route(
@@ -90,3 +157,66 @@ async def create_user_route(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Ban a user
+@router.patch("/{user_id}/ban")
+async def ban_user(user_id: str):
+    try:
+        result = await users_service.ban_user(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "User has been banned successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Lift ban
+@router.patch("/{user_id}/lift-ban")
+async def lift_ban(user_id: str):
+    try:
+        result = await users_service.lift_ban(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "Ban has been lifted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Suspend a user
+@router.patch("/{user_id}/suspend")
+async def suspend_user(user_id: str):
+    try:
+        result = await users_service.suspend_user(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "User has been suspended successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Update user details
+@router.patch("/{user_id}")
+async def update_user(
+    user_id: str,
+    name: str = Form(...),
+    email: str = Form(...),
+    role: str = Form(...),
+):
+    try:
+        result = await users_service.update_user(
+            supabase, user_id, name, email, role
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "User updated successfully", "data": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    

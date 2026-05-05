@@ -39,7 +39,29 @@ const LoginPage = () => {
             const payload = JSON.parse(
                 atob(data.session.access_token.split(".")[1]),
             );
+
             const role = payload.app_metadata.user_role;
+            
+            // Check if user is banned or suspended
+            const { data: userData } = await supabase
+                .from("users")
+                .select("status")
+                .eq("id", data.user.id)
+                .single(); // returns one row instead of array
+
+            if (userData?.status === "banned") {
+                // Sign them out immediately and show ban message
+                await supabase.auth.signOut();
+                setError("Your account has been banned. Please contact your institution admin.");
+                return;
+            }
+
+            if (userData?.status === "suspended") {
+                // Sign them out immediately and show suspended message
+                await supabase.auth.signOut();
+                setError("Your account has been suspended. Please contact your institution admin.");
+                return;
+            }
 
             // this is such a scuffed method but whatever it works
             const next = searchParams.get("next");

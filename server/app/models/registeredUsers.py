@@ -5,12 +5,13 @@ from app.models.category import Category
 from datetime import datetime
 
 
-class RegisteredUser:
-    instId: uuid.UUID
+class RegisteredUser(BaseModel):
+    inst_id: uuid.UUID
     id: uuid.UUID
     name: str
     email: EmailStr
-    faculty: str
+    role: str
+    status: str
 
 
 class UserProfileDetails(BaseModel):

@@ -16,7 +16,6 @@ from app.core.auth import (
 from app.schemas.reports import CreatePostReportRequest, CreatePostReportResponse
 from app.models.news_post import PostComment, PostCommentCreate, LikeToggleResponse
 
-
 router = APIRouter(
     prefix="/{inst_id}/news",
     tags=["news"],

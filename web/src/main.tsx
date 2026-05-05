@@ -14,7 +14,6 @@ import StaffUsersMgmtPage from "./institution_admin/users/staff-users-page";
 import { AuthProvider } from "./components/auth-provider";
 import ProtectedRoute from "./components/protected-route";
 import CommunitiesMgmtPage from "./institution_admin/communities/page";
-import RolesMgmtPage from "./institution_admin/roles/page";
 import CategoriesMgmtPage from "./institution_admin/categories/page";
 import AchievementsMgmtPage from "./institution_admin/achievements/page";
 import ContentModerationPage from "./institution_admin/moderation/page";
@@ -48,7 +47,6 @@ const router = createBrowserRouter([
 				],
 			},
 
-			{ path: "roles", element: <RolesMgmtPage /> },
 			{ path: "achievements", element: <AchievementsMgmtPage /> },
 			{ path: "categories", element: <CategoriesMgmtPage /> },
 			{ path: "moderation", element: <ContentModerationPage /> },
