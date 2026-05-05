@@ -65,8 +65,6 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
 
                 // Snapshot current cache state
                 const previousNews = queryClient.getQueryData<News[]>(["news"]);
-                // Snapshot current cache state
-                const previousNews = queryClient.getQueryData<News[]>(["news"]);
 
                 // Optimistically update the "news" list
                 queryClient.setQueriesData<News[]>(
