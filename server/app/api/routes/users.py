@@ -22,6 +22,7 @@ from app.services import (
     users_notifications_service,
     users_invitations_service,
     users_preferences_service,
+    achievements_service,
 )
 from app.core.db import supabase
 from app.core.config import settings
@@ -867,3 +868,15 @@ async def get_user_data(current_user: UserPayload = Depends(get_current_app_user
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while retrieving user data",
         )
+
+
+# server/app/api/routes/users.py
+@router.get("/{inst_id}/users/{user_id}/achievements")
+async def get_user_achievements_route(inst_id: str, user_id: str):
+    return await achievements_service.get_user_achievements(user_id)
+
+
+# achievement popup
+@router.get("/{inst_id}/users/{user_id}/achievements/unlocked")
+async def get_unlocked_achievements(inst_id: str, user_id: str):
+    return await achievements_service.get_newly_unlocked_achievements(user_id)

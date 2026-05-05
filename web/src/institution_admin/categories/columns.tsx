@@ -1,4 +1,4 @@
-import type { ColumnDef, Row, RowData } from "@tanstack/react-table";
+import type { ColumnDef, Row } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -7,7 +7,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit3, MoreVertical, Trash2 } from "lucide-react";
+import { Edit3, MoreVertical, PauseCircle, CheckCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import type { CategoryTable } from "@/types";
 
@@ -27,18 +27,21 @@ const formatDate = (dateString: string) => {
 		.replace(",", "");
 };
 
-interface ActionButtonProps {
-	row: Row<CategoryTable>;
-}
-
 function titleCase(text: string) {
 	return text.toLowerCase().replace(/(?:^|\s)\w/g, function (match) {
 		return match.toUpperCase();
 	});
 }
 
-const ActionButton = ({ row }: ActionButtonProps) => {
-	const user = row.original;
+interface ActionButtonProps {
+	row: Row<CategoryTable>;
+	onEdit: (category: CategoryTable) => void;
+	onSuspend: (category: CategoryTable) => void;
+	onActivate: (category: CategoryTable) => void;
+}
+
+const ActionButton = ({ row, onEdit, onSuspend, onActivate }: ActionButtonProps) => {
+	const category = row.original;
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild className="w-fit cursor-pointer">
@@ -48,27 +51,36 @@ const ActionButton = ({ row }: ActionButtonProps) => {
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
 				<DropdownMenuGroup>
-					<DropdownMenuItem
-						onClick={() => console.log("Edit", user.id)}
-					>
+					<DropdownMenuItem onClick={() => onEdit(category)}>
 						<Edit3 />
 						<span>Edit</span>
 					</DropdownMenuItem>
 					<Separator orientation="horizontal" />
-					<DropdownMenuItem
-						onClick={() => console.log("Suspend", user.id)}
-						className="text-destructive focus:text-destructive"
-					>
-						<Trash2 />
-						<span>Suspend</span>
-					</DropdownMenuItem>
+					{category.status !== "inactive" ? (
+						<DropdownMenuItem
+							onClick={() => onSuspend(category)}
+							className="text-destructive focus:text-destructive"
+						>
+							<PauseCircle />
+							<span>Suspend</span>
+						</DropdownMenuItem>
+					) : (
+						<DropdownMenuItem onClick={() => onActivate(category)}>
+							<CheckCircle />
+							<span>Activate</span>
+						</DropdownMenuItem>
+					)}
 				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
 };
 
-export const CategoriesColumns: ColumnDef<CategoryTable>[] = [
+export const getCategoriesColumns = (
+	onEdit: (category: CategoryTable) => void,
+	onSuspend: (category: CategoryTable) => void,
+	onActivate: (category: CategoryTable) => void,
+): ColumnDef<CategoryTable>[] => [
 	{
 		accessorKey: "category_name",
 		header: "Category",
@@ -79,7 +91,6 @@ export const CategoriesColumns: ColumnDef<CategoryTable>[] = [
 		header: "Added By",
 		minSize: 160,
 	},
-
 	{
 		accessorKey: "created_at",
 		header: "Date Added",
@@ -95,12 +106,23 @@ export const CategoriesColumns: ColumnDef<CategoryTable>[] = [
 	{
 		accessorKey: "status",
 		header: "Status",
-		cell: ({ row }) => titleCase(row.original.status),
+		cell: ({ row }) => (
+			<span className={row.original.status === "inactive" ? "text-destructive font-medium" : "text-green-600 font-medium"}>
+				{titleCase(row.original.status)}
+			</span>
+		),
 		minSize: 80,
 	},
 	{
 		id: "action",
-		cell: ({ row }) => <ActionButton row={row} />,
+		cell: ({ row }) => (
+			<ActionButton
+				row={row}
+				onEdit={onEdit}
+				onSuspend={onSuspend}
+				onActivate={onActivate}
+			/>
+		),
 		minSize: 34,
 	},
 ];

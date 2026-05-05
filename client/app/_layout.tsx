@@ -50,82 +50,93 @@ export default function RootLayout() {
     return (
         <QueryClientProvider client={queryClient}>
             <GestureHandlerRootView>
-                <SafeAreaProvider>
-                    <ThemeProvider
-                        value={
-                            colorScheme === "dark" ? DarkTheme : DefaultTheme
-                        }
-                    >
-                        <Stack
-                            screenOptions={{
-                                headerShown: false,
-                            }}
+                <BottomSheetModalProvider>
+                    <SafeAreaProvider>
+                        <ThemeProvider
+                            value={
+                                colorScheme === "dark"
+                                    ? DarkTheme
+                                    : DefaultTheme
+                            }
                         >
-                            <Stack.Protected
-                                guard={session !== null && isVerified}
+                            <Stack
+                                screenOptions={{
+                                    headerShown: false,
+                                }}
                             >
-                                <Stack.Screen
-                                    name="(tabs)"
-                                    options={{
-                                        headerShown: false,
-                                    }}
-                                />
-                                <Stack.Screen
-                                    name="search"
-                                    options={{
-                                        headerShown: false,
-                                    }}
-                                />
-                                <Stack.Screen
-                                    name="comment"
-                                    options={{
-                                        headerShown: false,
-                                        presentation: "transparentModal",
-                                        animation: "none",
-                                    }}
-                                />
-                                <Stack.Screen
-                                    name="[user_id]"
-                                    options={{
-                                        headerShown: false,
-                                    }}
-                                />
-                                <Stack.Screen
-                                    name="update_password"
-                                    options={{
-                                        headerShown: false,
-                                    }}
-                                />
-                            </Stack.Protected>
-                            <Stack.Protected
-                                guard={
-                                    !session || session === null || !isVerified
-                                }
-                            >
-                                <Stack.Screen
-                                    name="login"
-                                    options={{
-                                        headerShown: false,
-                                    }}
-                                />
-                                <Stack.Screen
-                                    name="forgot_password"
-                                    options={{
-                                        headerShown: false,
-                                    }}
-                                />
-                                <Stack.Screen
-                                    name="verify_otp"
-                                    options={{
-                                        headerShown: false,
-                                    }}
-                                />
-                            </Stack.Protected>
-                        </Stack>
-
-                        <StatusBar style="auto" />
-                    </ThemeProvider>
-                </SafeAreaProvider>
+                                <Stack.Protected
+                                    guard={session !== null && isVerified}
+                                >
+                                    <Stack.Screen
+                                        name="(tabs)"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="search"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="comment"
+                                        options={{
+                                            headerShown: false,
+                                            presentation: "transparentModal",
+                                            animation: "none",
+                                        }}
+                                    />
+                                    <Stack.Screen //ADDED
+                                        name="achievements"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="[user_id]"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="update_password"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                </Stack.Protected>
+                                <Stack.Protected
+                                    guard={
+                                        !session ||
+                                        session === null ||
+                                        !isVerified
+                                    }
+                                >
+                                    <Stack.Screen
+                                        name="login"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="forgot_password"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="verify_otp"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                </Stack.Protected>
+                            </Stack>
+                            <StatusBar style="auto" />
+                        </ThemeProvider>
+                    </SafeAreaProvider>
+                </BottomSheetModalProvider>
             </GestureHandlerRootView>
         </QueryClientProvider>
     );

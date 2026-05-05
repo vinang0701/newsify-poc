@@ -5,16 +5,16 @@ import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-    RefreshControl,
-    Text,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Alert,
-    Modal,
-    TouchableOpacity,
-    useColorScheme,
-    View,
+	RefreshControl,
+	Text,
+	Pressable,
+	ScrollView,
+	StyleSheet,
+	Alert,
+	Modal,
+	TouchableOpacity,
+	useColorScheme,
+	View,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { News } from "@/data/types";
@@ -41,7 +41,32 @@ import { usePreferences } from "@/hooks/usePreferences";
 import Feather from "@expo/vector-icons/Feather";
 import Loading from "@/components/loading";
 import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
+
+// UPDATED: used to remember which achievement toast has already been shown
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// UPDATED: achievement unlock popup component
+import AchievementToast from "@/components/achievement_toast";
+
 const HEADER_HEIGHT = 250;
+
+const DATA = [
+    { id: "1", title: "Recent" },
+    { id: "2", title: "Important" },
+    { id: "3", title: "For You" },
+];
+
+// UPDATED: achievement type for unlock popup
+type Achievement = {
+    achievement_id: string;
+    achievement_name: string;
+    achievement_detail: string;
+    metric_key: string;
+    required_count: number;
+    current_count: number;
+    is_completed: boolean;
+    badge_url?: string | null;
+};
 
 export default function HomeScreen() {
     const { user, metadata, initialized } = useAuthStore();
@@ -107,6 +132,12 @@ export default function HomeScreen() {
     // Tracks if we are currently saving to DB
     const [savingPrefs, setSavingPrefs] = useState(false);
 
+    // UPDATED: controls top achievement unlock popup
+    const [achievementPopupVisible, setAchievementPopupVisible] =
+        useState(false);
+    const [unlockedAchievement, setUnlockedAchievement] =
+        useState<Achievement | null>(null);
+        
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         refetchPersonalised();
@@ -114,6 +145,23 @@ export default function HomeScreen() {
             setRefreshing(false);
         }, 2000);
     }, []);
+
+	// Testing
+	const {
+		data: news = [],
+		isLoading,
+		error,
+		refetch,
+	} = useQuery<News[]>({
+		queryKey: ["news", inst_id],
+		queryFn: async () => {
+			const response = await api.get(`${inst_id}/news/feed`);
+			// Optional: Zod validation here
+			// return NewsSchema.array().parse(response.data);
+			return response.data;
+		},
+		enabled: !!inst_id,
+	});
 
     // Get the currently logged in user from Supabase auth
     const { data: currentUser } = useQuery({
@@ -143,6 +191,19 @@ export default function HomeScreen() {
         enabled: !!currentUser?.id, // only fetch once we have the user id
     });
 
+    // UPDATED: fetch completed achievements regularly so unlock toast can appear
+    const { data: achievementsData = [] } = useQuery<Achievement[]>({
+        queryKey: ["achievements_progress", inst_id, currentUser?.id],
+        queryFn: async () => {
+            const response = await api.get(
+                `/${inst_id}/users/${currentUser?.id}/achievements/unlocked`,
+            );
+            return response.data;
+        },
+        enabled: !!inst_id && !!currentUser?.id,
+        refetchInterval: 5000, // UPDATED: checks every 5 seconds
+    });
+
     const renderBackdrop = useCallback(
         (props: any) => (
             <BottomSheetBackdrop
@@ -164,17 +225,51 @@ export default function HomeScreen() {
                 const data = selected;
 
                 if (!data || data.length === 0) {
-                    // No preferences found → first time user → show modal
                     setShowPrefsModal(true);
                 }
             }
         };
-        checkPreferences();
-    }, [currentUser?.id]); // re-run when we get the user id
 
-    // Called when user taps Save on Step 2
+        checkPreferences();
+    }, [currentUser?.id]);
+
+    // UPDATED: show toast only for achievements not shown before
+    useEffect(() => {
+        const checkUnlockedAchievements = async () => {
+            if (!currentUser?.id || achievementsData.length === 0) return;
+
+            const storageKey = `seen_achievements_${currentUser.id}`;
+
+            const stored = await AsyncStorage.getItem(storageKey);
+            const seenIds: string[] = stored ? JSON.parse(stored) : [];
+
+            const newlyUnlocked = achievementsData.find(
+                (achievement) =>
+                    achievement.is_completed &&
+                    !seenIds.includes(achievement.achievement_id),
+            );
+
+            if (!newlyUnlocked) return;
+
+            await AsyncStorage.setItem(
+                storageKey,
+                JSON.stringify([...seenIds, newlyUnlocked.achievement_id]),
+            );
+
+            setUnlockedAchievement(newlyUnlocked);
+            setAchievementPopupVisible(true);
+
+            setTimeout(() => {
+                setAchievementPopupVisible(false);
+            }, 3000);
+        };
+
+        checkUnlockedAchievements();
+    }, [achievementsData, currentUser?.id]);
+
     const handleSavePreferences = async () => {
         if (!currentUser?.id) return;
+
         try {
             setSavingPrefs(true);
 
@@ -189,7 +284,6 @@ export default function HomeScreen() {
                 preference_type: "exclude",
             }));
 
-            // Insert both lists together
             const combinedPreferences = [...includeRows, ...excludeRows];
 
             const response = await api.post(
@@ -266,75 +360,84 @@ export default function HomeScreen() {
     }
 
     return (
-        <SafeAreaView
-            edges={["top"]}
-            style={[
-                {
-                    flex: 1,
-                    backgroundColor: Colors[colorScheme].bg_light,
-                },
-            ]}
-        >
-            <Header />
-            <ScrollView
-                showsVerticalScrollIndicator={false}
-                style={{
-                    flex: 1,
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    paddingBottom: insets.bottom,
-                    backgroundColor: Colors[colorScheme].bg,
-                }}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                    />
-                }
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaView
+                edges={["top"]}
+                style={[
+                    {
+                        flex: 1,
+                        backgroundColor: Colors[colorScheme].bg_light,
+                    },
+                ]}
             >
-                <FlashList
-                    keyExtractor={(item) => item.id}
-                    horizontal
-                    style={{ marginBottom: 12, elevation: 10 }}
-                    data={categories}
-                    renderItem={({ item }) => (
-                        <Pressable
-                            style={{
-                                backgroundColor:
-                                    activeFilter === item.category_name
-                                        ? Colors[colorScheme].tint
-                                        : Colors[colorScheme].bg_light,
-                                paddingHorizontal: 12,
-                                paddingVertical: 4,
-                                borderColor: Colors[colorScheme].border,
-                                borderWidth: 1,
-                                marginRight: 8,
-                                borderRadius: 4,
-                            }}
-                            onPress={() => {
-                                // Check if active state is pressed
-                                if (activeFilter === item.category_name) {
-                                    return;
-                                } else {
-                                    setActiveFilter(item.category_name);
-                                }
-                            }}
-                        >
-                            <ThemedText
-                                type="body_small"
-                                emphasized={true}
+                <Header />
+
+                {/* UPDATED: top achievement unlock popup */}
+                <AchievementToast
+                    visible={achievementPopupVisible}
+                    achievementName={unlockedAchievement?.achievement_name}
+                    badgeUrl={unlockedAchievement?.badge_url}
+                />
+
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    style={{
+                        flex: 1,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        paddingBottom: insets.bottom,
+                        backgroundColor: Colors[colorScheme].bg,
+                    }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
+                >
+                    <FlashList
+                        keyExtractor={(item) => item.id}
+                        horizontal
+                        style={{ marginBottom: 12, elevation: 10 }}
+                        data={categories}
+                        renderItem={({ item }) => (
+                            <Pressable
                                 style={{
-                                    color:
+                                    backgroundColor:
                                         activeFilter === item.category_name
-                                            ? Colors[colorScheme].button_text
-                                            : Colors[colorScheme].tint,
+                                            ? Colors[colorScheme].tint
+                                            : Colors[colorScheme].bg_light,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 4,
+                                    borderColor: Colors[colorScheme].border,
+                                    borderWidth: 1,
+                                    marginRight: 8,
+                                    borderRadius: 4,
+                                }}
+                                onPress={() => {
+                                    if (activeFilter === item.category_name) {
+                                        return;
+                                    } else {
+                                        setActiveFilter(item.category_name);
+                                    }
                                 }}
                             >
-                                {item.category_name}
-                            </ThemedText>
-                        </Pressable>
-                    )}
-                />
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized={true}
+                                    style={{
+                                        color:
+                                            activeFilter === item.category_name
+                                                ? Colors[colorScheme]
+                                                      .button_text
+                                                : Colors[colorScheme].tint,
+                                    }}
+                                >
+                                    {item.category_name}
+                                </ThemedText>
+                            </Pressable>
+                        )}
+                    />
 
                 {activeFilter === "Recent" ? (
                     <View style={{ paddingBottom: insets.bottom + 20 }}>

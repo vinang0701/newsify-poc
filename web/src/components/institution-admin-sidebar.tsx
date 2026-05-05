@@ -188,7 +188,7 @@ export function InstitutionAdminSidebar() {
 								setDialogVisible(!dialogVisible)
 							}
 						>
-							<DialogTrigger className="flex px-2 cursor-pointer w-full text-base h-10 items-center gap-2 hover:bg-sidebar-accent rounded-md">
+							<DialogTrigger className="flex px-2 cursor-pointer w-full text-base h-10 items-center gap-2 hover:bg-red-100 rounded-md text-red-500">
 								<LogOut size={16} /> <span>Log out</span>
 							</DialogTrigger>
 

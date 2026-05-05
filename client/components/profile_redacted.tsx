@@ -236,17 +236,21 @@ export default function Profile_Redacted() {
                                             <Pressable
                                                 style={styles.menuItem}
                                                 onPress={() => {
+                                                    console.log("View achievements pressed");
+                                                    console.log("user id:", user?.id);
+
                                                     setMenuVisible(false);
+
+                                                    router.push({
+                                                        pathname: "/achievements",
+                                                        params: {
+                                                            user_id: user?.id ?? "",
+                                                        },
+                                                    } as any);
                                                 }}
                                             >
-                                                <Feather
-                                                    name="award"
-                                                    size={16}
-                                                    color="#111827"
-                                                />
-                                                <Text style={styles.menuText}>
-                                                    View achievements
-                                                </Text>
+                                                <Feather name="award" size={16} color="#111827" />
+                                                <Text style={styles.menuText}>View achievements</Text>
                                             </Pressable>
 
                                             <Pressable

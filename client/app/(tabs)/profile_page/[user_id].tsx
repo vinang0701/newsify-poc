@@ -535,7 +535,15 @@ export default function Profile() {
                             </ThemedText>
                         </Pressable>
 
-                        <Pressable style={styles.modalActionButtonCtn}>
+                        <Pressable
+                            style={styles.modalActionButtonCtn}
+                            onPress={() =>
+                                router.push({
+                                    pathname: "/achievements",
+                                    params: { user_id: user_id },
+                                })
+                            }
+                        >
                             <Feather
                                 name="award"
                                 size={24}
