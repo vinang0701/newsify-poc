@@ -6,12 +6,15 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
+    useColorScheme,
     View,
 } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { reportPost } from "@/hooks/useReportPost";
+import { ThemedText } from "@/components/themed-text";
+import { Colors } from "@/constants/theme";
 
 const REPORT_REASONS = [
     "Spam",
@@ -25,6 +28,7 @@ const REPORT_REASONS = [
 
 export default function ReportPostScreen() {
     const router = useRouter();
+    const colorScheme = useColorScheme() ?? "light";
 
     const { post_id, inst_id } = useLocalSearchParams<{
         post_id?: string;
@@ -46,7 +50,10 @@ export default function ReportPostScreen() {
         }
 
         if (!selectedReason) {
-            Alert.alert("Select a reason", "Please select a report reason first.");
+            Alert.alert(
+                "Select a reason",
+                "Please select a report reason first.",
+            );
             return;
         }
 
@@ -63,7 +70,7 @@ export default function ReportPostScreen() {
                         text: "OK",
                         onPress: () => router.back(),
                     },
-                ]
+                ],
             );
         } catch (err: any) {
             Alert.alert("Error", err.message || "Failed to report post");
@@ -77,17 +84,37 @@ export default function ReportPostScreen() {
             <Stack.Screen options={{ headerShown: false }} />
 
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Feather name="arrow-left" size={22} color="#FFFFFF" />
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={styles.backButton}
+                >
+                    <Feather
+                        name="arrow-left"
+                        size={24}
+                        color={Colors[colorScheme].bg_light}
+                    />
                 </TouchableOpacity>
             </View>
 
             <View style={styles.content}>
-                <Text style={styles.title}>Report Post</Text>
+                <ThemedText
+                    type="sub_heading"
+                    style={{
+                        color: Colors[colorScheme].text,
+                        paddingBottom: 16,
+                        borderBottomWidth: 1,
+                        borderColor: Colors[colorScheme].border,
+                    }}
+                >
+                    Report Post
+                </ThemedText>
 
-                <Text style={styles.subtitle}>
+                <ThemedText
+                    type="body_medium"
+                    style={{ color: Colors[colorScheme].text_light }}
+                >
                     Please select the category that best describes your issue
-                </Text>
+                </ThemedText>
 
                 <View style={styles.reasonList}>
                     {REPORT_REASONS.map((reason) => {
@@ -99,11 +126,21 @@ export default function ReportPostScreen() {
                                 style={styles.reasonRow}
                                 onPress={() => setSelectedReason(reason)}
                             >
-                                <Text style={styles.reasonText}>{reason}</Text>
+                                <ThemedText
+                                    type="body_medium"
+                                    emphasized
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    {reason}
+                                </ThemedText>
 
                                 <View style={styles.checkbox}>
                                     {selected ? (
-                                        <Feather name="check" size={12} color="#111111" />
+                                        <Feather
+                                            name="check"
+                                            size={14}
+                                            color={Colors[colorScheme].text}
+                                        />
                                     ) : null}
                                 </View>
                             </Pressable>
@@ -115,7 +152,8 @@ export default function ReportPostScreen() {
                     <TouchableOpacity
                         style={[
                             styles.reportButton,
-                            (!selectedReason || submitting) && styles.reportButtonDisabled,
+                            (!selectedReason || submitting) &&
+                                styles.reportButtonDisabled,
                         ]}
                         onPress={handleSubmit}
                         disabled={!selectedReason || submitting}
@@ -124,7 +162,9 @@ export default function ReportPostScreen() {
                         {submitting ? (
                             <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Text style={styles.reportButtonText}>Report</Text>
+                            <ThemedText style={styles.reportButtonText}>
+                                Report
+                            </ThemedText>
                         )}
                     </TouchableOpacity>
                 </View>
@@ -152,21 +192,13 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         paddingHorizontal: 14,
-        paddingTop: 18,
+        paddingVertical: 12,
+        gap: 12,
     },
-    title: {
-        fontSize: 18,
-        fontWeight: "700",
-        color: "#111111",
-        marginBottom: 18,
-    },
-    subtitle: {
-        fontSize: 11,
-        color: "#555555",
-        marginBottom: 14,
-    },
+
     reasonList: {
-        gap: 13,
+        gap: 18,
+        paddingVertical: 4,
     },
     reasonRow: {
         flexDirection: "row",

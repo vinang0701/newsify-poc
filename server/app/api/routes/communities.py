@@ -8,7 +8,7 @@ from app.services import communities_service, news_service
 from app.core.config import settings
 from app.core.db import supabase
 from app.models.community import CommunityApplication, CommunityApplicationReq
-from app.core.auth import get_current_user, get_current_app_user
+from app.core.auth import get_current_user, get_current_app_user, UserPayload
 from pydantic import BaseModel
 from typing import Optional
 
@@ -30,13 +30,15 @@ class PostToCommunityRequest(BaseModel):
 
 # Return an array of institution news
 @router.get("")
-async def get_communities(inst_id: str):
-    # Add JWT Decode later
-
-    # Use user_email in request body first
-
-    # call DB
-    posts = await communities_service.get_communities(supabase, inst_id)
+async def get_communities(
+    inst_id: str,
+    search: Optional[str] = None,
+    app_user: UserPayload = Depends(get_current_app_user),
+):
+    user_id = app_user["id"]
+    posts = await communities_service.get_communities(
+        supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+    )
     if posts is None:
         raise HTTPException(
             status_code=404, detail="No communities found for this institution"
@@ -47,14 +49,22 @@ async def get_communities(inst_id: str):
 
 @router.get("/{community_id}")
 async def get_community(community_id: str):
-    community = await communities_service.get_community(supabase, community_id)
+    try:
+        community = await communities_service.get_community(supabase, community_id)
 
-    return community
+        return community
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to fetch community data.")
 
 
 @router.get("/{community_id}/news")
-async def get_community_news(community_id: str):
-    community_news = await news_service.get_community_news(supabase, community_id)
+async def get_community_news(
+    community_id: str, app_user: UserPayload = Depends(get_current_app_user)
+):
+    user_id = app_user["id"]
+    community_news = await news_service.get_community_news(
+        supabase, community_id, user_id=user_id
+    )
     if community_news is None:
         raise HTTPException(status_code=404, detail="This community does not exist.")
 

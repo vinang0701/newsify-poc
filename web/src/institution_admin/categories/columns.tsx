@@ -16,7 +16,15 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog";
-import { Edit3, MoreVertical, Trash2, ShieldOff, ShieldCheck } from "lucide-react";
+import {
+    Edit3,
+    MoreVertical,
+    PauseCircle,
+    CheckCircle,
+    ShieldOff,
+    ShieldCheck,
+    Trash2,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -51,16 +59,24 @@ const formatDate = (dateString: string) => {
 };
 
 function titleCase(text: string) {
-    return text.toLowerCase().replace(/(?:^|\s)\w/g, (match) =>
-        match.toUpperCase()
-    );
+    return text.toLowerCase().replace(/(?:^|\s)\w/g, function (match) {
+        return match.toUpperCase();
+    });
 }
 
 interface ActionButtonProps {
     row: Row<CategoryTable>;
+    onEdit: (category: CategoryTable) => void;
+    onSuspend: (category: CategoryTable) => void;
+    onActivate: (category: CategoryTable) => void;
 }
 
-const ActionButton = ({ row }: ActionButtonProps) => {
+const ActionButton = ({
+    row,
+    onEdit,
+    onSuspend,
+    onActivate,
+}: ActionButtonProps) => {
     const category = row.original;
     const queryClient = useQueryClient();
     const [editOpen, setEditOpen] = useState(false);
@@ -84,7 +100,11 @@ const ActionButton = ({ row }: ActionButtonProps) => {
             await api.patch(
                 `/${inst_id}/admin/categories/${category.category_id}`,
                 formData,
-                { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+                {
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                },
             );
             queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
             setEditOpen(false);
@@ -100,7 +120,7 @@ const ActionButton = ({ row }: ActionButtonProps) => {
         setLoading(true);
         try {
             await api.delete(
-                `/${inst_id}/admin/categories/${category.category_id}`
+                `/${inst_id}/admin/categories/${category.category_id}`,
             );
             queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
             setDeactivateOpen(false);
@@ -121,7 +141,11 @@ const ActionButton = ({ row }: ActionButtonProps) => {
             await api.patch(
                 `/${inst_id}/admin/categories/${category.category_id}`,
                 formData,
-                { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+                {
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                },
             );
             queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
         } catch (err) {
@@ -137,20 +161,19 @@ const ActionButton = ({ row }: ActionButtonProps) => {
         setHardDeleteError(null);
         try {
             await api.delete(
-                `/${inst_id}/admin/categories/${category.category_id}?hard=true`
+                `/${inst_id}/admin/categories/${category.category_id}?hard=true`,
             );
             queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
             setHardDeleteOpen(false);
         } catch (err: any) {
             // Show the error message from backend
             setHardDeleteError(
-                err.response?.data?.detail || "Could not delete category."
+                err.response?.data?.detail || "Could not delete category.",
             );
         } finally {
             setLoading(false);
         }
     };
-
     return (
         <>
             {/* Edit Dialog */}
@@ -164,7 +187,9 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                     </DialogHeader>
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium">Category Name</label>
+                            <label className="text-sm font-medium">
+                                Category Name
+                            </label>
                             <Input
                                 value={editName}
                                 onChange={(e) => setEditName(e.target.value)}
@@ -172,15 +197,24 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                             />
                         </div>
                         <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium">Status</label>
-                            <Select value={editStatus} onValueChange={setEditStatus}>
+                            <label className="text-sm font-medium">
+                                Status
+                            </label>
+                            <Select
+                                value={editStatus}
+                                onValueChange={setEditStatus}
+                            >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="inactive">Inactive</SelectItem>
+                                        <SelectItem value="active">
+                                            Active
+                                        </SelectItem>
+                                        <SelectItem value="inactive">
+                                            Inactive
+                                        </SelectItem>
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -206,8 +240,9 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                     <DialogHeader>
                         <DialogTitle>Deactivate Category</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to deactivate "{category.category_name}"?
-                            It will no longer appear in the app but can be reactivated.
+                            Are you sure you want to deactivate "
+                            {category.category_name}"? It will no longer appear
+                            in the app but can be reactivated.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -226,22 +261,39 @@ const ActionButton = ({ row }: ActionButtonProps) => {
             </Dialog>
 
             {/* Hard Delete Confirmation Dialog */}
-            <Dialog open={hardDeleteOpen} onOpenChange={() => { setHardDeleteOpen(false); setHardDeleteError(null); }}>
+            <Dialog
+                open={hardDeleteOpen}
+                onOpenChange={() => {
+                    setHardDeleteOpen(false);
+                    setHardDeleteError(null);
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Permanently Delete Category</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to permanently delete "{category.category_name}"?
-                            This action <span className="font-bold text-destructive">cannot be undone</span>.
+                            Are you sure you want to permanently delete "
+                            {category.category_name}"? This action{" "}
+                            <span className="font-bold text-destructive">
+                                cannot be undone
+                            </span>
+                            .
                         </DialogDescription>
                     </DialogHeader>
                     {/* Show error if category is in use */}
                     {hardDeleteError && (
-                        <p className="text-sm text-destructive">{hardDeleteError}</p>
+                        <p className="text-sm text-destructive">
+                            {hardDeleteError}
+                        </p>
                     )}
                     <DialogFooter>
                         <DialogClose asChild>
-                            <Button variant="outline" onClick={() => setHardDeleteError(null)}>Cancel</Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setHardDeleteError(null)}
+                            >
+                                Cancel
+                            </Button>
                         </DialogClose>
                         <Button
                             className="bg-destructive hover:bg-destructive/80 text-white"
@@ -253,8 +305,6 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Dropdown Menu */}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild className="w-fit cursor-pointer">
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -263,37 +313,27 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                     <DropdownMenuGroup>
-                        {/* Edit */}
-                        <DropdownMenuItem onClick={() => {
-                            setEditName(category.category_name);
-                            setEditStatus(category.status);
-                            setEditOpen(true);
-                        }}>
+                        <DropdownMenuItem onClick={() => onEdit(category)}>
                             <Edit3 />
                             <span>Edit</span>
                         </DropdownMenuItem>
                         <Separator orientation="horizontal" />
-
-                        {/* Deactivate or Activate depending on status */}
-                        {isActive ? (
+                        {category.status !== "inactive" ? (
                             <DropdownMenuItem
-                                onClick={() => setDeactivateOpen(true)}
-                                className="text-orange-500 focus:text-orange-500"
+                                onClick={() => onSuspend(category)}
+                                className="text-destructive focus:text-destructive"
                             >
-                                <ShieldOff />
-                                <span>Deactivate</span>
+                                <PauseCircle />
+                                <span>Suspend</span>
                             </DropdownMenuItem>
                         ) : (
                             <DropdownMenuItem
-                                onClick={handleActivate}
-                                className="text-green-600 focus:text-green-600"
+                                onClick={() => onActivate(category)}
                             >
-                                <ShieldCheck />
+                                <CheckCircle />
                                 <span>Activate</span>
                             </DropdownMenuItem>
                         )}
-                        <Separator orientation="horizontal" />
-
                         {/* Hard Delete — always available */}
                         <DropdownMenuItem
                             onClick={() => setHardDeleteOpen(true)}
@@ -309,7 +349,11 @@ const ActionButton = ({ row }: ActionButtonProps) => {
     );
 };
 
-export const CategoriesColumns: ColumnDef<CategoryTable>[] = [
+export const getCategoriesColumns = (
+    onEdit: (category: CategoryTable) => void,
+    onSuspend: (category: CategoryTable) => void,
+    onActivate: (category: CategoryTable) => void,
+): ColumnDef<CategoryTable>[] => [
     {
         accessorKey: "category_name",
         header: "Category",
@@ -335,12 +379,29 @@ export const CategoriesColumns: ColumnDef<CategoryTable>[] = [
     {
         accessorKey: "status",
         header: "Status",
-        cell: ({ row }) => titleCase(row.original.status),
+        cell: ({ row }) => (
+            <span
+                className={
+                    row.original.status === "inactive"
+                        ? "text-destructive font-medium"
+                        : "text-green-600 font-medium"
+                }
+            >
+                {titleCase(row.original.status)}
+            </span>
+        ),
         minSize: 80,
     },
     {
         id: "action",
-        cell: ({ row }) => <ActionButton row={row} />,
+        cell: ({ row }) => (
+            <ActionButton
+                row={row}
+                onEdit={onEdit}
+                onSuspend={onSuspend}
+                onActivate={onActivate}
+            />
+        ),
         minSize: 34,
     },
 ];

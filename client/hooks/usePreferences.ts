@@ -29,7 +29,7 @@ export function usePreferences() {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const response = await api.get(`/${inst_id}/categories`);
+                const response = await api.get(`/${inst_id}/news/categories`);
                 setCategories(response.data);
             } catch (error) {
                 console.error("Error fetching categories:", error);

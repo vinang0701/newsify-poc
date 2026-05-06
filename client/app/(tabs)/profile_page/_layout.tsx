@@ -18,6 +18,10 @@ export default function UserProfileTabLayout() {
                     initialParams={{ user_id: current_user_id }}
                 />
                 <Stack.Screen
+                    name="communities"
+                    options={{ headerShown: false }}
+                />
+                <Stack.Screen
                     name="following"
                     options={{ headerShown: false }}
                 />

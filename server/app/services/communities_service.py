@@ -1,5 +1,5 @@
 from supabase import Client
-from typing import List
+from typing import List, Optional
 from app.models.community import (
     Community,
     CommunityMembership,
@@ -12,75 +12,57 @@ import uuid
 from datetime import datetime
 
 
-async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
-    response = (
+async def get_communities(
+    supabase: Client, inst_id: str, user_id: str, search: Optional[str] = None
+) -> List[Community]:
+    query = (
         supabase.table("communities")
         .select(
-            """
-            id,
-            created_by_user_id,
-            name,
-            description,
-            status,
-            image_url
-        """
+            "*, member_info:community_members(role, user_id), member_count:community_members(count)"
         )
         .eq("inst_id", inst_id)
+        .eq("member_info.user_id", user_id)
+        .eq("status", "active")
         .order("name", desc=False)
-        .execute()
     )
+    if search:
+        query = query.ilike("name", f"%{search}%")
 
-    # Need to add logic to check if user joined
+    response = query.execute()
 
-    return [
-        Community(
-            id=comm["id"],
-            created_by_user_id=comm["created_by_user_id"],
-            name=comm["name"],
-            description=comm["description"] or "",
-            status=comm["status"],
-            image_url=comm["image_url"] or "",
-        )
-        for comm in response.data
-    ]
+    formatted_communities = []
+    for comm in response.data:
+        # Check current user's membership info
+        user_info_list = comm.get("member_info", [])
+        user_membership = user_info_list[0] if user_info_list else None
+
+        # Extract the count from the count alias
+        # Supabase returns this as a list containing a dict with 'count'
+        count_data = comm.get("member_count", [])
+        total_count = count_data[0].get("count", 0) if count_data else 0
+
+        # Map back to Pydantic-friendly keys
+        comm["role"] = user_membership.get("role") if user_membership else None
+        comm["isMember"] = user_membership is not None
+        comm["member_count"] = total_count
+
+        formatted_communities.append(Community(**comm))
+
+    return formatted_communities
 
 
 async def get_community(supabase: Client, community_id: str):
     response = (
-        supabase.table("communities")
-        .select(
-            """
-            id,
-            created_by_user_id,
-            name,
-            description,
-            status,
-            image_url
-        """
-        )
-        .eq("id", community_id)
-        .execute()
+        supabase.table("communities").select("*").eq("id", community_id).execute()
     )
 
-    if not response.data:
-        return None
-
-    comm = response.data[0]
-
-    return Community(
-        id=comm["id"],
-        created_by_user_id=comm["created_by_user_id"],
-        name=comm["name"],
-        description=comm["description"] or "",
-        status=comm["status"],
-        image_url=comm["image_url"] or "",
-    )
+    if response.data:
+        return Community(**response.data[0])
+    return None
 
 
 # Function to insert new community application into communities_requests
 # Need to insert new record into community_memberships too
-
-
 # For now, insert in both communities_requests table and communities table
 async def create_community_application(
     supabase: Client, formData: CommunityApplication
@@ -139,21 +121,6 @@ async def create_community_application(
     }).execute()
 
     return response.data, None
-
-
-async def get_community_membership(supabase, user_id: str):
-    res = (
-        supabase.table("community_members").select("*").eq("user_id", user_id).execute()
-    )
-
-    return [
-        CommunityMembership(
-            community_id=comm["community_id"],
-            user_id=comm["user_id"],
-            role=comm["role"],
-        )
-        for comm in res.data
-    ]
 
 
 async def get_community_role(supabase, community_id: str, user_id: str):
@@ -231,8 +198,7 @@ async def get_community_post_requests(
 ) -> list[CommunityPostRequest]:
     response = (
         supabase.table("community_post_requests")
-        .select(
-            """
+        .select("""
             request_id,
             status,
             reviewed_at,
@@ -240,8 +206,7 @@ async def get_community_post_requests(
             news_posts(id, title, created_at, description, image_url),
             author_name:requested_by_user_id(name),
             reviewed_by:reviewed_by_user_id(name)
-            """
-        )
+            """)
         .eq("community_id", community_id)
         .order("news_posts(created_at)", desc=True)
         .execute()
@@ -297,7 +262,7 @@ async def update_community_post_request(
     reviewed_by_user_id: str,
     rejection_reason: str,
 ):
-    reviewed_at = datetime.utcnow().isoformat() # current time
+    reviewed_at = datetime.utcnow().isoformat()  # current time
 
     update_data = {
         "status": status,

@@ -10,8 +10,9 @@ import {
     ActivityIndicator,
     Alert,
 } from "react-native";
-import BottomSheet, {
+import {
     BottomSheetBackdrop,
+    BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import React, {
@@ -30,8 +31,10 @@ import {
 } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { Community, News } from "@/data/types";
 import { FlashList } from "@shopify/flash-list";
@@ -41,23 +44,42 @@ import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
 import { useCommunity } from "@/hooks/useCommunity";
+import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
 
 export default function CommunityPage() {
+    const { user, metadata } = useAuthStore();
+    const queryClient = useQueryClient();
     const colorScheme = useColorScheme() ?? "light";
     const params = useLocalSearchParams<{
         inst_id?: string;
         communityId: string;
     }>();
     const communityId = params.communityId;
-    const inst_id = params.inst_id;
+    const inst_id = params?.inst_id;
     const router = useRouter();
-    const bottomSheetRef = useRef<BottomSheet>(null);
-    const snapPoints = useMemo(() => ["25%"], []);
+    const bottomSheetRef = useRef<BottomSheetModal>(null);
+    const insets = useSafeAreaInsets();
     const [modalVisible, setModalVisible] = useState(false);
     const [sortMenuVisible, setSortMenuVisible] = useState(false);
     const [selectedSort, setSelectedSort] = useState<
         "Newest" | "Oldest" | "A - Z" | "Z - A"
     >("Newest");
+
+    // News Post Bottom Sheet
+    const [selectedNewsId, setSelectedNewsID] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
+
+    const postBottomSheetRef = useRef<BottomSheetModal>(null);
+    const handlePostSheetExpand = useCallback(
+        (news_id: string, news_author_id: string) => {
+            setSelectedNewsID(news_id);
+            setNewsAuthorId(news_author_id);
+            postBottomSheetRef?.current?.present();
+        },
+        [],
+    );
+    // Suspend post
+    const [suspendModalVisible, setSuspendModalVisible] = useState(false);
 
     const {
         community,
@@ -105,7 +127,10 @@ export default function CommunityPage() {
         return sorted;
     }, [news, selectedSort]);
 
-    const handleExpandSheet = () => bottomSheetRef.current?.expand();
+    const handleExpandSheet = useCallback(
+        () => bottomSheetRef.current?.present(),
+        [],
+    );
     const renderBackdrop = useCallback(
         (props: any) => (
             <BottomSheetBackdrop
@@ -160,43 +185,88 @@ export default function CommunityPage() {
         }
     };
 
+    function handleReportPost() {
+        // setMenuVisible(false);
+        bottomSheetRef.current?.dismiss();
+        postBottomSheetRef.current?.dismiss();
+
+        router.push({
+            pathname: "/report-post",
+            params: {
+                post_id: selectedNewsId,
+                inst_id: inst_id,
+            },
+        });
+    }
+
+    const { mutate: mu_suspendPost, isPending: isPendingSuspendPost } =
+        useMutation({
+            mutationFn: async () => {
+                const response = await api.delete(
+                    `/users/me/news/${selectedNewsId}`,
+                );
+                return response.data;
+            },
+            onSuccess: (data: { status: string; message: string }) => {
+                queryClient.invalidateQueries({ queryKey: ["news"] });
+                queryClient.invalidateQueries({ queryKey: ["user_news"] });
+                Alert.alert(data.status, data.message);
+                setSuspendModalVisible(false);
+            },
+
+            onError: (err: any) => {
+                Alert.alert("Error", err.message || "Failed to suspend post");
+            },
+        });
+
+    const handleSuspend = async () => {
+        // Add this safety check at the very top of handleSuspend:
+        if (!user?.id) {
+            Alert.alert(
+                "Error",
+                "Could not verify your identity. Please try again.",
+            );
+            return;
+        }
+
+        mu_suspendPost();
+    };
+
     if (loading && !community) return <Loading />;
 
     return (
-        <GestureHandlerRootView>
-            {/* Header */}
-            <SafeAreaView>
-                <View
-                    style={[
-                        styles.headerContainer,
-                        {
-                            backgroundColor: Colors[colorScheme].tint,
-                        },
-                    ]}
-                >
-                    <Pressable onPress={() => router.back()}>
-                        <MaterialCommunityIcons
-                            name="arrow-left"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                            weight="bold"
-                        />
-                    </Pressable>
-
-                    <Image
-                        source={require("@/assets/images/icon_light.png")}
-                        style={{ width: 42, height: 20, resizeMode: "contain" }}
+        <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+            <View
+                style={[
+                    styles.headerContainer,
+                    {
+                        backgroundColor: Colors[colorScheme].tint,
+                    },
+                ]}
+            >
+                <Pressable onPress={() => router.back()}>
+                    <MaterialCommunityIcons
+                        name="arrow-left"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                        weight="bold"
                     />
+                </Pressable>
 
-                    <Pressable onPress={handleExpandSheet}>
-                        <MaterialCommunityIcons
-                            name="dots-vertical"
-                            size={24}
-                            color={Colors[colorScheme].button_text}
-                        />
-                    </Pressable>
-                </View>
-            </SafeAreaView>
+                <Image
+                    source={require("@/assets/images/icon_light.png")}
+                    style={{ width: 42, height: 20, resizeMode: "contain" }}
+                />
+
+                <Pressable onPress={handleExpandSheet}>
+                    <MaterialCommunityIcons
+                        name="dots-vertical"
+                        size={24}
+                        color={Colors[colorScheme].button_text}
+                    />
+                </Pressable>
+            </View>
+
             {/* Content Container */}
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -427,8 +497,9 @@ export default function CommunityPage() {
                                 renderItem={({ item, index }) => (
                                     <NewsPostCard
                                         news={item}
-                                        inst_id={inst_id}
-                                        key={index}
+                                        handleSheetExpand={
+                                            handlePostSheetExpand
+                                        }
                                     />
                                 )}
                             />
@@ -436,19 +507,24 @@ export default function CommunityPage() {
                     )}
                 </View>
             </ScrollView>
-            <BottomSheet
+            <BottomSheetModal
+                name="community_bottom_sheet"
                 ref={bottomSheetRef}
-                index={-1}
-                snapPoints={snapPoints}
                 backdropComponent={renderBackdrop}
                 enablePanDownToClose
+                enableDismissOnClose
             >
-                <BottomSheetView style={styles.bottomSheet}>
+                <BottomSheetView
+                    style={[
+                        styles.bottomSheet,
+                        { paddingBottom: insets.bottom + 28 },
+                    ]}
+                >
                     {userRole === "admin" && (
                         <Pressable
                             style={styles.modalActionButtonCtn}
                             onPress={() => {
-                                bottomSheetRef.current?.close();
+                                bottomSheetRef.current?.dismiss();
                                 router.push({
                                     pathname:
                                         "/community/[communityId]/post_requests",
@@ -494,7 +570,99 @@ export default function CommunityPage() {
                         <ThemedText type="defaultSemiBold">Join</ThemedText>
                     </Pressable>
                 </BottomSheetView>
-            </BottomSheet>
+            </BottomSheetModal>
+            {/* News Card Bottom Sheet */}
+            <NewsPostBottomSheet
+                ref={postBottomSheetRef}
+                newsAuthorId={newsAuthorId}
+                userId={user?.id ?? ""}
+                colorScheme={colorScheme}
+                onReport={handleReportPost}
+                onSuspend={() => {
+                    bottomSheetRef.current?.dismiss();
+                    setSuspendModalVisible(true);
+                }}
+            />
+            {/* Suspned News confirmation modal */}
+            <Modal
+                visible={suspendModalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setSuspendModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View
+                        style={[
+                            styles.modalCard,
+                            {
+                                backgroundColor: Colors[colorScheme].bg_light,
+                            },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{ fontSize: 18 }}
+                        >
+                            Suspend News Post?
+                        </ThemedText>
+                        <ThemedText style={{ opacity: 0.6 }}>
+                            Are you sure you want to suspend this news post?
+                        </ThemedText>
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                gap: 12,
+                                width: "100%",
+                            }}
+                        >
+                            {/* Cancel button */}
+                            <Pressable
+                                style={[
+                                    styles.modalBtn,
+                                    {
+                                        flex: 1,
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() => setSuspendModalVisible(false)}
+                            >
+                                <ThemedText
+                                    style={{
+                                        color: Colors[colorScheme].button_text,
+                                        textAlign: "center",
+                                    }}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            {/* Suspend button */}
+                            {
+                                <Pressable
+                                    style={[
+                                        styles.modalBtn,
+                                        { flex: 1, backgroundColor: "red" },
+                                    ]}
+                                    onPress={handleSuspend}
+                                    disabled={isPendingSuspendPost}
+                                >
+                                    <ThemedText
+                                        style={{
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        {isPendingSuspendPost
+                                            ? "Suspending..."
+                                            : "Suspend"}
+                                    </ThemedText>
+                                </Pressable>
+                            }
+                        </View>
+                    </View>
+                </View>
+            </Modal>
             {/* Join/Leave button Action*/}
             <Modal
                 animationType="slide"
@@ -568,7 +736,7 @@ export default function CommunityPage() {
                     </View>
                 </View>
             </Modal>
-        </GestureHandlerRootView>
+        </SafeAreaView>
     );
 }
 
@@ -600,7 +768,6 @@ const styles = StyleSheet.create({
     modalView: {
         width: "100%",
         gap: 16,
-
         borderRadius: 8,
         paddingHorizontal: 24,
         paddingVertical: 16,
@@ -660,5 +827,27 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         zIndex: 100,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)", // dark transparent background
+        justifyContent: "flex-end", // card sticks to bottom like a bottom sheet
+    },
+
+    modalCard: {
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 24,
+        maxHeight: "80%", // takes up 80% of screen height
+        gap: 12,
+    },
+    modalTitle: { fontSize: 22, fontWeight: "bold" },
+    modalSubtitle: { fontSize: 14, opacity: 0.6 },
+    modalGrid: { paddingVertical: 8 },
+    modalBtn: {
+        padding: 14,
+        borderRadius: 10,
+        alignItems: "center",
+        marginTop: 8,
     },
 });

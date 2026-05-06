@@ -1,15 +1,22 @@
 import uuid
 from typing import List, Dict, Any, Optional
 from pydantic import EmailStr, BaseModel
+from datetime import datetime
 
 
 class Community(BaseModel):
     id: uuid.UUID
+    inst_id: uuid.UUID
     created_by_user_id: uuid.UUID
     name: str
     description: str
     status: str
-    image_url: str
+    image_url: str | None = None
+    created_at: datetime
+    updated_at: datetime | None = None
+    role: str | None = None
+    isMember: bool = False
+    member_count: int = 0
 
     class Config:
         from_attributes = True

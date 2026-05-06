@@ -11,8 +11,8 @@ const CreateStackLayout = () => {
             }}
         >
             <Stack.Screen name="index" />
-            <Stack.Screen name="post_target" />
             <Stack.Screen name="drafts" />
+            <Stack.Screen name="edit_draft" />
         </Stack>
     );
 };

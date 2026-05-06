@@ -87,6 +87,12 @@ export default function RootLayout() {
                                             animation: "none",
                                         }}
                                     />
+                                    <Stack.Screen //ADDED
+                                        name="achievements"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
                                     <Stack.Screen
                                         name="[user_id]"
                                         options={{
