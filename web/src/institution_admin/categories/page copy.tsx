@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,26 @@ import { getCategoriesColumns } from "./columns";
 import type { CategoryTable } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
-
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/components/auth-provider";
 import Loading from "@/components/loading";
+import CategoryForm from "./category-form";
 import { Label } from "@/components/ui/label";
 
 // ── Modal styles ──────────────────────────────────────────────────────────────
@@ -88,6 +105,7 @@ const CategoriesMgmtPage = () => {
     const { user } = useAuth();
     const instId = user?.inst_id;
 
+    const [data, setData] = useState<CategoryTable[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
@@ -98,6 +116,9 @@ const CategoriesMgmtPage = () => {
     const [createOpen, setCreateOpen] = useState(false);
     const [newName, setNewName] = useState("");
 
+    // const [loading, setLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+
     // Edit modal
     const [showEditModal, setShowEditModal] = useState(false);
     const [editTargetId, setEditTargetId] = useState("");
@@ -107,15 +128,15 @@ const CategoriesMgmtPage = () => {
 
     // Suspend modal
     const [showSuspendModal, setShowSuspendModal] = useState(false);
-    const [suspendTarget, setSuspendTarget] = useState("");
+    const [suspendTarget, setSuspendTarget] = useState<CategoryTable | null>(
+        null,
+    );
 
     // Activate modal
     const [showActivateModal, setShowActivateModal] = useState(false);
-    const [activateTarget, setActivateTarget] = useState("");
-
-    // Hard delete modal
-    const [showHardDeleteModal, setShowHardDeleteModal] = useState(false);
-    const [hardDeleteTarget, setHardDeleteTarget] = useState("");
+    const [activateTarget, setActivateTarget] = useState<CategoryTable | null>(
+        null,
+    );
 
     // ── Fetch categories ──
     // Fetch all categories from backend
@@ -130,13 +151,122 @@ const CategoriesMgmtPage = () => {
     });
 
     // ── Handlers ──
-    // Edit
-    const handleEditPress = (category: CategoryTable) => {
+    const handleEdit = (category: CategoryTable) => {
         setEditTargetId(category.category_id);
         setEditName(category.category_name);
         setEditStatus(category.status);
         setEditError("");
         setShowEditModal(true);
+    };
+
+    // const handleSaveEdit = async () => {
+    //     if (!editName.trim()) {
+    //         setEditError("Category name is required");
+    //         return;
+    //     }
+    //     try {
+    //         await api.put(`/${instId}/admin/categories/${editTargetId}`, {
+    //             category_name: editName.trim(),
+    //         });
+    //         setShowEditModal(false);
+    //         setEditTargetId("");
+    //         queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
+    //     } catch (e: any) {
+    //         setEditError(
+    //             e.response?.data?.detail ?? "Failed to update category",
+    //         );
+    //     }
+    // };
+    const handleSaveEdit = async () => {
+        setLoading(true);
+        if (!editName.trim()) {
+            setEditError("Category name is required");
+            return;
+        }
+        console.log(editTargetId);
+        console.log(editName);
+        console.log(editStatus);
+        try {
+            const formData = new FormData();
+            formData.append("category_name", editName);
+            formData.append("status", editStatus);
+            await api.patch(
+                `/${user?.inst_id}/admin/categories/${editTargetId}`,
+                formData,
+                {
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                },
+            );
+            queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
+            setShowEditModal(false);
+        } catch (err) {
+            console.error("Edit failed:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSuspend = (category: CategoryTable) => {
+        setSuspendTarget(category);
+        setShowSuspendModal(true);
+    };
+
+    const handleConfirmSuspend = async () => {
+        try {
+            await api.patch(
+                `/${instId}/admin/categories/${suspendTarget?.id}/suspend`,
+            );
+            setShowSuspendModal(false);
+            setSuspendTarget(null);
+            // fetchCategories();
+        } catch (e: any) {
+            setError(e.response?.data?.detail ?? "Failed to suspend category");
+        }
+    };
+
+    const handleActivate = (category: CategoryTable) => {
+        setActivateTarget(category);
+        setShowActivateModal(true);
+    };
+
+    const handleConfirmActivate = async () => {
+        try {
+            await api.patch(
+                `/${instId}/admin/categories/${activateTarget?.id}/activate`,
+            );
+            setShowActivateModal(false);
+            setActivateTarget(null);
+            // fetchCategories();
+        } catch (e: any) {
+            setError(e.response?.data?.detail ?? "Failed to activate category");
+        }
+    };
+
+    const handleCreate = async () => {
+        if (!newName.trim()) {
+            setError("Category name is required.");
+            return;
+        }
+        setLoading(true);
+        try {
+            const formData = new FormData();
+            formData.append("category_name", newName);
+
+            await api.post(`/${user?.inst_id}/admin/categories`, formData, {
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+            });
+            queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
+            setNewName("");
+            setCreateOpen(false);
+        } catch (err) {
+            console.error("Add failed:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const { mutate: mu_editCategory, isPending: isPendingEditCategory } =
@@ -166,178 +296,131 @@ const CategoriesMgmtPage = () => {
                 setShowEditModal(false);
             },
             onError: (err) => {
-                setEditError("Update failed: " + err.message);
                 console.error("Update failed:", err);
             },
         });
 
-    const onEditSubmit = () => {
-        if (!editName.trim()) {
-            setEditError("Category name is required.");
-            return;
-        }
-        mu_editCategory();
-    };
-
-    const handleSuspendPress = (category: CategoryTable) => {
-        setSuspendTarget(category.category_id);
-        setEditName(category.category_name);
-        setShowSuspendModal(true);
-    };
-
-    const { mutate: mu_suspend, isPending: isPendingSuspend } = useMutation({
-        mutationFn: async () => {
-            const formData = new FormData();
-            if (editName !== undefined)
-                formData.append("category_name", editName);
-            formData.append("status", "inactive");
-            const response = await api.patch(
-                `/${user?.inst_id}/admin/categorie/${suspendTarget}`,
-                formData,
-                {
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                },
-            );
-            return response.data;
-        },
-        onSuccess: () => {
-            // Refresh the list after a successful update
-            queryClient.invalidateQueries({
-                queryKey: ["adminCategories"],
-            });
-            setEditName("");
-            setSuspendTarget("");
-            setShowSuspendModal(false);
-        },
-        onError: (err) => {
-            setError(err.message);
-            console.error("Update failed:", err);
-        },
-        onSettled: () => {
-            setShowSuspendModal(false);
-        },
-    });
-
-    const handleActivatePress = (category: CategoryTable) => {
-        setActivateTarget(category.category_id);
-        setEditName(category.category_name);
-        setShowActivateModal(true);
-    };
-
-    const { mutate: mu_activate, isPending: isPendingActivate } = useMutation({
-        mutationFn: async () => {
-            const formData = new FormData();
-            if (editName !== undefined)
-                formData.append("category_name", editName);
-            formData.append("status", "active");
-            const response = await api.patch(
-                `/${user?.inst_id}/admin/categories/${activateTarget}`,
-                formData,
-                {
-                    headers: {
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                },
-            );
-            return response.data;
-        },
-        onSuccess: () => {
-            // Refresh the list after a successful update
-            queryClient.invalidateQueries({
-                queryKey: ["adminCategories"],
-            });
-            setEditName("");
-            setActivateTarget("");
-            setShowActivateModal(false);
-        },
-        onError: (err: any) => {
-            console.error("Update failed:", err.response?.data.details);
-        },
-    });
-
-    const handleHardDeletePress = (category: CategoryTable) => {
-        setHardDeleteTarget(category.category_id);
-        setEditName(category.category_name);
-        setShowHardDeleteModal(true);
-    };
-
-    const { mutate: mu_hardDelete, isPending: isPendingHardDelete } =
-        useMutation({
-            mutationFn: async () => {
-                const response = await api.delete(
-                    `/${user?.inst_id}/admin/categories/${hardDeleteTarget}?hard=true`,
-                );
-                queryClient.invalidateQueries({
-                    queryKey: ["adminCategories"],
-                });
-                return response.data;
-            },
-            onSuccess: () => {
-                // Refresh the list after a successful update
-                queryClient.invalidateQueries({
-                    queryKey: ["adminCategories"],
-                });
-                setEditName("");
-                setHardDeleteTarget("");
-                setShowHardDeleteModal(false);
-            },
-            onError: (err: any) => {
-                console.error("Update failed:", err.response?.data.details);
-            },
-        });
-
-    const handleCreate = async () => {
-        if (!newName.trim()) {
-            setError("Category name is required.");
-            return;
-        }
-        setLoading(true);
-        try {
-            const formData = new FormData();
-            formData.append("category_name", newName);
-
-            await api.post(`/${user?.inst_id}/admin/categories`, formData, {
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-            });
-            queryClient.invalidateQueries({ queryKey: ["adminCategories"] });
-            setNewName("");
-            setCreateOpen(false);
-        } catch (err) {
-            console.error("Add failed:", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const columns = useMemo(
-        () =>
-            getCategoriesColumns(
-                handleEditPress,
-                handleSuspendPress,
-                handleActivatePress,
-                handleHardDeletePress,
-            ),
+        () => getCategoriesColumns(handleEdit, handleSuspend, handleActivate),
         [instId],
     );
 
+    const filtered = data.filter((c) =>
+        c.category_name.toLowerCase().includes(query.toLowerCase()),
+    );
+
     const filteredCategories = categories?.filter((cat) =>
-        query.trim() === ""
+        searchQuery.trim() === ""
             ? true
-            : cat.category_name.toLowerCase().includes(query.toLowerCase()),
+            : cat.category_name
+                  .toLowerCase()
+                  .includes(searchQuery.toLowerCase()),
     );
 
     return (
         <div>
-            {(isLoading ||
-                loading ||
-                isPendingEditCategory ||
-                isPendingSuspend ||
-                isPendingActivate ||
-                isPendingHardDelete) && <Loading />}
+            {(isLoading || loading) && <Loading />}
+
+            {/* Add Category Dialog */}
+            {/* <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Add Category</DialogTitle>
+                        <DialogDescription>
+                            Fill in the details to add a new category.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium">
+                                Category Name{" "}
+                                <span className="text-destructive">*</span>
+                            </label>
+                            <Input
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                placeholder="Enter category name"
+                                autoComplete="off"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    setNewName("");
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button
+                            onClick={handleCreate}
+                            disabled={loading || !newName.trim()}
+                        >
+                            {loading ? "Adding..." : "Add"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog> */}
+            {createOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/35"
+                    onClick={() => setShowEditModal(false)}
+                >
+                    <div
+                        className="w-[500px] flex flex-col gap-6 rounded-lg bg-white px-8 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="text-2xl font-bold">
+                            Create Category
+                        </div>
+
+                        <div>
+                            <div className="flex flex-row gap-3 items-center">
+                                <Label className="text-base">Name</Label>
+                                <Input
+                                    className={`rounded-lg border border-muted-foreground text-base transition-colors `}
+                                    placeholder="Enter category name"
+                                    value={newName}
+                                    onChange={(e) => {
+                                        setNewName(e.target.value);
+                                        setError("");
+                                    }}
+                                />
+                            </div>
+                            {error && (
+                                <div className="mt-1 text-sm text-destructive">
+                                    {error}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end gap-4">
+                            <Button
+                                type="button"
+                                variant={"ghost"}
+                                // className="rounded-lg border border-[#E8ECF2] bg-white px-5 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-100"
+                                onClick={() => {
+                                    setCreateOpen(false);
+                                    setNewName("");
+                                }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={"default"}
+                                className="px-4 py-2"
+                                onClick={handleCreate}
+                            >
+                                Create
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-col gap-3">
                 {/* Header */}
@@ -422,68 +505,68 @@ const CategoriesMgmtPage = () => {
                 </section>
             </div>
 
-            {/* Add Category Dialog */}
-            {createOpen && (
+            {/* Edit Modal */}
+            {/* {showEditModal && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/35"
+                    style={overlayStyle}
                     onClick={() => setShowEditModal(false)}
                 >
                     <div
-                        className="w-[500px] flex flex-col gap-6 rounded-lg bg-white px-8 py-6 shadow-[0_20px_60px_rgba(0,0,0,0.15)]"
+                        style={modalStyle}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="text-2xl font-bold">
-                            Create Category
-                        </div>
-
-                        <div>
-                            <div className="flex flex-row gap-3 items-center">
-                                <Label className="text-base">Name</Label>
-                                <Input
-                                    className={`rounded-lg border border-muted-foreground text-base transition-colors `}
-                                    placeholder="Enter category name"
-                                    value={newName}
-                                    onChange={(e) => {
-                                        setNewName(e.target.value);
-                                        setError("");
-                                        setEditError("");
-                                    }}
-                                />
-                            </div>
-                            {error && (
-                                <div className="mt-1 text-sm text-destructive">
-                                    {error}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex justify-end gap-4">
-                            <Button
-                                type="button"
-                                variant={"ghost"}
-                                // className="rounded-lg border border-[#E8ECF2] bg-white px-5 py-2 text-[13px] font-medium text-gray-700 hover:bg-gray-100"
-                                onClick={() => {
-                                    setCreateOpen(false);
-                                    setNewName("");
+                        <div style={modalTitleStyle}>Edit Category</div>
+                        <div style={formGroupStyle}>
+                            <label style={labelStyle}>Category Name *</label>
+                            <input
+                                style={{
+                                    ...inputStyle,
+                                    borderColor: editError
+                                        ? "#EF4444"
+                                        : "#E8ECF2",
+                                }}
+                                value={editName}
+                                onChange={(e) => {
+                                    setEditName(e.target.value);
                                     setEditError("");
                                 }}
+                                placeholder="Enter category name"
+                                autoFocus
+                            />
+                            {editError && (
+                                <div style={errorStyle}>{editError}</div>
+                            )}
+                        </div>
+                        <div style={modalActionsStyle}>
+                            <button
+                                style={cancelBtnStyle}
+                                onMouseEnter={(e) =>
+                                    (e.currentTarget.style.background =
+                                        "#F3F4F6")
+                                }
+                                onMouseLeave={(e) =>
+                                    (e.currentTarget.style.background = "#fff")
+                                }
+                                onClick={() => setShowEditModal(false)}
                             >
                                 Cancel
-                            </Button>
-                            <Button
-                                type="button"
-                                variant={"default"}
-                                className="px-4 py-2"
-                                onClick={handleCreate}
+                            </button>
+                            <button
+                                style={saveBtnStyle}
+                                onMouseEnter={(e) =>
+                                    (e.currentTarget.style.opacity = "0.85")
+                                }
+                                onMouseLeave={(e) =>
+                                    (e.currentTarget.style.opacity = "1")
+                                }
+                                onClick={handleSaveEdit}
                             >
-                                Create
-                            </Button>
+                                Save
+                            </button>
                         </div>
                     </div>
                 </div>
-            )}
-
-            {/* Edit Modal */}
+            )} */}
             {showEditModal && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/35"
@@ -505,13 +588,12 @@ const CategoriesMgmtPage = () => {
                                     onChange={(e) => {
                                         setEditName(e.target.value);
                                         setError("");
-                                        setEditError("");
                                     }}
                                 />
                             </div>
-                            {editError && (
+                            {error && (
                                 <div className="mt-1 text-sm text-destructive">
-                                    {editError}
+                                    {error}
                                 </div>
                             )}
                         </div>
@@ -524,7 +606,6 @@ const CategoriesMgmtPage = () => {
                                 onClick={() => {
                                     setShowEditModal(false);
                                     setEditName("");
-                                    setEditError("");
                                 }}
                             >
                                 Cancel
@@ -534,7 +615,7 @@ const CategoriesMgmtPage = () => {
                                 variant={"default"}
                                 // className="rounded-lg bg-blue-600 px-5 py-2 text-[13px] font-semibold text-white transition-opacity hover:opacity-85"
                                 className="px-4 py-2"
-                                onClick={onEditSubmit}
+                                onClick={handleSaveEdit}
                             >
                                 Edit
                             </Button>
@@ -562,7 +643,7 @@ const CategoriesMgmtPage = () => {
                             }}
                         >
                             Are you sure you want to suspend{" "}
-                            <strong>{editName}</strong>?
+                            <strong>{suspendTarget?.category_name}</strong>?
                         </p>
                         <p style={{ fontSize: 13, color: "#6B7280" }}>
                             The category will be hidden but all associated news
@@ -592,7 +673,7 @@ const CategoriesMgmtPage = () => {
                                     (e.currentTarget.style.background =
                                         "#DC2626")
                                 }
-                                onClick={() => mu_suspend()}
+                                onClick={handleConfirmSuspend}
                             >
                                 Suspend
                             </button>
@@ -620,7 +701,7 @@ const CategoriesMgmtPage = () => {
                             }}
                         >
                             Are you sure you want to activate{" "}
-                            <strong>{editName}</strong>?
+                            <strong>{activateTarget?.category_name}</strong>?
                         </p>
                         <p style={{ fontSize: 13, color: "#6B7280" }}>
                             The category will be visible again to users.
@@ -649,67 +730,9 @@ const CategoriesMgmtPage = () => {
                                     (e.currentTarget.style.background =
                                         "#16A34A")
                                 }
-                                onClick={() => mu_activate()}
+                                onClick={handleConfirmActivate}
                             >
                                 Activate
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* Activate Modal */}
-            {showHardDeleteModal && (
-                <div
-                    style={overlayStyle}
-                    onClick={() => setShowHardDeleteModal(false)}
-                >
-                    <div
-                        style={{ ...modalStyle, width: 360 }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={modalTitleStyle}>
-                            Permanently Delete Category
-                        </div>
-                        <p
-                            style={{
-                                fontSize: 14,
-                                color: "#374151",
-                                marginBottom: 4,
-                            }}
-                        >
-                            Are you sure you want to permanently delete{" "}
-                            <strong>{editName}</strong>?
-                        </p>
-                        <p style={{ fontSize: 13, color: "#6B7280" }}>
-                            This action cannot be undone.
-                        </p>
-                        <div style={modalActionsStyle}>
-                            <button
-                                style={cancelBtnStyle}
-                                onMouseEnter={(e) =>
-                                    (e.currentTarget.style.background =
-                                        "#F3F4F6")
-                                }
-                                onMouseLeave={(e) =>
-                                    (e.currentTarget.style.background = "#fff")
-                                }
-                                onClick={() => setShowHardDeleteModal(false)}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                style={suspendBtnStyle}
-                                onMouseEnter={(e) =>
-                                    (e.currentTarget.style.background =
-                                        "#991B1B")
-                                }
-                                onMouseLeave={(e) =>
-                                    (e.currentTarget.style.background =
-                                        "#DC2626")
-                                }
-                                onClick={() => mu_hardDelete()}
-                            >
-                                Delete
                             </button>
                         </div>
                     </div>

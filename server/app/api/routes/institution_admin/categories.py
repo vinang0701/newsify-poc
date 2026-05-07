@@ -25,13 +25,12 @@ async def get_all_categories(inst_id: str):
 async def create_category(
     inst_id: str,
     category_name: str = Form(...),
-    status: str = Form(...),
     current_user: UserPayload = Depends(get_current_app_user),
 ):
     try:
         admin_id = current_user["id"]
         result = await categories_service.create_category(
-            supabase, category_name, status, admin_id
+            supabase, category_name, admin_id
         )
         if not result:
             raise HTTPException(status_code=400, detail="Could not create category")
