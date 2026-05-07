@@ -26,10 +26,8 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import axios from "axios";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
-import { useCommunity } from "@/hooks/useCommunity";
 import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;

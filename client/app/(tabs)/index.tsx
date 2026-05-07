@@ -1,6 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
-import newsArticles from "@/data/news.json";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -38,7 +37,6 @@ import { Image } from "expo-image";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { usePreferences } from "@/hooks/usePreferences";
-import Feather from "@expo/vector-icons/Feather";
 import Loading from "@/components/loading";
 import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
 
@@ -136,7 +134,7 @@ export default function HomeScreen() {
         queryKey: ["news"],
         queryFn: async (): Promise<News[]> => {
             const response = await api.get(
-                `/${metadata.inst_id}/news/feed/personalised?user_id=${currentUser?.id}`,
+                `/${metadata.inst_id}/news/feed/personalised`,
             );
             // if (!response.ok) throw new Error("Network response was not ok");
             return await response.data;

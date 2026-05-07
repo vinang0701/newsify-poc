@@ -64,7 +64,9 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                 await queryClient.cancelQueries({ queryKey: ["news"] });
 
                 // Snapshot current cache state
-                const previousNews = queryClient.getQueryData<News[]>(["news"]);
+                const previousNews = queryClient.getQueriesData<News[]>({
+                    queryKey: ["news"],
+                });
 
                 // Optimistically update the "news" list
                 queryClient.setQueriesData<News[]>(
@@ -93,12 +95,9 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
 
             onError: (err, post_id, context) => {
                 // Rollback to the exact state before the click
-                if (context?.previousNews) {
-                    queryClient.setQueriesData<News[]>(
-                        { queryKey: ["news"] },
-                        context.previousNews,
-                    );
-                }
+                context?.previousNews.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
                 console.error(`Like failed for ${post_id}:`, err);
             },
         });

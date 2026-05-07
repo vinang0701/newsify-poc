@@ -37,10 +37,9 @@ import api from "@/lib/axios";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import PostTarget from "@/components/post_target";
 import { usePreferences } from "@/hooks/usePreferences";
-import { useCommunity, UserCommunities } from "@/hooks/useCommunity";
 import useCreatePost from "@/hooks/useCreatePost";
 import useDrafts from "@/hooks/useDrafts";
-import { DraftData, PostData, ServerReponse } from "@/data/types";
+import { Community, DraftData, PostData, ServerReponse } from "@/data/types";
 import { ModerationData, ModerationModal } from "@/components/moderation_modal";
 
 export default function CreatePost() {
@@ -86,11 +85,11 @@ export default function CreatePost() {
         // enabled: activeFilter === "drafts",
     });
     const { data: myCommunities, error: myCommunitiesError } = useQuery<
-        UserCommunities[]
+        Community[]
     >({
         queryKey: ["user_communities"],
         queryFn: async () => {
-            const response = await api.get<UserCommunities[]>(
+            const response = await api.get<Community[]>(
                 `/users/me/communities`,
             );
             if (!response.data || !response) {

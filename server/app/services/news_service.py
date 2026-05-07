@@ -446,6 +446,7 @@ async def delete_user_draft(supabase: Client, user_id: str, draft_id: str):
     return True
 
 
+'''
 async def get_personalised_news(
     supabase: Client, inst_id: str, user_id: str
 ) -> List[dict]:
@@ -526,6 +527,26 @@ async def get_personalised_news(
         )
 
     return posts
+'''
+
+
+async def get_personalised_news(
+    supabase: Client, inst_id: str, user_id: str, limit: int, offset: int
+) -> List[dict]:
+    results = supabase.rpc(
+        "get_user_feed",
+        {
+            "p_user_id": str(user_id),
+            "p_inst_id": str(inst_id),  # added
+            "p_limit": limit,
+            "p_offset": offset,
+        },
+    ).execute()
+
+    if not results.data:
+        return []
+
+    return [NewsPost(**np) for np in results.data]
 
 
 async def save_post(supabase: Client, user_id: str, post_id: str) -> dict:

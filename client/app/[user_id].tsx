@@ -188,7 +188,7 @@ export default function OtherUserProfileStack() {
     });
 
     const { status, data, error, isFetching, refetch } = useQuery<News[]>({
-        queryKey: ["user_news", user_id],
+        queryKey: ["news", user_id],
         queryFn: fetchUserNews,
         enabled: !!user_id,
     });

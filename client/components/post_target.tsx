@@ -15,7 +15,6 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { FlashList } from "@shopify/flash-list";
 import { Community } from "@/data/types";
 import Feather from "@expo/vector-icons/Feather";
-import { UserCommunities } from "@/hooks/useCommunity";
 
 interface PostTargetProps {
     isSchoolChecked: boolean;
@@ -30,7 +29,7 @@ interface PostTargetProps {
         category_id: string;
         category_name: string;
     }[];
-    communities: UserCommunities[] | undefined;
+    communities: Community[] | undefined;
     onBack: () => void;
     onSubmit: () => void;
     isPendingSubmit: boolean;
@@ -137,9 +136,7 @@ const PostTarget = ({
                         >
                             <FlashList
                                 data={categories}
-                                keyExtractor={(item) =>
-                                    item.category_id.toString()
-                                }
+                                keyExtractor={(item) => item.category_id}
                                 ItemSeparatorComponent={() => (
                                     <View
                                         style={[
@@ -276,7 +273,7 @@ const PostTarget = ({
                         data={communities}
                         nestedScrollEnabled={true}
                         contentContainerStyle={{ flexGrow: 1 }}
-                        keyExtractor={(item) => item.community_id.toString()}
+                        keyExtractor={(item) => item.id}
                         ListEmptyComponent={() => (
                             <View
                                 style={{
@@ -317,7 +314,7 @@ const PostTarget = ({
                         )}
                         renderItem={({ item }) => (
                             <View
-                                key={item.community_id}
+                                key={item.id}
                                 style={[
                                     styles.flexRowContainer,
                                     {
@@ -328,11 +325,9 @@ const PostTarget = ({
                                 ]}
                             >
                                 <Checkbox
-                                    value={selectedIds.includes(
-                                        item.community_id,
-                                    )}
+                                    value={selectedIds.includes(item.id)}
                                     onValueChange={() =>
-                                        toggleSelection(item.community_id)
+                                        toggleSelection(item.id)
                                     }
                                     style={styles.checkbox}
                                     color={
@@ -341,9 +336,7 @@ const PostTarget = ({
                                             : Colors[colorScheme].text
                                     }
                                 />
-                                <ThemedText emphasized>
-                                    {item.community_name}
-                                </ThemedText>
+                                <ThemedText emphasized>{item.name}</ThemedText>
                             </View>
                         )}
                     />

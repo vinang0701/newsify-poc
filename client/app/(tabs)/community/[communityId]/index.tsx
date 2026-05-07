@@ -85,15 +85,12 @@ export default function CommunityPage() {
         community,
         news,
         memberCount,
-        myCommunities,
-        myCommunityIds,
         isMember,
         userRole,
         joinCommunity,
         leaveCommunity,
         refresh,
         loading,
-        currentUserId,
     } = useCommunity(communityId);
 
     const sortedNews = useMemo(() => {
