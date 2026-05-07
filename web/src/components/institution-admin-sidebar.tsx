@@ -110,6 +110,11 @@ export function InstitutionAdminSidebar() {
 											Staff
 										</SidebarMenuButton>
 									</Link>
+									<Link to={"/admin/users/admins"}>
+										<SidebarMenuButton isActive={pathname === "/admin/users/admins"}>
+											Admins
+										</SidebarMenuButton>
+									</Link>
 								</CollapsibleContent>
 							</SidebarGroup>
 						</Collapsible>

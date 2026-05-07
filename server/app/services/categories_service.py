@@ -1,54 +1,32 @@
 from supabase import Client
-from typing import List, Optional
+from typing import List
+from app.core.db import supabase
+import uuid
+from datetime import datetime
+from app.models.category import Category
 
 
-async def get_all_categories(supabase: Client) -> List[dict]:
-    # Fetch ALL categories including inactive for admin view
-    # Join users table to get the name of who created it
-    response = supabase.table("categories").select("""
-            category_id,
-            category_name,
-            status,
-            created_at,
-            updated_at,
-            created_by,
-            users!categories_created_by_fkey(name)
-            """).order("created_at", desc=True).execute()
+async def get_categories(supabase: Client) -> List[dict]:
+    response = supabase.table("categories").select("*").eq("status", "active").execute()
 
-    # Map the data to include creator's name instead of ID
-    result = []
-    for cat in response.data:
-        result.append(
-            {
-                "category_id": str(cat["category_id"]),
-                "category_name": cat["category_name"],
-                "status": cat["status"],
-                "created_at": cat["created_at"],
-                "updated_at": cat.get("updated_at"),
-                "created_by": cat["users"]["name"] if cat.get("users") else "Unknown",
-            }
-        )
-    return result
-
+    return [Category(**category) for category in response.data]
 
 async def create_category(
     supabase: Client,
     category_name: str,
+    status: str,
     created_by: str,
 ) -> dict:
     response = (
         supabase.table("categories")
-        .insert(
-            {
-                "category_name": category_name,
-                "status": "active",
-                "created_by": created_by,
-            }
-        )
+        .insert({
+            "category_name": category_name,
+            "status": status,
+            "created_by": created_by,
+        })
         .execute()
     )
     return response.data
-
 
 async def update_category(
     supabase: Client,
@@ -58,37 +36,60 @@ async def update_category(
 ) -> dict:
     response = (
         supabase.table("categories")
-        .update(
-            {
-                "category_name": category_name,
-                "status": status,
-            }
-        )
+        .update({
+            "category_name": category_name,
+            "status": status,
+        })
         .eq("category_id", category_id)
         .execute()
     )
     return response.data
 
-
-async def suspend_category(supabase: Client, category_id: str) -> dict:
+async def delete_category(
+    supabase: Client,
+    category_id: str,
+) -> dict:
+    # Soft delete — set status to inactive
     response = (
         supabase.table("categories")
         .update({"status": "inactive"})
         .eq("category_id", category_id)
         .execute()
     )
-    return response.data[0]
+    return response.data
 
-
-async def activate_category(supabase: Client, category_id: str) -> dict:
+async def get_all_categories(supabase: Client) -> List[dict]:
+    # Fetch ALL categories including inactive for admin view
+    # Join users table to get the name of who created it
     response = (
         supabase.table("categories")
-        .update({"status": "active"})
-        .eq("category_id", category_id)
+        .select(
+            """
+            category_id,
+            category_name,
+            status,
+            created_at,
+            updated_at,
+            created_by,
+            users!categories_created_by_fkey(name)
+            """
+        )
+        .order("created_at", desc=True)
         .execute()
     )
-    return response.data[0]
-
+    
+    # Map the data to include creator's name instead of ID
+    result = []
+    for cat in response.data:
+        result.append({
+            "category_id": str(cat["category_id"]),
+            "category_name": cat["category_name"],
+            "status": cat["status"],
+            "created_at": cat["created_at"],
+            "updated_at": cat.get("updated_at"),
+            "created_by": cat["users"]["name"] if cat.get("users") else "Unknown",
+        })
+    return result
 
 async def hard_delete_category(supabase: Client, category_id: str) -> dict:
     try:

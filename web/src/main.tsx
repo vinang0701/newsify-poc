@@ -18,6 +18,9 @@ import CategoriesMgmtPage from "./institution_admin/categories/page";
 import AchievementsMgmtPage from "./institution_admin/achievements/page";
 import ContentModerationPage from "./institution_admin/moderation/page";
 import RequestsMgmtPage from "./institution_admin/communities/requests/page";
+import CommunityDetailPage from "./institution_admin/communities/community-detail";
+import AdminUsersMgmtPage from "./institution_admin/users/admin-users-page";
+
 
 const router = createBrowserRouter([
 	{
@@ -39,11 +42,15 @@ const router = createBrowserRouter([
 				element: <StudentUsersMgmtPage />,
 			},
 			{ path: "users/staff", element: <StaffUsersMgmtPage /> },
+
+			{ path: "users/admins", element: <AdminUsersMgmtPage /> },
+
 			{
 				path: "communities",
 				children: [
 					{ index: true, element: <CommunitiesMgmtPage /> },
 					{ path: "requests", element: <RequestsMgmtPage /> },
+					{ path: ":community_id", element: <CommunityDetailPage />}
 				],
 			},
 
@@ -60,6 +67,7 @@ const router = createBrowserRouter([
 			{ path: "institutions", element: <InstitutionsMgmtPage /> },
 		],
 	},
+
 ]);
 
 createRoot(document.getElementById("root")!).render(

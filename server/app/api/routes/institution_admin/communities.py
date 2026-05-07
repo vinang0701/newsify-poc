@@ -77,3 +77,148 @@ async def respond_to_community_creation_request(
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Get community details with members
+@router.get("/{community_id}/details")
+async def get_community_details(community_id: str):
+    try:
+        result = await communities_service.get_community_with_members(
+            supabase, community_id
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="Community not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Put community under review
+@router.patch("/{community_id}/review")
+async def put_under_review(
+    community_id: str,
+    inst_id: str,
+    current_user=Depends(get_current_app_user),
+):
+    try:
+        # Get community name for notification message
+        comm = await communities_service.get_community(supabase, community_id)
+        if not comm:
+            raise HTTPException(status_code=404, detail="Community not found")
+
+        # Update status
+        await communities_service.update_community_status(
+            supabase, community_id, "under_review"
+        )
+
+        # Notify all community admins
+        await communities_service.notify_community_admins(
+            supabase,
+            community_id,
+            current_user["id"],
+            f"Your community '{comm["name"]}' has been put under review by the institution admin. Posting and communication are temporarily suspended."
+        )
+
+        return {"message": "Community put under review successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"EXACT ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Reactivate community
+@router.patch("/{community_id}/reactivate")
+async def reactivate_community(
+    community_id: str,
+    inst_id: str,
+    current_user=Depends(get_current_app_user),
+):
+    try:
+        comm = await communities_service.get_community(supabase, community_id)
+        if not comm:
+            raise HTTPException(status_code=404, detail="Community not found")
+
+        await communities_service.update_community_status(
+            supabase, community_id, "active"
+        )
+
+        await communities_service.notify_community_admins(
+            supabase,
+            community_id,
+            current_user["id"],
+            f"Your community '{comm["name"]}' has been reactivated. Normal operations have resumed."
+        )
+
+        return {"message": "Community reactivated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Disband community
+@router.patch("/{community_id}/disband")
+async def disband_community(
+    community_id: str,
+    inst_id: str,
+    current_user=Depends(get_current_app_user),
+):
+    try:
+        comm = await communities_service.get_community(supabase, community_id)
+        if not comm:
+            raise HTTPException(status_code=404, detail="Community not found")
+
+        await communities_service.update_community_status(
+            supabase, community_id, "disbanded"
+        )
+
+        await communities_service.notify_community_admins(
+            supabase,
+            community_id,
+            current_user["id"],
+            f"Your community '{comm["name"]}' has been disbanded by the institution admin."
+        )
+
+        return {"message": "Community disbanded successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Promote member to admin
+@router.patch("/{community_id}/members/{user_id}/promote")
+async def promote_to_admin(community_id: str, user_id: str):
+    try:
+        result = await communities_service.promote_to_admin(
+            supabase, community_id, user_id
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="Member not found")
+        return {"message": "Member promoted to admin successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Revoke admin rights
+@router.patch("/{community_id}/members/{user_id}/revoke")
+async def revoke_admin(community_id: str, user_id: str):
+    try:
+        result = await communities_service.revoke_admin(
+            supabase, community_id, user_id
+        )
+        if not result:
+            raise HTTPException(status_code=404, detail="Member not found")
+        return {"message": "Admin rights revoked successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+

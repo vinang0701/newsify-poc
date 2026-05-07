@@ -54,8 +54,22 @@ const Login = () => {
             const role = payload.app_metadata.user_role;
 
             const response = await api.get(`${API_BASE_URL}/users/me`);
+            const userData = response.data;
 
-            // const userData = response.data;
+            console.log("userData:", userData);
+            console.log("user id:", data.user.id);
+
+            if (userData?.status === "banned") {
+                await supabase.auth.signOut();
+                setError("Your account has been banned. Please contact your institution admin.");
+                return;
+            }
+
+            if (userData?.status === "suspended") {
+                await supabase.auth.signOut();
+                setError("Your account has been suspended. Please contact your institution admin.");
+                return;
+            }
 
             useAuthStore.getState().setAuth(data.session, true);
 
@@ -203,7 +217,7 @@ const Login = () => {
                             </ThemedText>
                         </View>
                     )}
-                    <Link href={{ pathname: "/forgot_password" }} push asChild>
+                    <Link href="/forgot_password" push asChild>
                         <ThemedText
                             type="body_medium"
                             style={{

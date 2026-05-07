@@ -71,6 +71,13 @@ const actionConfig = {
             "Are you sure you want to lift the ban? The user will be able to login again.",
         buttonClass: "bg-green-600 hover:bg-green-700 text-white",
     },
+
+	"lift-suspension": {
+		label: "Lift Suspension",
+		description:
+			"Are you sure you want to lift the suspension? The user will be able to login again.",
+		buttonClass: "bg-blue-600 hover:bg-blue-700 text-white",
+	},
 };
 
 const ActionButton = ({ row }: ActionButtonProps) => {
@@ -78,7 +85,7 @@ const ActionButton = ({ row }: ActionButtonProps) => {
     const queryClient = useQueryClient();
 
     const [confirmAction, setConfirmAction] = useState<
-        "suspend" | "ban" | "lift-ban" | null
+        "suspend" | "ban" | "lift-ban" | "lift-suspension" | null
     >(null);
     const [loading, setLoading] = useState(false);
     const [updateOpen, setUpdateOpen] = useState(false);
@@ -167,14 +174,27 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                             </DropdownMenuItem>
                         )}
                         <Separator orientation="horizontal" />
-                        {!isSuspended && (
+                        {isSuspended ? (
                             <DropdownMenuItem
-                                onClick={() => setConfirmAction("suspend")}
-                                className="text-orange-500 focus:text-orange-500"
+                                onClick={() => setConfirmAction("lift-suspension")}
+                                className="text-blue-600 focus:text-blue-600"
                             >
                                 <UserX />
-                                <span>Suspend</span>
+                                <span>Lift Suspension</span>
                             </DropdownMenuItem>
+						
+						):(
+							// Only show Suspend if user is not banned
+							!isBanned && (
+								<DropdownMenuItem
+									onClick={() => setConfirmAction("suspend")}
+									className="text-orange-500 focus:text-orange-500"
+								>
+									<UserX />
+									<span>Suspend</span>
+								</DropdownMenuItem>
+							)
+
                         )}
                     </DropdownMenuGroup>
                 </DropdownMenuContent>

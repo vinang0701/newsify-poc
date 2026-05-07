@@ -23,6 +23,7 @@ export interface Community {
 	status: string;
 	created_at: string;
 	updated_at: string | null;
+	member_count?: number;
 }
 
 export interface ModalProps {
@@ -86,12 +87,12 @@ export const createUserSchema = z.object({
 export type CreateUserFormData = z.infer<typeof createUserSchema>;
 
 export interface CategoryTable {
-	id: string;
+	category_id: string;
 	category_name: string;
-	status: string;
-	created_by: string;
 	created_at: string;
+	status: string;
 	updated_at: string;
+	created_by: string;
 }
 
 export interface CommunityCreationRequest {
@@ -127,4 +128,28 @@ export interface InstitutionFormData {
   plan: string;
   startDate: string;
   endDate: string;
+}
+
+export interface CommunityMember {
+    user_id: string;
+    role: string;
+    joined_at: string;
+    users: {
+        id: string;
+        name: string;
+        email: string;
+    };
+}
+
+export interface CommunityDetail {
+    community: {
+        id: string;
+        name: string;
+        description: string;
+        status: string;
+        image_url: string | null;
+        created_at: string;
+        users: { name: string; email: string };
+    };
+    members: CommunityMember[];
 }

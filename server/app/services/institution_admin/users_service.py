@@ -4,6 +4,8 @@ from pydantic import EmailStr
 import uuid
 from app.models.admin import User, CreateUser
 from app.core.db import supabase
+from datetime import datetime, timezone
+
 
 
 async def get_student_users(supabase: Client, inst_id: str) -> List[dict]:
@@ -28,6 +30,69 @@ async def get_student_users(supabase: Client, inst_id: str) -> List[dict]:
     )
 
     return [User(**user) for user in response.data]
+
+
+async def get_staff_users(supabase: Client, inst_id: str) -> List[dict]:
+    response = (
+        supabase.table("users")
+        .select(
+            """
+            id,
+            inst_id,
+            name,
+            email,
+            role,
+            status,
+            created_at,
+            updated_at
+        """
+        )
+        .eq("inst_id", inst_id)
+        .eq("role", "staff")  # only staff
+        .execute()
+    )
+    return [User(**user) for user in response.data]
+
+
+async def get_admin_users(supabase: Client, inst_id: str) -> List[dict]:
+    # Fetch institution and platform admins from users table
+    response = (
+        supabase.table("users")
+        .select("id, inst_id, name, email, role, status, created_at, updated_at")
+        .eq("inst_id", inst_id)
+        .in_("role", ["institution_admin", "platform_admin"])
+        .execute()
+    )
+    admins = [User(**user) for user in response.data]
+
+    # Fetch community admins from community_admins table
+    comm_admin_response = (
+        supabase.table("community_admins")
+        .select(
+            """
+            user_id,
+            users!community_admins_user_id_fkey(
+                id, inst_id, name, email, role, status, created_at, updated_at
+            ),
+            communities!community_admins_community_id_fkey(inst_id)
+            """
+        )
+        .execute()
+    )
+
+    # Filter by inst_id and add community_admin role label
+    for row in comm_admin_response.data:
+        if (
+            row.get("communities") and
+            row["communities"].get("inst_id") == inst_id and
+            row.get("users")
+        ):
+            user_data = row["users"]
+            # Override role to show as community_admin
+            user_data["role"] = "community_admin"
+            admins.append(User(**user_data))
+
+    return admins
 
 
 async def create_new_user(
@@ -228,3 +293,124 @@ async def flag_post(
     }).execute()
 
     return {"status": "flagged"}
+
+
+async def lift_suspension(supabase: Client, user_id: str) -> dict:
+    # Set status back to "active" — user can login again
+    response = (
+        supabase.table("users")
+        .update({"status": "active"})
+        .eq("id", user_id)
+        .execute()
+    )
+    return response.data
+
+async def get_reported_posts(supabase: Client, inst_id: str) -> List[dict]:
+    # Fetch all pending reports for posts in this institution
+    response = (
+        supabase.table("post_reports")
+        .select(
+            """
+            report_id,
+            reason,
+            description,
+            status,
+            created_at,
+            post_id,
+            news_posts!inner(
+                id,
+                title,
+                description,
+                image_url,
+                inst_id,
+                users!news_posts_author_fkey!inner(name, email)
+            ),
+            users!post_reports_reported_by_user_id_fkey!inner(name, email)
+            """
+        )
+        .eq("news_posts.inst_id", inst_id)   # only this institution's posts
+        .eq("status", "pending")              # only pending reports
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return response.data
+
+
+async def dismiss_report(
+    supabase: Client,
+    report_id: str,
+    reason: str,
+    admin_id: str,
+) -> dict:
+    print(f"Dismissing report: {report_id}, reason: {reason}, admin: {admin_id}")
+    try:
+        response = (
+            supabase.table("post_reports")
+            .update({
+                "status": "dismissed",
+                "description": reason,
+                "reviewed_by_user_id": admin_id,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            })
+            .eq("report_id", report_id)
+            .execute()
+        )
+        print(f"Dismiss response: {response.data}")
+        return response.data
+    except Exception as e:
+        print(f"EXACT ERROR: {e}")  # ← this will show the real error
+        raise
+
+
+async def flag_reported_post(
+    supabase: Client,
+    report_id: str,
+    post_id: str,
+    reason: str,
+    admin_id: str,
+) -> dict:
+    print(f"Flagging report: {report_id}, post: {post_id}, reason: {reason}, admin: {admin_id}")
+    try:
+        # Step 1: Get post details to notify author
+        post_response = (
+            supabase.table("news_posts")
+            .select("author, title")
+            .eq("id", post_id)
+            .single()
+            .execute()
+        )
+
+        if not post_response.data:
+            return None
+
+        author_id = post_response.data["author"]
+        post_title = post_response.data["title"]
+
+        # Step 2: Update report status to flagged
+        supabase.table("post_reports").update({
+            "status": "flagged",
+            "description": reason,
+            "reviewed_by_user_id": admin_id,
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("report_id", report_id).execute()
+
+        # Step 3: Flag the actual post
+        supabase.table("news_posts").update({
+            "status": "FLAGGED"
+        }).eq("id", post_id).execute()
+
+        # Step 4: Notify the post author
+        supabase.table("notifications").insert({
+            "actor_user_id": admin_id,
+            "notification_type": "POST_FLAGGED",
+            "reference_id": post_id,
+            "reference_table": "news_posts",
+            "message": f"Your post '{post_title}' has been flagged after a report. Reason: {reason}",
+            "is_read": False,
+            "recipient_user_id": author_id,
+        }).execute()
+
+        return {"status": "flagged"}
+    except Exception as e:
+        print(f"EXACT ERROR: {e}")  # ← shows the real error
+        raise

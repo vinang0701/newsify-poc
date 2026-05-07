@@ -9,6 +9,7 @@ from app.api.routes.institution_admin import communities as communities_admin
 from app.api.routes.platform_admin import institutions as platform_institutions
 from app.api.routes.institution_admin import achievements as achievements_admin
 from app.core.config import settings
+from app.api.routes.institution_admin import categories as categories_admin
 from app.api.routes import community_members
 from app.api.routes import search
 
