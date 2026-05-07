@@ -192,7 +192,7 @@ const CategoriesMgmtPage = () => {
                 formData.append("category_name", editName);
             formData.append("status", "inactive");
             const response = await api.patch(
-                `/${user?.inst_id}/admin/categorie/${suspendTarget}`,
+                `/${user?.inst_id}/admin/categories/${suspendTarget}`,
                 formData,
                 {
                     headers: {

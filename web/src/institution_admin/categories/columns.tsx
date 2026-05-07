@@ -8,15 +8,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogDescription,
-    DialogFooter,
-    DialogClose,
-} from "@/components/ui/dialog";
-import {
     Edit3,
     MoreVertical,
     PauseCircle,
@@ -24,12 +15,8 @@ import {
     Trash2,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import api from "@/lib/axios";
-import type { CategoryTable } from "@/types";
 
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+import type { CategoryTable } from "@/types";
 
 const formatDate = (dateString: string) => {
     if (!dateString) return "-";
