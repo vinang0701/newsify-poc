@@ -18,6 +18,7 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { supabase } from "@/lib/supabase";
 import Loading from "@/components/loading";
+import { usePreferences } from "@/hooks/usePreferences";
 
 export const unstable_settings = {
     anchor: "(tabs)",
@@ -28,7 +29,6 @@ export default function RootLayout() {
     const colorScheme = useColorScheme() || "light";
     const [loaded, error] = useFonts({
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
-        // Poppins: require("@/assets/fonts/Poppins-Regular.ttf"),
     });
     if (!initialized) {
         return <Loading />;

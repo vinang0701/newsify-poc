@@ -13,14 +13,14 @@ import Checkbox from "expo-checkbox";
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { FlashList } from "@shopify/flash-list";
-import { Community } from "@/data/types";
+import { Community, PostDestination } from "@/data/types";
 import Feather from "@expo/vector-icons/Feather";
 
 interface PostTargetProps {
-    isSchoolChecked: boolean;
-    setIsSchoolChecked: Dispatch<SetStateAction<boolean>>;
-    selectedIds: string[];
-    setSelectedIds: Dispatch<SetStateAction<string[]>>;
+    destination: PostDestination;
+    setDestination: Dispatch<SetStateAction<PostDestination>>;
+    selectedCommunityId: string;
+    setSelectedCommunityId: Dispatch<SetStateAction<string>>;
     selectedCategoryId: string;
     setSelectedCategoryId: Dispatch<SetStateAction<string>>;
     selectedCategoryName: string;
@@ -33,22 +33,24 @@ interface PostTargetProps {
     onBack: () => void;
     onSubmit: () => void;
     isPendingSubmit: boolean;
+    onNext?: () => void;
 }
 
 const PostTarget = ({
-    isSchoolChecked,
-    setIsSchoolChecked,
+    destination,
+    setDestination,
     selectedCategoryId,
     setSelectedCategoryId,
     selectedCategoryName,
     setSelectedCategoryName,
-    selectedIds,
-    setSelectedIds,
+    selectedCommunityId,
+    setSelectedCommunityId,
     categories,
     communities,
     onBack,
     onSubmit,
     isPendingSubmit,
+    onNext,
 }: PostTargetProps) => {
     const colorScheme = useColorScheme() ?? "light";
 
@@ -61,14 +63,10 @@ const PostTarget = ({
         // You can trigger your filtering logic or API calls here
     };
 
-    const toggleSelection = (id: string) => {
-        setSelectedIds(
-            (prev) =>
-                prev.includes(id)
-                    ? prev.filter((item) => item !== id) // Remove if exists
-                    : [...prev, id], // Add if not exists
-        );
-    };
+    const selectedCommunity = communities?.find(
+        (c) => c.id === selectedCommunityId,
+    );
+    const isAdmin = selectedCommunity?.role === "admin";
 
     return (
         <View
@@ -207,141 +205,163 @@ const PostTarget = ({
 
             <View style={[styles.flexRowContainer, { gap: 8 }]}>
                 <Checkbox
-                    value={isSchoolChecked}
-                    onValueChange={setIsSchoolChecked}
+                    value={destination === "PUBLIC"}
+                    onValueChange={() => {
+                        setDestination("PUBLIC");
+                        setSelectedCommunityId("");
+                    }}
                     style={styles.checkbox}
-                    color={
-                        isSchoolChecked
-                            ? Colors[colorScheme].text
-                            : Colors[colorScheme].text
-                    }
+                    color={Colors[colorScheme].text}
                 />
-                <ThemedText emphasized>School</ThemedText>
+                <ThemedText emphasized>Public (Everyone)</ThemedText>
+            </View>
+            <View style={[styles.flexRowContainer, { gap: 8 }]}>
+                <Checkbox
+                    value={destination === "FOLLOWERS"}
+                    onValueChange={() => {
+                        setDestination("FOLLOWERS");
+                        setSelectedCommunityId("");
+                    }}
+                    style={styles.checkbox}
+                    color={Colors[colorScheme].text}
+                />
+                <ThemedText emphasized>Followers Only</ThemedText>
+            </View>
+            <View style={[styles.flexRowContainer, { gap: 8 }]}>
+                <Checkbox
+                    value={destination === "COMMUNITY"}
+                    onValueChange={() => setDestination("COMMUNITY")}
+                    style={styles.checkbox}
+                    color={Colors[colorScheme].text}
+                />
+                <ThemedText emphasized>Community</ThemedText>
             </View>
 
             {/* Communities */}
-            <View style={{ flex: 1, borderRadius: 8, gap: 4 }}>
-                <ThemedText
-                    type="defaultSemiBold"
-                    style={{ color: Colors[colorScheme].text }}
-                >
-                    Choose which communities you wish to post to.
-                </ThemedText>
-                {/* Search bar */}
-                <View
-                    style={[
-                        styles.flexRowContainer,
-                        {
-                            backgroundColor: Colors[colorScheme].bg,
-                            paddingHorizontal: 12,
-                            borderRadius: 8,
-                            marginBottom: 12,
-                            gap: 4,
-                        },
-                    ]}
-                >
-                    <Feather
-                        name="search"
-                        size={16}
-                        color={Colors[colorScheme].caption}
-                    />
-                    <TextInput
-                        editable
-                        numberOfLines={1}
-                        placeholder="Search"
-                        value={searchQuery}
-                        onChangeText={handleSearch}
-                        placeholderTextColor={Colors[colorScheme].caption}
+            {destination === "COMMUNITY" && (
+                <View style={{ flex: 1, borderRadius: 8, gap: 4 }}>
+                    <ThemedText
+                        type="defaultSemiBold"
+                        style={{ color: Colors[colorScheme].text }}
+                    >
+                        Choose which communities you wish to post to.
+                    </ThemedText>
+                    {/* Search bar */}
+                    <View
                         style={[
-                            styles.searchInput,
+                            styles.flexRowContainer,
                             {
-                                color: Colors[colorScheme].text,
-                                borderColor: "transparent",
+                                backgroundColor: Colors[colorScheme].bg,
+                                paddingHorizontal: 12,
+                                borderRadius: 8,
+                                marginBottom: 12,
+                                gap: 4,
                             },
                         ]}
-                    />
-                </View>
-                <View
-                    style={{
-                        flexShrink: 1,
-                        height: 280,
-                        padding: 4,
-                        overflow: "hidden",
-                    }}
-                >
-                    <FlashList
-                        data={communities}
-                        nestedScrollEnabled={true}
-                        contentContainerStyle={{ flexGrow: 1 }}
-                        keyExtractor={(item) => item.id}
-                        ListEmptyComponent={() => (
-                            <View
-                                style={{
-                                    flex: 1,
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                }}
-                            >
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={{ color: Colors[colorScheme].text }}
-                                >
-                                    You are not in any community.
-                                </ThemedText>
-                                <ThemedText
-                                    type="body_medium"
-                                    emphasized
+                    >
+                        <Feather
+                            name="search"
+                            size={16}
+                            color={Colors[colorScheme].caption}
+                        />
+                        <TextInput
+                            editable
+                            numberOfLines={1}
+                            placeholder="Search"
+                            value={searchQuery}
+                            onChangeText={handleSearch}
+                            placeholderTextColor={Colors[colorScheme].caption}
+                            style={[
+                                styles.searchInput,
+                                {
+                                    color: Colors[colorScheme].text,
+                                    borderColor: "transparent",
+                                },
+                            ]}
+                        />
+                    </View>
+                    <View
+                        style={{
+                            flexShrink: 1,
+                            height: 280,
+                            padding: 4,
+                            overflow: "hidden",
+                        }}
+                    >
+                        <FlashList
+                            data={communities}
+                            nestedScrollEnabled={true}
+                            contentContainerStyle={{ flexGrow: 1 }}
+                            keyExtractor={(item) => item.id}
+                            ListEmptyComponent={() => (
+                                <View
                                     style={{
-                                        color: Colors[colorScheme].caption,
-                                        textAlign: "center",
+                                        flex: 1,
+                                        justifyContent: "center",
+                                        alignItems: "center",
                                     }}
                                 >
-                                    Join a community if you wish you share news
-                                    there.
-                                </ThemedText>
-                            </View>
-                        )}
-                        ItemSeparatorComponent={() => (
-                            <View
-                                style={[
-                                    styles.separator,
-                                    {
-                                        backgroundColor:
-                                            Colors[colorScheme].border,
-                                    },
-                                ]}
-                            />
-                        )}
-                        renderItem={({ item }) => (
-                            <View
-                                key={item.id}
-                                style={[
-                                    styles.flexRowContainer,
-                                    {
-                                        gap: 8,
-                                        paddingVertical: 8,
-                                        borderRadius: 8,
-                                    },
-                                ]}
-                            >
-                                <Checkbox
-                                    value={selectedIds.includes(item.id)}
-                                    onValueChange={() =>
-                                        toggleSelection(item.id)
-                                    }
-                                    style={styles.checkbox}
-                                    color={
-                                        isSchoolChecked
-                                            ? Colors[colorScheme].text
-                                            : Colors[colorScheme].text
-                                    }
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={{
+                                            color: Colors[colorScheme].text,
+                                        }}
+                                    >
+                                        You are not in any community.
+                                    </ThemedText>
+                                    <ThemedText
+                                        type="body_medium"
+                                        emphasized
+                                        style={{
+                                            color: Colors[colorScheme].caption,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        Join a community if you wish you share
+                                        news there.
+                                    </ThemedText>
+                                </View>
+                            )}
+                            ItemSeparatorComponent={() => (
+                                <View
+                                    style={[
+                                        styles.separator,
+                                        {
+                                            backgroundColor:
+                                                Colors[colorScheme].border,
+                                        },
+                                    ]}
                                 />
-                                <ThemedText emphasized>{item.name}</ThemedText>
-                            </View>
-                        )}
-                    />
+                            )}
+                            renderItem={({ item }) => (
+                                <View
+                                    key={item.id}
+                                    style={[
+                                        styles.flexRowContainer,
+                                        {
+                                            gap: 8,
+                                            paddingVertical: 8,
+                                            borderRadius: 8,
+                                        },
+                                    ]}
+                                >
+                                    <Checkbox
+                                        value={selectedCommunityId === item.id}
+                                        onValueChange={() =>
+                                            setSelectedCommunityId(item.id)
+                                        }
+                                        style={styles.checkbox}
+                                        color={Colors[colorScheme].text}
+                                    />
+                                    <ThemedText emphasized>
+                                        {item.name}
+                                    </ThemedText>
+                                </View>
+                            )}
+                        />
+                    </View>
                 </View>
-            </View>
+            )}
             <View style={styles.actionButtonsContainer}>
                 <Pressable
                     style={[
@@ -362,27 +382,55 @@ const PostTarget = ({
                         Back
                     </ThemedText>
                 </Pressable>
-                <Pressable
-                    disabled={isPendingSubmit}
-                    style={[
-                        styles.button,
-                        {
-                            backgroundColor: Colors[colorScheme].tint,
-                            opacity: isPendingSubmit ? 0.7 : 1,
-                        },
-                    ]}
-                    onPress={() => onSubmit()}
-                >
-                    <ThemedText
-                        type="defaultSemiBold"
-                        style={{
-                            color: Colors[colorScheme].button_text,
-                            textAlign: "center",
-                        }}
+                {destination === "COMMUNITY" && isAdmin ? (
+                    <Pressable
+                        disabled={isPendingSubmit}
+                        style={[
+                            styles.button,
+                            {
+                                backgroundColor: Colors[colorScheme].tint,
+                                opacity: isPendingSubmit ? 0.7 : 1,
+                            },
+                        ]}
+                        onPress={onNext}
                     >
-                        {isPendingSubmit ? <ActivityIndicator /> : "Publish"}
-                    </ThemedText>
-                </Pressable>
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{
+                                color: Colors[colorScheme].button_text,
+                                textAlign: "center",
+                            }}
+                        >
+                            Next
+                        </ThemedText>
+                    </Pressable>
+                ) : (
+                    <Pressable
+                        disabled={isPendingSubmit}
+                        style={[
+                            styles.button,
+                            {
+                                backgroundColor: Colors[colorScheme].tint,
+                                opacity: isPendingSubmit ? 0.7 : 1,
+                            },
+                        ]}
+                        onPress={() => onSubmit()}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={{
+                                color: Colors[colorScheme].button_text,
+                                textAlign: "center",
+                            }}
+                        >
+                            {isPendingSubmit ? (
+                                <ActivityIndicator />
+                            ) : (
+                                "Publish"
+                            )}
+                        </ThemedText>
+                    </Pressable>
+                )}
             </View>
         </View>
     );

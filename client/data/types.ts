@@ -12,6 +12,9 @@ export interface News {
     has_liked: boolean;
     has_saved: boolean;
     created_at: string;
+    community_id: string | null;
+    community_name: string | null;
+    community_image: string | null;
 }
 
 // export interface Community {
@@ -129,14 +132,17 @@ export interface ServerReponse {
     message: string;
 }
 
+export type PostDestination = "FOLLOWERS" | "COMMUNITY" | "PUBLIC";
+
 export interface PostData {
     title: string;
     description: string;
     content: string;
-    isSchoolChecked: boolean;
-    selectedCategoryId: string | null;
-    selectedIds: string[];
-    thumbnail: string;
+    destination: PostDestination;
+    is_public: boolean;
+    selectedCategoryId: string;
+    selectedCommunityId?: string;
+    thumbnail?: string;
 }
 
 export interface DraftData {
@@ -146,4 +152,12 @@ export interface DraftData {
     content?: string;
     created_at?: string;
     updated_at?: string;
+}
+
+export interface Category {
+    category_id: string;
+    category_name: string;
+    created_at: string | null;
+    status: string | null;
+    created_by: string | null;
 }

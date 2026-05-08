@@ -39,6 +39,7 @@ import { useAuthStore } from "@/utils/authStore";
 import { usePreferences } from "@/hooks/usePreferences";
 import Loading from "@/components/loading";
 import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
+import { useUserFollowing } from "@/hooks/useUserFollowing";
 
 const HEADER_HEIGHT = 250;
 
@@ -46,7 +47,7 @@ export default function HomeScreen() {
     const { user, metadata, initialized } = useAuthStore();
 
     if (!metadata || !user) {
-        throw new Error("Error occurred when retrieving user data.");
+        return null;
     }
 
     if (!initialized) {
@@ -59,12 +60,15 @@ export default function HomeScreen() {
     const [activeFilter, setActiveFilter] = useState("Recent");
     const insets = useSafeAreaInsets();
     // Pull categories from the hook — we reuse this for both steps of the modal
-    const { categories, selected, toggleCategory, loading } = usePreferences();
-    if (categories === undefined) {
-        throw new Error("Error occurred while fetching categories.");
-    }
+    const { categories, preferences, toggleCategory, loading } =
+        usePreferences();
 
     const [refreshing, setRefreshing] = React.useState(false);
+    const {
+        loading: loadingFollow,
+        followUser,
+        unfollowUser,
+    } = useUserFollowing(user.id);
 
     // Bottom sheet
     const [selectedNewsId, setSelectedNewsId] = useState("");
@@ -142,17 +146,6 @@ export default function HomeScreen() {
         enabled: !!currentUser?.id, // only fetch once we have the user id
     });
 
-    const renderBackdrop = useCallback(
-        (props: any) => (
-            <BottomSheetBackdrop
-                appearsOnIndex={0}
-                disappearsOnIndex={-1}
-                {...props}
-            />
-        ),
-        [],
-    );
-
     // When the screen loads and we have the current user,
     // check if they have any preferences saved
     // If none → show the modal
@@ -160,7 +153,7 @@ export default function HomeScreen() {
         const checkPreferences = async () => {
             if (!currentUser?.id) return;
             if (!loading) {
-                const data = selected;
+                const data = preferences;
 
                 if (!data || data.length === 0) {
                     setShowPrefsModal(true);
@@ -254,11 +247,23 @@ export default function HomeScreen() {
         mu_suspendPost();
     };
 
+    const handleFollowPress = (user_id: string) => {
+        followUser(user_id);
+        bottomSheetRef.current?.dismiss();
+    };
+
+    const handleUnfollowPress = (user_id: string) => {
+        unfollowUser(user_id);
+        bottomSheetRef.current?.dismiss();
+    };
+
     if (
         isFetchingPersonalised ||
         !personalisedData ||
         savingPrefs ||
-        isPendingSuspendPost
+        isPendingSuspendPost ||
+        !user.id ||
+        !metadata.inst_id
     ) {
         return <Loading />;
     }
@@ -291,7 +296,7 @@ export default function HomeScreen() {
                 }
             >
                 <FlashList
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.category_id}
                     horizontal
                     style={{ marginBottom: 12, elevation: 10 }}
                     data={categories}
@@ -525,6 +530,8 @@ export default function HomeScreen() {
                     bottomSheetRef.current?.dismiss();
                     setSuspendModalVisible(true);
                 }}
+                onFollow={handleFollowPress}
+                onUnfollow={handleUnfollowPress}
                 colorScheme={"light"}
             />
             {/* Suspned News confirmation modal */}

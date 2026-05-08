@@ -51,23 +51,28 @@ const Login = () => {
             const payload = JSON.parse(
                 atob(data.session.access_token.split(".")[1]),
             );
-            const role = payload.app_metadata.user_role;
+            console.log(data.session.access_token);
 
-            const response = await api.get(`${API_BASE_URL}/users/me`);
+            const response = await api.get(`${API_BASE_URL}/users/me`, {
+                headers: {
+                    Authorization: `Bearer ${data.session.access_token}`,
+                },
+            });
             const userData = response.data;
-
-            console.log("userData:", userData);
-            console.log("user id:", data.user.id);
 
             if (userData?.status === "banned") {
                 await supabase.auth.signOut();
-                setError("Your account has been banned. Please contact your institution admin.");
+                setError(
+                    "Your account has been banned. Please contact your institution admin.",
+                );
                 return;
             }
 
             if (userData?.status === "suspended") {
                 await supabase.auth.signOut();
-                setError("Your account has been suspended. Please contact your institution admin.");
+                setError(
+                    "Your account has been suspended. Please contact your institution admin.",
+                );
                 return;
             }
 

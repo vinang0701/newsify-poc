@@ -5,75 +5,93 @@ import { supabase } from "@/lib/supabase";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { useQuery } from "@tanstack/react-query";
-import { UserPreference } from "@/data/types";
+import { Category, UserPreference } from "@/data/types";
 
 export function usePreferences() {
     const { user, session, metadata } = useAuthStore();
-    if (!user || !metadata) {
+    if (!user || !metadata || !session) {
         throw new Error("Error occurred while retrieving user data.");
     }
     const inst_id = metadata.inst_id;
     const userId = user.id;
 
     //list of all categories from DB
-    const [categories, setCategories] = useState<any[]>([]);
+    // const [categories, setCategories] = useState<any[]>([]);
 
     //list of categories user has ticked
-    const [selected, setSelected] = useState<string[]>([]);
+    // const [preferences, setPreferences] = useState<string[]>([]);
 
-    //loading = true while we are still fetching from DB. false when done
-    const [loading, setLoading] = useState(true);
-
-    //fetch all active categories from the categories table
-    //these are the buttons the user can tap to select
-    useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const response = await api.get(`/${inst_id}/news/categories`);
-                setCategories(response.data);
-            } catch (error) {
-                console.error("Error fetching categories:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchCategories();
-    }, [inst_id]); // [] only run once on load
+    const categoriesQuery = useQuery<Category[]>({
+        queryKey: ["categories", inst_id],
+        queryFn: async () => {
+            const response = await api.get(`${inst_id}/news/categories`);
+            return response.data;
+        },
+        enabled: !!inst_id,
+    });
 
     //fetch the current users already saved preferences from user_preferences table
     //this runs after we get the userid
 
-    useEffect(() => {
-        if (!userId) return; // dont run if no userid yet
-        setLoading(true);
-        const fetchPreferences = async () => {
-            try {
-                const response = await api.get(
-                    `${inst_id}/users/me/preferences`,
-                );
-                const initialSelected =
-                    response.data?.map(
-                        (p: UserPreference) => p.category.category_id,
-                    ) || [];
-                setSelected(initialSelected);
-                setLoading(false);
-            } catch (error) {
-                setLoading(false);
-                console.error("Error fetching preferences:", error);
-            }
-        };
-        fetchPreferences();
-    }, [userId, inst_id]); //re-run whenever userId changes (i.e once we get it)
+    // useEffect(() => {
+    //     if (!userId) return; // dont run if no userid yet
+    //     setLoading(true);
+    //     const fetchPreferences = async () => {
+    //         try {
+    //             const response = await api.get(
+    //                 `${inst_id}/users/me/preferences`,
+    //             );
+    //             const initialSelected =
+    //                 response.data?.map(
+    //                     (p: UserPreference) => p.category.category_id,
+    //                 ) || [];
+    //             setPreferences(initialSelected);
+    //             setLoading(false);
+    //         } catch (error) {
+    //             setLoading(false);
+    //             console.error("Error fetching preferences:", error);
+    //         }
+    //     };
+    //     fetchPreferences();
+    // }, [userId, inst_id]); //re-run whenever userId changes (i.e once we get it)
 
     //called when a user selects a category
     //if already selected -> remove, if not add
+    // const toggleCategory = (id: string) => {
+    //     setPreferences(
+    //         (prev) =>
+    //             prev.includes(id)
+    //                 ? prev.filter((c) => c !== id) //remove from array
+    //                 : [...prev, id], //add to array
+    //     );
+    // };
+    // 2. Fetch user preferences
+    const preferencesQuery = useQuery({
+        queryKey: ["user_preferences", inst_id, userId],
+        queryFn: async () => {
+            const response = await api.get(`${inst_id}/users/me/preferences`);
+            return (
+                response.data?.map(
+                    (p: UserPreference) => p.category.category_id,
+                ) || []
+            );
+        },
+        enabled: !!inst_id && !!userId,
+    });
+
+    // 3. Local state for the "Ticked" UI
+    // We initialize this in a useEffect when preferencesQuery data arrives
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (preferencesQuery.data) {
+            setSelectedIds(preferencesQuery.data);
+        }
+    }, [preferencesQuery.data]);
+
     const toggleCategory = (id: string) => {
-        setSelected(
-            (prev) =>
-                prev.includes(id)
-                    ? prev.filter((c) => c !== id) //remove from array
-                    : [...prev, id], //add to array
+        setSelectedIds((prev) =>
+            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
         );
     };
 
@@ -85,7 +103,7 @@ export function usePreferences() {
             const response = await api.post(
                 `/${inst_id}/users/me/preferences`,
                 {
-                    category_ids: selected,
+                    category_ids: selectedIds,
                 },
             );
             return response.data;
@@ -97,10 +115,16 @@ export function usePreferences() {
 
     //return everything the screen needs to use
     return {
-        categories, //all available categories
-        selected, //which ones the user has selected
+        categories: categoriesQuery.data ?? [], //all available categories
+        preferences: selectedIds, //which ones the user has selected
         toggleCategory, //function to select/deselect a category
         savePreferences, //function to save to DB
-        loading, //whether we are still fetching
+        loading: categoriesQuery.isLoading || preferencesQuery.isLoading,
+        isRefreshing: categoriesQuery.isFetching || preferencesQuery.isFetching,
+        error: categoriesQuery.error || preferencesQuery.error,
+        refetch: () => {
+            categoriesQuery.refetch();
+            preferencesQuery.refetch();
+        },
     };
 }

@@ -148,6 +148,8 @@ def moderate_text(text: str):
 
 
 async def moderate_image(file: UploadFile):
+    if file is None or not file.filename:
+        return {"flagged": False, "categories": [], "scores": {}}
     # 1. Read file into memory
     file_bytes = await file.read()
 
@@ -405,30 +407,41 @@ async def create_news_post(
     description: str = Form(...),
     content: str = Form(...),
     category_id: str = Form(...),
-    school: str = Form(...),
-    communities: list[str] = Form([]),
-    thumbnail: UploadFile = File(...),
+    destination: str = Form(...),
+    is_public: bool = Form(...),
+    community_id: Optional[str] = Form(None),
+    thumbnail: Optional[UploadFile] = File(None),
     content_images: list[UploadFile] = File([]),
     app_user=Depends(get_current_app_user),
 ):
     try:
         user_id = app_user["id"]
         inst_id = app_user["inst_id"]
-        isSchool = school.lower() == "true"
-        if not school and not communities:
-            raise HTTPException(
-                status_code=400,
-                detail="Target is empty. Please select at least one target audience.",
-            )
+
+        all_results = []
 
         extracted_text = extract_text_content(content)
         text_res = moderate_text(title + " " + extracted_text)
-        thumb_res = await moderate_image(thumbnail)
-        content_img_res = await asyncio.gather(
-            *[moderate_image(img) for img in content_images]
-        )
+        all_results.append(text_res)
 
-        all_results = [text_res, thumb_res] + content_img_res
+        if thumbnail and thumbnail.filename:
+            # Ensure cursor is at start
+            await thumbnail.seek(0)
+            thumb_res = await moderate_image(thumbnail)
+            all_results.append(thumb_res)
+            # Reset cursor after reading for the next step (uploading)
+            await thumbnail.seek(0)
+
+        if content_images:
+            # Gather results for all images in the list
+            content_img_results = await asyncio.gather(
+                *[moderate_image(img) for img in content_images]
+            )
+            all_results.extend(content_img_results)
+
+            # Crucial: Reset cursors for content images so service can read them
+            for img in content_images:
+                await img.seek(0)
 
         # 2. Check if globally flagged
         is_flagged = any(r["flagged"] for r in all_results)
@@ -450,8 +463,9 @@ async def create_news_post(
             title=title,
             description=description,
             content=content,
-            school=isSchool,
-            communities=communities,
+            destination=destination,
+            is_public=is_public,
+            community_id=community_id,
             category_id=category_id,
             content_images=content_images,
             is_flagged=post_status,
@@ -599,6 +613,14 @@ async def delete_user_draft(
         )
 
 
+@router.get("/users/me/following")
+async def get_my_following(current_user=Depends(get_current_app_user)):
+    my_following = await users_service.get_user_following(
+        supabase, current_user["inst_id"], current_user["id"]
+    )
+    return my_following
+
+
 @router.post("/users/me/following")
 async def follow_user(
     body: FollowRequest,
@@ -701,14 +723,6 @@ async def get_user_news(inst_id: str, user_id: str):
     if my_news is None:
         raise HTTPException(status_code=404, detail="No news found")
     return my_news
-
-
-@router.get("/{inst_id}/users/me/following")
-async def get_my_following(inst_id: str, current_user=Depends(get_current_app_user)):
-    my_following = await users_service.get_user_following(
-        supabase, inst_id, str(current_user["id"])
-    )
-    return my_following
 
 
 @router.get("/{inst_id}/users/{user_id}/following")

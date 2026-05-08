@@ -3,6 +3,7 @@ import { API_BASE_URL } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
 import { useLocalSearchParams } from "expo-router";
 import { Alert } from "react-native";
+import api from "@/lib/axios";
 
 export type UserFollowing = {
     followed_user_id: string;
@@ -37,6 +38,7 @@ export function useUserFollowing(userId?: string) {
 
     const fetchFollowing = useCallback(async () => {
         try {
+            setLoading(true);
             setError(null);
 
             const token = await getAccessToken();
@@ -46,28 +48,25 @@ export function useUserFollowing(userId?: string) {
             }
 
             const [myRes, userRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/${inst_id}/users/me/following`, {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                }),
+                api.get(`/users/me/following`),
                 userId
-                    ? fetch(`${API_BASE_URL}/${inst_id}/users/${userId}/following`, {
-                         method: "GET",
-                          headers: {
-                              Authorization: `Bearer ${token}`,
-                              "Content-Type": "application/json",
+                    ? fetch(
+                          `${API_BASE_URL}/${inst_id}/users/${userId}/following`,
+                          {
+                              method: "GET",
+                              headers: {
+                                  Authorization: `Bearer ${token}`,
+                                  "Content-Type": "application/json",
+                              },
                           },
-                      })
+                      )
                     : null,
             ]);
 
-            const myData = await myRes.json();
+            const myData = myRes.data;
             const userData = userRes ? await userRes.json() : [];
 
-            if (!myRes.ok || (userRes && !userRes.ok)) {
+            if (!myData || (userRes && !userRes.ok)) {
                 throw new Error("Failed to fetch following");
             }
 
@@ -100,7 +99,7 @@ export function useUserFollowing(userId?: string) {
                 Authorization: `Bearer ${token}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ target_user_id: targetId }),
+            body: JSON.stringify({ followed_user_id: targetId }),
         });
 
         await fetchFollowing();
@@ -115,7 +114,7 @@ export function useUserFollowing(userId?: string) {
             {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` },
-            }
+            },
         );
 
         await fetchFollowing();

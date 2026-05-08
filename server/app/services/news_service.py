@@ -85,27 +85,20 @@ async def get_community_news(
             description, 
             image_url,
             content,
+            created_at,
             users!news_posts_author_fkey!inner(name, image_url),
             likes_count:post_likes(count),
             comments_count:post_comments(count),
-            community_posts!inner(created_at, community_id, post_id)
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id}),
             """.format(user_id=f"'{user_id}'"))
-        .eq("community_posts.community_id", community_id)
+        .eq("community_id", community_id)
         .eq("status", "PUBLISHED")
-        .order("created_at", desc=True, foreign_table="community_posts")
+        .order("created_at", desc=True)
         .execute()
     )
-
     posts = []
     for post in response.data:
-        cp_data = post.get("community_posts", [{}])
-        created_at = (
-            cp_data[0].get("created_at")
-            if isinstance(cp_data, list)
-            else cp_data.get("created_at")
-        )
         # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
         likes = post.get("likes_count", [{}])[0].get("count", 0)
         comments = post.get("comments_count", [{}])[0].get("count", 0)
@@ -117,13 +110,14 @@ async def get_community_news(
         posts.append(
             NewsPost(
                 id=post["id"],
-                created_at=created_at,
+                # created_at=created_at,
+                created_at=post["created_at"],
                 author_id=post["author"],
                 author=post["users"]["name"],
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"]["text"] or "",
+                content=post["content"] or "",
                 likes_count=likes,
                 comments_count=comments,
                 has_liked=has_liked,
@@ -142,33 +136,63 @@ async def create_post(
     description: str,
     content: str,
     category_id: str,
-    school: str,
-    communities: list[str],
-    thumbnail: UploadFile,
+    destination: str,
+    is_public: bool,
+    community_id: Optional[str],
+    thumbnail: UploadFile | None,
     content_images: list[UploadFile],
     is_flagged: str,
 ) -> List[dict]:
     try:
+        user_role = None
+        is_request = False
+        if destination == "COMMUNITY" and community_id:
+            # Check user membership and role
+            member_res = (
+                supabase.table("community_members")
+                .select("role")
+                .eq("community_id", community_id)
+                .eq("user_id", user_id)
+                .single()
+                .execute()
+            )
 
-        # 1. Upload Thumbnail
-        file_extension = thumbnail.filename.split(".")[-1]
-        storage_path = f"news_images/{uuid.uuid4()}.{file_extension}"
+            # If user isn't in the community at all, block it
+            if not member_res.data:
+                raise Exception("You are not a member of this community.")
 
-        # 2. Read the binary content of the uploaded file
-        file_content = await thumbnail.read()
-        response = supabase.storage.from_("post_media").upload(
-            path=storage_path,
-            file=file_content,
-            file_options={"content-type": thumbnail.content_type},
-        )
+            user_role = member_res.data.get("role")
 
-        # Get image url after inserting
-        storage_res = supabase.storage.from_("post_media").get_public_url(storage_path)
+            # RULE: Only admins can post to "Public + Community"
+            if is_public and user_role != "admin":
+                raise Exception("Only admins can post publicly to a community.")
+
+        thumbnail_url = None
+        if thumbnail and thumbnail.filename:
+            try:
+                # 1. Upload Thumbnail
+                file_extension = thumbnail.filename.split(".")[-1]
+                storage_path = f"news_images/{uuid.uuid4()}.{file_extension}"
+
+                # 2. Read the binary content of the uploaded file
+                file_content = await thumbnail.read()
+                response = supabase.storage.from_("post_media").upload(
+                    path=storage_path,
+                    file=file_content,
+                    file_options={"content-type": thumbnail.content_type},
+                )
+
+                # Get image url after inserting
+                thumbnail_url = supabase.storage.from_("post_media").get_public_url(
+                    storage_path
+                )
+            except Exception as e:
+                print(f"Thumbnail upload failed, proceeding without one: {e}")
 
         # Upload Content Images and Replace URIs in HTML
         final_content_html = content
 
-        if content_images:
+        if len(content_images) > 0:
             for img_file in content_images:
                 # Read file
                 img_ext = img_file.filename.split(".")[-1]
@@ -191,42 +215,86 @@ async def create_post(
                     img_file.filename, public_url
                 )
 
-        news_res = (
-            supabase.table("news_posts")
-            .insert(
-                {
-                    "inst_id": inst_id,
-                    "author": user_id,
-                    "image_url": storage_res,
-                    "title": title,
-                    "description": description,
-                    "content": final_content_html,
-                    "status": is_flagged,
-                    "category_id": category_id,
-                }
-            )
-            .execute()
+        # If it's a community post by a regular member, it goes to requests
+        is_request = (
+            destination == "COMMUNITY" and community_id and user_role != "admin"
         )
 
-        # Insert to community_post
-        new_post_id = news_res.data[0]["id"]
-        if communities:
-            junction_data = [
-                {"community_id": comm, "post_id": new_post_id} for comm in communities
-            ]
-
-            comm_post_res = (
-                supabase.table("community_posts").insert(junction_data).execute()
-            )
-            return comm_post_res.data
-
-        return {
-            "status": "success",
-            "message": "You have successfully published the news post.",
+        post_payload = {
+            "inst_id": inst_id,
+            "author": user_id,
+            "image_url": thumbnail_url,
+            "title": title,
+            "description": description,
+            "content": final_content_html,
+            "status": is_flagged,
+            "category_id": category_id,
+            "is_public": (
+                is_public if not is_request else False
+            ),  # Force false if request
+            "community_id": (
+                community_id if not is_request else None
+            ),  # Only link if approved/admin
         }
+
+        if is_request:
+            # Create the post first (unlinked to community)
+            news_res = supabase.table("news_posts").insert(post_payload).execute()
+            news_post_id = news_res.data[0]["id"]
+
+            # Create the request for the admin
+            supabase.table("community_post_requests").insert(
+                {
+                    "request_id": news_post_id,
+                    "institution_id": inst_id,
+                    "community_id": community_id,
+                    "requested_by_user_id": user_id,
+                    "status": "pending",
+                }
+            ).execute()
+
+            return {
+                "status": "success",
+                "message": "Post submitted to community admins for review.",
+            }
+
+        else:
+            # Direct insert for Public, Followers, or Admin Community posts
+            news_res = supabase.table("news_posts").insert(post_payload).execute()
+
+            return {
+                "status": "success",
+                "message": "You have successfully published the news post.",
+            }
 
     except Exception as e:
         raise e
+
+
+# news_res = (
+#             supabase.table("news_posts")
+#             .insert(
+#                 {
+#                     "inst_id": inst_id,
+#                     "author": user_id,
+#                     "image_url": thumbnail_url,
+#                     "title": title,
+#                     "description": description,
+#                     "content": final_content_html,
+#                     "status": is_flagged,
+#                     "category_id": category_id,
+#                     "is_public": is_public,
+#                     "community_id": (community_id if community_id else None),
+#                 }
+#             )
+#             .execute()
+#         )
+#         if news_res.data is None:
+#             return None
+# return {
+#             "status": "success",
+#             "message": "You have successfully published the news post.",
+#         }
 
 
 async def save_draft(

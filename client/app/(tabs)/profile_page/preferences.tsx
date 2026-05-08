@@ -18,7 +18,8 @@ export default function PreferencesScreen() {
     const colorScheme = useColorScheme() ?? "light"; // get light/dark mode
 
     // Pull everything we need from our custom hook
-    const { categories, selected, toggleCategory, loading } = usePreferences();
+    const { categories, preferences, toggleCategory, loading } =
+        usePreferences();
 
     // Runs when user taps "Save Preferences"
     const handleNext = () => {
@@ -29,7 +30,7 @@ export default function PreferencesScreen() {
             params: {
                 //json.stringify turns the array into a string so it can be passed as a parameter
                 //e.g. ["uuid-1", "uuid-2"] → '["uuid-1","uuid-2"]'
-                includeIds: JSON.stringify(selected),
+                includeIds: JSON.stringify(preferences),
             },
         });
     };
@@ -90,7 +91,7 @@ export default function PreferencesScreen() {
                                     borderColor: Colors[colorScheme].tint,
                                     // if this category is selected → fill with tint color
                                     // if not selected → transparent background
-                                    backgroundColor: selected.includes(
+                                    backgroundColor: preferences.includes(
                                         cat.category_id,
                                     )
                                         ? Colors[colorScheme].tint
@@ -102,7 +103,7 @@ export default function PreferencesScreen() {
                             <ThemedText
                                 style={{
                                     // selected = white text, unselected = default text color
-                                    color: selected.includes(cat.category_id)
+                                    color: preferences.includes(cat.category_id)
                                         ? Colors[colorScheme].button_text
                                         : Colors[colorScheme].text,
                                 }}
@@ -120,7 +121,7 @@ export default function PreferencesScreen() {
                         { backgroundColor: Colors[colorScheme].tint },
                     ]}
                     onPress={handleNext}
-                    disabled={selected.length === 0} // cant save if nothing selected
+                    disabled={preferences.length === 0} // cant save if nothing selected
                 >
                     <ThemedText
                         style={{ color: Colors[colorScheme].button_text }}

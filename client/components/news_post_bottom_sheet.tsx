@@ -10,17 +10,36 @@ import { ThemedText } from "./themed-text";
 import Feather from "@expo/vector-icons/Feather";
 import { Colors } from "@/constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useUserFollowing } from "@/hooks/useUserFollowing";
+import Loading from "./loading";
 
 type Props = {
     newsAuthorId: string;
     userId: string;
     colorScheme: "light" | "dark";
-    onReport: () => void;
-    onSuspend: () => void;
+    onReport?: () => void;
+    onSuspend?: () => void;
+    onFollow?: (user_id: string) => void;
+    onUnfollow?: (user_id: string) => void;
 };
 
 const NewsPostBottomSheet = forwardRef<BottomSheetModal, Props>(
-    ({ newsAuthorId, userId, colorScheme, onReport, onSuspend }, ref) => {
+    (
+        {
+            newsAuthorId,
+            userId,
+            colorScheme,
+            onReport,
+            onSuspend,
+            onFollow,
+            onUnfollow,
+        },
+        ref,
+    ) => {
+        const { myFollowing } = useUserFollowing(newsAuthorId);
+        const isFollowing = myFollowing.some(
+            (user) => user.followed_user_id === newsAuthorId,
+        );
         const insets = useSafeAreaInsets();
         const renderBackdrop = useCallback(
             (props: any) => (
@@ -46,21 +65,42 @@ const NewsPostBottomSheet = forwardRef<BottomSheetModal, Props>(
                         { paddingBottom: insets.bottom + 28 },
                     ]}
                 >
-                    {newsAuthorId !== userId && (
-                        <Pressable style={styles.menuItem}>
-                            <Feather
-                                name="user-plus"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{ color: Colors[colorScheme].text }}
+                    {newsAuthorId !== userId &&
+                        (!isFollowing ? (
+                            <Pressable
+                                style={styles.menuItem}
+                                onPress={() => onFollow?.(newsAuthorId)}
                             >
-                                Follow
-                            </ThemedText>
-                        </Pressable>
-                    )}
+                                <Feather
+                                    name="user-plus"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Follow
+                                </ThemedText>
+                            </Pressable>
+                        ) : (
+                            <Pressable
+                                style={styles.menuItem}
+                                onPress={() => onUnfollow?.(newsAuthorId)}
+                            >
+                                <Feather
+                                    name="user-minus"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Unfollow
+                                </ThemedText>
+                            </Pressable>
+                        ))}
 
                     {newsAuthorId !== userId && (
                         <Pressable style={styles.menuItem} onPress={onReport}>

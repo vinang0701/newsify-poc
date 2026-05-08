@@ -132,7 +132,17 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
         router.push({
             // pathname: "/(tabs)/profile_page/[user_id]",
             pathname: "/[user_id]",
-            params: { user_id: user_id },
+            params: { user_id: user_id, inst_id: metadata?.inst_id },
+        });
+    }
+
+    function handleNavigateToComm(community_id: string | null) {
+        if (community_id === null) {
+            return;
+        }
+        router.replace({
+            pathname: "/(tabs)/community/[communityId]",
+            params: { communityId: community_id },
         });
     }
 
@@ -204,24 +214,52 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                 ]}
             >
                 <View style={styles.cardInfoContainer}>
-                    <Pressable onPress={() => handleNavigate(news.author_id)}>
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 4,
-                            }}
+                    {news.community_id !== null ? (
+                        <Pressable
+                            onPress={() =>
+                                handleNavigateToComm(news.community_id)
+                            }
                         >
-                            <Image
-                                source={require("@/assets/images/profile.png")}
-                                style={{ width: 28, height: 28 }}
-                            />
-                            <ThemedText type="defaultSemiBold">
-                                {news.author}
-                            </ThemedText>
-                        </View>
-                    </Pressable>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 4,
+                                }}
+                            >
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 28, height: 28 }}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    {news.community_name}
+                                </ThemedText>
+                            </View>
+                        </Pressable>
+                    ) : (
+                        <Pressable
+                            onPress={() => handleNavigate(news.author_id)}
+                        >
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 4,
+                                }}
+                            >
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 28, height: 28 }}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    {news.author}
+                                </ThemedText>
+                            </View>
+                        </Pressable>
+                    )}
+
                     <ThemedText
                         type="caption"
                         style={{

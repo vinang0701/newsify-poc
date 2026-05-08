@@ -77,24 +77,23 @@ export default function useCreatePost() {
                 data.description.trim().slice(0, 250),
             );
             formData.append("content", processedContent);
-            formData.append("school", String(data.isSchoolChecked));
 
             if (data.selectedCategoryId) {
                 formData.append("category_id", data.selectedCategoryId);
             }
+            formData.append("destination", data.destination);
+            formData.append("is_public", String(data.is_public));
 
-            if (data.selectedIds.length > 0) {
-                data.selectedIds.forEach((id) => {
-                    formData.append("communities", id);
-                });
+            if (data.destination === "COMMUNITY" && data.selectedCommunityId) {
+                formData.append("community_id", data.selectedCommunityId);
             }
 
             // 2. Append Thumbnail
-            if (data.thumbnail) {
+            if (data.thumbnail !== undefined) {
                 appendFileToFormData(formData, data.thumbnail, "thumbnail");
             }
 
-            // console.log(formData);
+            console.log(formData);
             // return formData;
 
             const response = await api.post(`/users/me/news`, formData, {
@@ -116,3 +115,9 @@ export default function useCreatePost() {
     });
     return { mutate, isPending, error };
 }
+
+// const isPublic = data.destination === "PUBLIC";
+// const communityId =
+//     data.destination === "COMMUNITY"
+//         ? data.selectedCommunityId
+//         : null;
