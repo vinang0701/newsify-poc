@@ -400,19 +400,6 @@ export default function CommunitiesTab() {
                                             { gap: 8 },
                                         ]}
                                     >
-                                        {/* <Image
-                                                source={require("@/assets/images/icon.png")}
-                                                style={{
-                                                    height: 36,
-                                                    width: 36,
-                                                    borderRadius: 100,
-                                                    borderWidth: 1,
-                                                    borderColor:
-                                                        Colors[colorScheme]
-                                                            .border,
-                                                }}
-                                            /> */}
-
                                         <View
                                             style={{
                                                 width: 36,
@@ -451,7 +438,7 @@ export default function CommunitiesTab() {
                                                         .text_light,
                                                 }}
                                             >
-                                                20 members
+                                                {item.member_count} members
                                             </ThemedText>
                                         </View>
                                     </View>

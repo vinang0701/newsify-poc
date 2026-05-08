@@ -98,6 +98,7 @@ export default function RootLayout() {
                                         options={{
                                             headerShown: false,
                                         }}
+                                        ba
                                     />
                                     <Stack.Screen
                                         name="update_password"

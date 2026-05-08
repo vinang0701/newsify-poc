@@ -235,6 +235,9 @@ export default function CreatePost() {
                 contentRef.current = "";
                 setModerationData(data);
                 setModerationModalVisible(true);
+                setCommPublicModalVisible(false);
+                setIsPublicOverride(false);
+                setActiveFilter("new");
             },
             onError: (err: any) => {
                 // Specific UI feedback

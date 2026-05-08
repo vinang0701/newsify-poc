@@ -89,7 +89,8 @@ export default function CommunityPage() {
         userRole,
         joinCommunity,
         leaveCommunity,
-        refresh,
+        // refresh,
+        refetch,
         loading,
     } = useCommunity(communityId);
 
@@ -141,7 +142,7 @@ export default function CommunityPage() {
 
     useFocusEffect(
         useCallback(() => {
-            refresh();
+            // refetch();
         }, []),
     );
 
@@ -341,7 +342,7 @@ export default function CommunityPage() {
                                             color: Colors[colorScheme].caption,
                                         }}
                                     >
-                                        {memberCount} members
+                                        {community.member_count} members
                                     </ThemedText>
                                 </View>
                             </Link>
@@ -351,17 +352,17 @@ export default function CommunityPage() {
                             style={{
                                 paddingVertical: 8,
                                 paddingHorizontal: 12,
-                                backgroundColor: isMember
+                                backgroundColor: community.isMember
                                     ? Colors[colorScheme].alert_red
                                     : Colors[colorScheme].bg_light,
                                 borderRadius: 20,
                                 borderWidth: 2,
-                                borderColor: isMember
+                                borderColor: community.isMember
                                     ? "transparent"
                                     : Colors[colorScheme].tint,
                             }}
                             onPress={
-                                isMember
+                                community.isMember
                                     ? () => setModalVisible(true)
                                     : handleJoinCommunity
                             }
@@ -370,14 +371,14 @@ export default function CommunityPage() {
                                 type="body_small"
                                 emphasized
                                 style={{
-                                    color: isMember
+                                    color: community.isMember
                                         ? Colors[colorScheme].button_text
                                         : Colors[colorScheme].tint,
 
                                     fontWeight: "semibold",
                                 }}
                             >
-                                {isMember ? "Leave" : "Join"}
+                                {community.isMember ? "Leave" : "Join"}
                             </ThemedText>
                         </Pressable>
                     </View>

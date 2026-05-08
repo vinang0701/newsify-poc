@@ -140,7 +140,7 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
         if (community_id === null) {
             return;
         }
-        router.replace({
+        router.push({
             pathname: "/(tabs)/community/[communityId]",
             params: { communityId: community_id },
         });
@@ -286,21 +286,24 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                 </View>
                 <View>
                     {/* Content */}
-                    <Image
-                        alt="image"
-                        source={{
-                            uri: news.image_url,
-                        }}
-                        style={{
-                            width: "100%",
-                            height: 200,
-                            resizeMode: "cover",
-                        }}
-                    />
+                    {news.image_url && (
+                        <Image
+                            alt="image"
+                            source={{
+                                uri: news.image_url,
+                            }}
+                            style={{
+                                width: "100%",
+                                height: 200,
+                                resizeMode: "cover",
+                                marginBottom: 12,
+                            }}
+                        />
+                    )}
+
                     <ThemedText
                         type="sub_heading"
                         style={{
-                            paddingTop: 12,
                             paddingHorizontal: 12,
                             fontSize: 20,
                         }}
