@@ -18,7 +18,6 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { supabase } from "@/lib/supabase";
 import Loading from "@/components/loading";
-import { usePreferences } from "@/hooks/usePreferences";
 
 export const unstable_settings = {
     anchor: "(tabs)",
@@ -98,10 +97,21 @@ export default function RootLayout() {
                                         options={{
                                             headerShown: false,
                                         }}
-                                        ba
                                     />
                                     <Stack.Screen
                                         name="update_password"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="edit_news_post"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="view_news_post"
                                         options={{
                                             headerShown: false,
                                         }}

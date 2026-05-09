@@ -123,9 +123,7 @@ export default function Profile() {
 
     async function fetchUserNews(): Promise<News[]> {
         try {
-            const response = await api.get<News[]>(
-                `/${inst_id}/users/${user_id}/news`,
-            );
+            const response = await api.get<News[]>(`/users/me/news`);
 
             return response.data;
         } catch (error) {
@@ -248,6 +246,23 @@ export default function Profile() {
         }
         mu_suspendPost(news_id);
     }
+
+    const handleEditPress = async () => {
+        // Add this safety check at the very top of handleSuspend:
+        if (!user?.id) {
+            Alert.alert(
+                "Error",
+                "Could not verify your identity. Please try again.",
+            );
+            return;
+        }
+        bottomSheetRef.current?.dismiss();
+        postBottomSheetRef.current?.dismiss();
+        router.push({
+            pathname: "/edit_news_post",
+            params: { news_id: selectedNewsId },
+        });
+    };
 
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
@@ -492,6 +507,7 @@ export default function Profile() {
                         bottomSheetRef.current?.dismiss();
                         setSuspendModalVisible(true);
                     }}
+                    onEdit={handleEditPress}
                     colorScheme={"light"}
                 />
 

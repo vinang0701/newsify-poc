@@ -204,7 +204,7 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
 
     return (
         <View>
-            <View
+            <Pressable
                 style={[
                     styles.card,
                     {
@@ -212,6 +212,12 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                         borderColor: Colors[colorScheme].border,
                     },
                 ]}
+                onPress={() =>
+                    router.push({
+                        pathname: "/view_news_post",
+                        params: { news_id: news.id },
+                    })
+                }
             >
                 <View style={styles.cardInfoContainer}>
                     {news.community_id !== null ? (
@@ -400,7 +406,7 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                         )}
                     </Pressable>
                 </View>
-            </View>
+            </Pressable>
         </View>
     );
 }

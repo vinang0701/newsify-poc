@@ -66,25 +66,24 @@ async def get_personalised_feed(
     return posts
 
 
-@router.get("/{post_id}/comments")
+@router.get("/{news_id}/comments")
 async def get_post_comments(
-    post_id: uuid.UUID, current_user: UserPayload = Depends(get_current_app_user)
+    news_id: uuid.UUID, current_user: UserPayload = Depends(get_current_app_user)
 ):
-    post_comments = await comment_service.get_post_comments(supabase, post_id)
+    post_comments = await comment_service.get_post_comments(supabase, news_id)
     return post_comments
 
 
-@router.post("/{post_id}/comments", response_model=PostComment)
+@router.post("/{news_id}/comments", response_model=PostComment)
 async def create_comment(
-    post_id: uuid.UUID,
+    news_id: uuid.UUID,
     body: PostCommentCreate,
     current_user: UserPayload = Depends(get_current_app_user),
 ):
-
     try:
         insert_response = await comment_service.create_comment(
             supabase=supabase,
-            post_id=post_id,
+            post_id=news_id,
             commented_by_user_id=current_user["id"],
             comment_text=body.comment_text,
             parent_comment_id=body.parent_comment_id,
@@ -103,16 +102,53 @@ async def create_comment(
         )
 
 
+# Categories
+@router.get("/categories")
+async def get_categories(inst_id: str):
+    try:
+        response = await news_service.get_categories(supabase=supabase, inst_id=inst_id)
+        if response is None:
+            raise HTTPException(status_code=404, detail="No categories found")
+        return response
+    except Exception as e:
+        print(f"Fetch categories error: {repr(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch categories.")
+
+
+@router.get("/{news_id}")
+async def get_news_post_by_id(
+    news_id: str, current_user: UserPayload = Depends(get_current_app_user)
+):
+    try:
+        news_post = await news_service.get_news_post_by_id(
+            supabase=supabase, news_id=news_id, user_id=current_user["id"]
+        )
+        if news_post is None:
+            raise HTTPException(
+                status_code=404,
+                detail="News post cannot be found.",
+            )
+
+        return news_post
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An internal error occurred while fetching the news post.",
+        )
+
+
 # ----------------------------
 # MY LIKES
 # ----------------------------
-@router.post("/{post_id}/likes", response_model=LikeToggleResponse)
+@router.post("/{news_id}/likes", response_model=LikeToggleResponse)
 async def toggle_post_like(
-    post_id: uuid.UUID, current_user: UserPayload = Depends(get_current_app_user)
+    news_id: uuid.UUID, current_user: UserPayload = Depends(get_current_app_user)
 ):
     try:
         user_id = current_user["id"]
-        result = await news_service.toggle_post_like(post_id=post_id, user_id=user_id)
+        result = await news_service.toggle_post_like(
+            supabase=supabase, post_id=news_id, user_id=user_id
+        )
         return {
             "status": "success",
             "data": result,
@@ -122,10 +158,10 @@ async def toggle_post_like(
         raise HTTPException(status_code=500, detail="Error while toggling likes: {e}")
 
 
-@router.post("/{post_id}/report", response_model=CreatePostReportResponse)
+@router.post("/{news_id}/report", response_model=CreatePostReportResponse)
 async def report_post(
     inst_id: str,
-    post_id: str,
+    news_id: str,
     payload: CreatePostReportRequest,
     app_user=Depends(get_current_app_user),
     current_user_inst_id: str = Depends(get_current_inst_id),
@@ -138,7 +174,7 @@ async def report_post(
             )
 
         await reports_service.create_post_report(
-            post_id=post_id,
+            post_id=news_id,
             reported_by_user_id=app_user["id"],
             reason=payload.reason,
             description=payload.description,
@@ -156,11 +192,3 @@ async def report_post(
     except Exception as e:
         print(f"Report Post Error: {repr(e)}")
         raise HTTPException(status_code=500, detail="Failed to report post")
-
-
-# Categories
-@router.get("/categories")
-async def get_categories(inst_id: str):
-    response = await news_service.get_categories(supabase=supabase)
-
-    return response

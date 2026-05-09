@@ -17,10 +17,11 @@ import { View } from "react-native";
 
 export default function TabLayout() {
     const colorScheme = useColorScheme() || "light";
-    const { user, metadata } = useAuthStore();
+    const { user, metadata, session } = useAuthStore();
     if (!user?.id || !metadata?.inst_id) {
         return <Loading />;
     }
+    console.log(session?.access_token);
 
     const [achievementPopupVisible, setAchievementPopupVisible] =
         useState(false);

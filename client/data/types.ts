@@ -157,7 +157,7 @@ export interface DraftData {
 export interface Category {
     category_id: string;
     category_name: string;
-    created_at: string | null;
-    status: string | null;
-    created_by: string | null;
+    created_at?: string;
+    status?: string;
+    created_by?: string;
 }

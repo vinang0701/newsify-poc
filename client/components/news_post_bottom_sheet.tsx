@@ -21,6 +21,7 @@ type Props = {
     onSuspend?: () => void;
     onFollow?: (user_id: string) => void;
     onUnfollow?: (user_id: string) => void;
+    onEdit?: () => void;
 };
 
 const NewsPostBottomSheet = forwardRef<BottomSheetModal, Props>(
@@ -33,6 +34,7 @@ const NewsPostBottomSheet = forwardRef<BottomSheetModal, Props>(
             onSuspend,
             onFollow,
             onUnfollow,
+            onEdit,
         },
         ref,
     ) => {
@@ -114,6 +116,24 @@ const NewsPostBottomSheet = forwardRef<BottomSheetModal, Props>(
                                 style={{ color: Colors[colorScheme].text }}
                             >
                                 Report post
+                            </ThemedText>
+                        </Pressable>
+                    )}
+                    {/* Edit news post */}
+                    {newsAuthorId === userId && (
+                        <Pressable style={styles.menuItem} onPress={onEdit}>
+                            <Feather
+                                name="edit-3"
+                                size={24}
+                                color={Colors[colorScheme].text}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{
+                                    color: Colors[colorScheme].text,
+                                }}
+                            >
+                                Edit news post
                             </ThemedText>
                         </Pressable>
                     )}

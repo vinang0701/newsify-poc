@@ -60,9 +60,7 @@ export default function HomeScreen() {
     const [activeFilter, setActiveFilter] = useState("Recent");
     const insets = useSafeAreaInsets();
     // Pull categories from the hook — we reuse this for both steps of the modal
-    const { categories, preferences, toggleCategory, loading } =
-        usePreferences();
-
+    const { categories, preferences, loading, error } = usePreferences();
     const [refreshing, setRefreshing] = React.useState(false);
     const {
         loading: loadingFollow,
@@ -247,6 +245,23 @@ export default function HomeScreen() {
         mu_suspendPost();
     };
 
+    const handleEditPress = async () => {
+        // Add this safety check at the very top of handleSuspend:
+        if (!user.id) {
+            Alert.alert(
+                "Error",
+                "Could not verify your identity. Please try again.",
+            );
+            return;
+        }
+        bottomSheetRef.current?.dismiss();
+
+        router.push({
+            pathname: "/edit_news_post",
+            params: { news_id: selectedNewsId },
+        });
+    };
+
     const handleFollowPress = (user_id: string) => {
         followUser(user_id);
         bottomSheetRef.current?.dismiss();
@@ -263,7 +278,9 @@ export default function HomeScreen() {
         savingPrefs ||
         isPendingSuspendPost ||
         !user.id ||
-        !metadata.inst_id
+        !metadata.inst_id ||
+        loading ||
+        loadingFollow
     ) {
         return <Loading />;
     }
@@ -532,6 +549,7 @@ export default function HomeScreen() {
                 }}
                 onFollow={handleFollowPress}
                 onUnfollow={handleUnfollowPress}
+                onEdit={handleEditPress}
                 colorScheme={"light"}
             />
             {/* Suspned News confirmation modal */}
@@ -650,7 +668,7 @@ export default function HomeScreen() {
                                     contentContainerStyle={styles.modalGrid}
                                 >
                                     <View style={styles.grid}>
-                                        {categories.map((cat) => (
+                                        {categories?.map((cat) => (
                                             <TouchableOpacity
                                                 key={cat.category_id}
                                                 style={[
@@ -748,7 +766,7 @@ export default function HomeScreen() {
                                     contentContainerStyle={styles.modalGrid}
                                 >
                                     <View style={styles.grid}>
-                                        {categories.map((cat) => {
+                                        {categories?.map((cat) => {
                                             const isExcluded =
                                                 excludeIds.includes(
                                                     cat.category_id,

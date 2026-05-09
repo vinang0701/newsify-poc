@@ -44,18 +44,6 @@ router = APIRouter(tags=["users"], dependencies=[Depends(get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
-class UserPublishPostBody(BaseModel):
-    user_id: uuid.UUID
-    image: UploadFile
-    title: str
-    content: str
-    school: str
-    communities: List[uuid.UUID]
-
-    def print_content(self):
-        print(self.content)
-
-
 class JoinCommunityRequest(BaseModel):
     community_id: uuid.UUID
     user_id: uuid.UUID | None = None
@@ -65,7 +53,6 @@ class FollowRequest(BaseModel):
     followed_user_id: uuid.UUID
 
 
-# helper function to extract src url from img tags
 def extract_text_content(html_content: str):
     if not html_content:
         return ""
@@ -237,16 +224,6 @@ def calculate_safety_score(moderation_results: list) -> int:
         score = 85 - (min(max_violation_ratio - 1.0, 4.0) * 20)
 
     return int(max(0, min(100, score)))
-
-
-@router.post("/users/create")
-async def create_post_preview(item: UserPublishPostBody):
-    moderation = moderate_text(item.content)
-
-    return {
-        "content": item.content,
-        "moderation": moderation,
-    }
 
 
 # ----------------------------
@@ -495,6 +472,79 @@ async def create_news_post(
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail="Failed to publish news post.")
+
+
+@router.patch("/users/me/news/{news_id}")
+async def edit_news_post(
+    news_id: uuid.UUID, app_user: UserPayload = Depends(get_current_app_user)
+):
+    # check if the user is allowed to edit this post
+    # If not, early return
+    post = await news_service.get_news_post(
+        supabase=supabase,
+        inst_id=app_user["inst_id"],
+        news_id=str(news_id),
+        user_id=app_user["id"],
+    )
+    if not post or post.author_id != app_user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to edit this post.",
+        )
+
+    # else, moderate the images and
+    # if fail moderation, no change and return score to user
+    all_results = []
+
+    extracted_text = extract_text_content(content)
+    text_res = moderate_text(title + " " + extracted_text)
+    all_results.append(text_res)
+
+    if thumbnail and thumbnail.filename:
+        # Ensure cursor is at start
+        await thumbnail.seek(0)
+        thumb_res = await moderate_image(thumbnail)
+        all_results.append(thumb_res)
+        # Reset cursor after reading for the next step (uploading)
+        await thumbnail.seek(0)
+
+    if content_images:
+        # Gather results for all images in the list
+        content_img_results = await asyncio.gather(
+            *[moderate_image(img) for img in content_images]
+        )
+        all_results.extend(content_img_results)
+
+        # Crucial: Reset cursors for content images so service can read them
+        for img in content_images:
+            await img.seek(0)
+
+    # 2. Check if globally flagged
+    is_flagged = any(r["flagged"] for r in all_results)
+
+    # 3. Calculate the 0-100 score
+    safety_score = calculate_safety_score(all_results)
+    if safety_score >= 90:
+        post_status = "PUBLISHED"
+    elif 80 <= safety_score < 90:
+        post_status = "PENDING REVIEW"
+    else:
+        post_status = "REJECTED"
+
+    if post_status == "REJECTED":
+        return {
+            "status": post_status,
+            "score": f"{safety_score}%",
+            "is_flagged": safety_score < 80,
+            "flagged_categories": list(
+                set([c for r in all_results for c in r["categories"]])
+            ),
+        }
+
+    # if pass moderation, delete old thumbnail and content images
+    # insert new ones
+
+    return None
 
 
 @router.delete("/users/me/news/{post_id}")
@@ -829,9 +879,9 @@ async def get_saved_posts(
         raise HTTPException(status_code=500, detail="Could not fetch saved posts")
 
 
-@router.get("/{inst_id}/users/me/preferences")
+@router.get("/users/me/preferences")
 async def get_user_preferences(
-    inst_id: str, current_user: UserPayload = Depends(get_current_app_user)
+    current_user: UserPayload = Depends(get_current_app_user),
 ):
     user_id = current_user["id"]
     user_preferences = await users_preferences_service.get_user_preferences(
@@ -840,9 +890,8 @@ async def get_user_preferences(
     return user_preferences
 
 
-@router.post("/{inst_id}/users/me/preferences")
+@router.post("/users/me/preferences")
 async def update_preferences(
-    inst_id: str,
     payload: SavePreferencesRequest,
     current_user: UserPayload = Depends(get_current_app_user),
 ):
