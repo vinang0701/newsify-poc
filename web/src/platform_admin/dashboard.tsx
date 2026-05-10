@@ -1,5 +1,6 @@
-import { type CSSProperties } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import { useNavigate } from "react-router";
+import api from "@/lib/axios";
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s: Record<string, CSSProperties> = {
@@ -25,18 +26,6 @@ const s: Record<string, CSSProperties> = {
     alignItems: "center",
     gap: 20,
     color: "#fff",
-  },
-  bannerIcon: {
-    width: 48,
-    height: 48,
-    background: "rgba(255,255,255,0.15)",
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 24,
-    fontWeight: 800,
-    flexShrink: 0,
   },
   bannerTitle: { fontSize: 20, fontWeight: 700, marginBottom: 4 },
   bannerSub: { fontSize: 13, opacity: 0.85 },
@@ -83,6 +72,17 @@ const s: Record<string, CSSProperties> = {
 // ── Component ─────────────────────────────────────────────────────────────────
 const PlatformAdminDashboardPage = () => {
   const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    students: 0,
+    staff_members: 0,
+    community_admins: 0,
+  });
+
+  useEffect(() => {
+    api.get("/platform/institutions/stats")
+      .then((res) => setStats(res.data))
+      .catch(console.error);
+  }, []);
 
   return (
     <div style={s.page}>
@@ -100,9 +100,9 @@ const PlatformAdminDashboardPage = () => {
       {/* Stats */}
       <div style={s.statsRow}>
         {[
-          { label: "Students", value: "15,345" },
-          { label: "Staff Members", value: "1,345" },
-          { label: "Community Admins", value: "300" },
+          { label: "Students", value: stats.students.toLocaleString() },
+          { label: "Staff Members", value: stats.staff_members.toLocaleString() },
+          { label: "Community Admins", value: stats.community_admins.toLocaleString() },
         ].map((stat) => (
           <div key={stat.label} style={s.statCard}>
             <span style={s.statLabel}>{stat.label}</span>
@@ -114,15 +114,9 @@ const PlatformAdminDashboardPage = () => {
       {/* Management Cards */}
       {[
         {
-          title: "User Account Management",
-          sub: "View, create, update, and suspend user accounts here",
-          btn: "View All Users",
-          path: "/platform/institutions",
-        },
-        {
-          title: "User Role Management",
-          sub: "View, create, update, and suspend user roles here",
-          btn: "View All Roles",
+          title: "Institution Account Management",
+          sub: "View, create, update, and suspend institution accounts here",
+          btn: "View All Institutions",
           path: "/platform/institutions",
         },
       ].map((c) => (
