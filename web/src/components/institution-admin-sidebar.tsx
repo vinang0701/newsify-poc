@@ -36,6 +36,7 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { useEffect, useState } from "react";
+import { CreditCard } from "lucide-react";
 
 export function InstitutionAdminSidebar() {
 	const [dialogVisible, setDialogVisible] = useState(false);
@@ -178,6 +179,17 @@ export function InstitutionAdminSidebar() {
 								className="w-full flex flex-row items-center gap-2"
 							>
 								<Flag size={16} /> Moderation
+							</Link>
+						</SidebarMenuButton>
+						<SidebarMenuButton
+							className="text-base h-10"
+							isActive={pathname === "/admin/billing"}
+						>
+							<Link
+								to={"/admin/billing"}
+								className="w-full flex flex-row items-center gap-2"
+							>
+								<CreditCard size={16} /> Billing
 							</Link>
 						</SidebarMenuButton>
 					</SidebarMenuItem>

@@ -16,8 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import Loading from "@/components/loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchParams } from "react-router";
+import { useAuth } from "@/components/auth-provider";
 
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+//const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 interface Post {
     id: string;
@@ -48,6 +49,8 @@ interface Report {
 }
 
 const ContentModerationPage = () => {
+    const { user } = useAuth();
+    const inst_id = user?.inst_id ?? "";
     const queryClient = useQueryClient();
     const [loading, setLoading] = useState(false);
 

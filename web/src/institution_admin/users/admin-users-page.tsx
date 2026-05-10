@@ -35,7 +35,7 @@ import * as z from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+//const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 const createUserSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters long").trim(),
@@ -52,6 +52,7 @@ type FilterRole = "all_roles" | "community_admin" | "institution_admin" | "platf
 
 const AdminUsersMgmtPage = () => {
     const { user } = useAuth();
+    const inst_id = user?.inst_id ?? "";
     const queryClient = useQueryClient();
     const [showPassword, setShowPassword] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
