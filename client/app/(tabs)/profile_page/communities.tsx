@@ -33,35 +33,9 @@ import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;
 
-const DATA = [
-    {
-        id: "1",
-        title: "All",
-    },
-    {
-        id: "2",
-        title: "Tech",
-    },
-    {
-        id: "3",
-        title: "Arts",
-    },
-    {
-        id: "4",
-        title: "Lifestyle",
-    },
-];
-
-interface UserCommunities {
-    community_id: string;
-    community_name: string;
-    role: string;
-}
-
 export default function UserCommunitiesList() {
     const colorScheme = useColorScheme() ?? "light";
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeFilter, setActiveFilter] = useState("All");
     const [refreshing, setRefreshing] = React.useState(false);
     const insets = useSafeAreaInsets();
     const router = useRouter();
@@ -71,17 +45,6 @@ export default function UserCommunitiesList() {
     const inst_id = metadata?.inst_id;
     const user_id = metadata?.user_id;
     // console.log(session?.access_token);
-
-    function formatMemberCount(count: number) {
-        if (count < 1000) {
-            return count;
-        } else if (count < 1000000) {
-            count = Math.round((count /= 1000) * 100) / 100;
-            return count;
-        } else {
-            return count;
-        }
-    }
 
     function nameToAvatar(name: string) {
         // 1. Split by whitespace and filter out any empty strings from extra spaces
@@ -258,50 +221,6 @@ export default function UserCommunitiesList() {
                         ]}
                     />
                 </View>
-
-                <FlashList
-                    keyExtractor={(item) => item.id}
-                    horizontal={true}
-                    style={{ marginBottom: 12, elevation: 10 }}
-                    data={DATA}
-                    renderItem={({ item }) => (
-                        <Pressable
-                            style={{
-                                backgroundColor:
-                                    activeFilter === item.title
-                                        ? Colors[colorScheme].tint
-                                        : Colors[colorScheme].bg_light,
-                                paddingHorizontal: 12,
-                                paddingVertical: 4,
-                                borderColor: Colors[colorScheme].border,
-                                borderWidth: 1,
-                                marginRight: 8,
-                                borderRadius: 4,
-                            }}
-                            onPress={() => {
-                                // Check if active state is pressed
-                                if (activeFilter === item.title) {
-                                    return;
-                                } else {
-                                    setActiveFilter(item.title);
-                                }
-                            }}
-                        >
-                            <ThemedText
-                                type="body_small"
-                                emphasized={true}
-                                style={{
-                                    color:
-                                        activeFilter === item.title
-                                            ? Colors[colorScheme].button_text
-                                            : Colors[colorScheme].tint,
-                                }}
-                            >
-                                {item.title}
-                            </ThemedText>
-                        </Pressable>
-                    )}
-                />
 
                 <FlashList
                     contentContainerStyle={{

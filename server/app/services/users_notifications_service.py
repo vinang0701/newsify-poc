@@ -1,4 +1,5 @@
 from app.core.db import supabase
+from app.schemas.notifications import NotificationItem
 
 
 async def get_user_notifications(user_id: str) -> list[dict]:
