@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.api.routes.institution_admin import categories as categories_admin
 from app.api.routes import community_members
 from app.api.routes import search
+from app.api.routes.institution_admin import billing as billing_admin
 
 api_router = APIRouter()
 api_router.include_router(users.router)
@@ -29,3 +30,5 @@ api_router.include_router(search.router)
 #     api_router.include_router(private.router)
 api_router.include_router(categories_admin.router)
 api_router.include_router(achievements_admin.router)
+
+api_router.include_router(billing_admin.router)

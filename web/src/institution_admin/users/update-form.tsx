@@ -25,8 +25,9 @@ import * as z from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import type { User } from "@/types";
+import { useAuth } from "@/components/auth-provider";
 
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+//const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 // Validation schema — no password needed for update
 const updateUserSchema = z.object({
@@ -44,6 +45,9 @@ interface UpdateUserDialogProps {
 }
 
 const UpdateUserDialog = ({ user, open, onClose }: UpdateUserDialogProps) => {
+    const { user: authUser } = useAuth();
+    const inst_id = authUser?.inst_id ?? "";
+    
     const queryClient = useQueryClient();
 
     const form = useForm<UpdateUserFormData>({

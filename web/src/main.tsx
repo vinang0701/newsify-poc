@@ -20,6 +20,7 @@ import ContentModerationPage from "./institution_admin/moderation/page";
 import RequestsMgmtPage from "./institution_admin/communities/requests/page";
 import CommunityDetailPage from "./institution_admin/communities/community-detail";
 import AdminUsersMgmtPage from "./institution_admin/users/admin-users-page";
+import BillingPage from "./institution_admin/billing/page";
 
 
 const router = createBrowserRouter([
@@ -57,6 +58,8 @@ const router = createBrowserRouter([
 			{ path: "achievements", element: <AchievementsMgmtPage /> },
 			{ path: "categories", element: <CategoriesMgmtPage /> },
 			{ path: "moderation", element: <ContentModerationPage /> },
+			{ path: "billing", element: <BillingPage /> },
+
 		],
 	},
 	{

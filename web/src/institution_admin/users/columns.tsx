@@ -23,8 +23,9 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import UpdateUserDialog from "./update-form";
+import { useAuth } from "@/components/auth-provider";
 
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+//const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 const formatDate = (dateString: string) => {
     if (!dateString) return "-";
@@ -82,6 +83,8 @@ const actionConfig = {
 
 const ActionButton = ({ row }: ActionButtonProps) => {
     const user = row.original;
+    const { user: authUser } = useAuth();
+    const inst_id = authUser?.inst_id ?? "";
     const queryClient = useQueryClient();
 
     const [confirmAction, setConfirmAction] = useState<

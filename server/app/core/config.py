@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = secrets.token_urlsafe(32)
     OPENAI_API_KEY: str = secrets.token_urlsafe(32)
 
+    #stripe keys
+    STRIPE_SECRET_KEY: str = secrets.token_urlsafe(32)
+    STRIPE_PUBLISHABLE_KEY: str = secrets.token_urlsafe(32)
+    STRIPE_BASIC_PRICE_ID: str = ""
+    STRIPE_PRO_PRICE_ID: str = ""
+    STRIPE_PREMIUM_PRICE_ID: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+
     # Make this optional unless you really need it everywhere
     SUPABASE_JWT_URL: HttpUrl | None = None
 
