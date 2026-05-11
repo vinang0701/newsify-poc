@@ -162,3 +162,4 @@ async def suspend_news_post(supabase: Client, inst_id: str, user_id: str, post_i
         return True
 
     return False
+

@@ -17,7 +17,7 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog";
-import { MoreVertical, UserPen, UserX, Shield, ShieldOff } from "lucide-react";
+import { MoreVertical, UserPen, UserX, Shield, ShieldOff, Trash2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -79,6 +79,12 @@ const actionConfig = {
 			"Are you sure you want to lift the suspension? The user will be able to login again.",
 		buttonClass: "bg-blue-600 hover:bg-blue-700 text-white",
 	},
+
+    "remove": {
+        label: "Remove User",
+        description: "Are you sure you want to permanently remove this user? This action cannot be undone.",
+        buttonClass: "bg-destructive hover:bg-destructive/80 text-white",
+    },
 };
 
 const ActionButton = ({ row }: ActionButtonProps) => {
@@ -96,6 +102,9 @@ const ActionButton = ({ row }: ActionButtonProps) => {
     const isBanned = user.status === "banned";
     const isSuspended = user.status === "suspended";
 
+    const [removeOpen, setRemoveOpen] = useState(false);
+
+
     const handleConfirm = async () => {
         if (!confirmAction) return;
         setLoading(true);
@@ -111,6 +120,22 @@ const ActionButton = ({ row }: ActionButtonProps) => {
             setLoading(false);
         }
     };
+
+    const handleRemove = async () => {
+        setLoading(true);
+        try {
+            await api.delete(`/${inst_id}/admin/users/${user.id}`);
+            queryClient.invalidateQueries({ queryKey: ["studentUsers"] });
+            queryClient.invalidateQueries({ queryKey: ["staffUsers"] });
+            queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
+            setRemoveOpen(false);
+        } catch (err) {
+            console.error("Remove failed:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
 
     return (
         <>
@@ -140,6 +165,31 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                                 {loading
                                     ? "Processing..."
                                     : actionConfig[confirmAction].label}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {removeOpen && (
+                <Dialog open={removeOpen} onOpenChange={() => setRemoveOpen(false)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Remove User</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to permanently remove {user.name}? This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancel</Button>
+                            </DialogClose>
+                            <Button
+                                className="bg-destructive hover:bg-destructive/80 text-white"
+                                onClick={handleRemove}
+                                disabled={loading}
+                            >
+                                {loading ? "Removing..." : "Remove"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -187,6 +237,7 @@ const ActionButton = ({ row }: ActionButtonProps) => {
                             </DropdownMenuItem>
 						
 						):(
+
 							// Only show Suspend if user is not banned
 							!isBanned && (
 								<DropdownMenuItem
@@ -199,6 +250,15 @@ const ActionButton = ({ row }: ActionButtonProps) => {
 							)
 
                         )}
+                        
+                        <Separator orientation="horizontal" />
+                        <DropdownMenuItem
+                            onClick={() => setRemoveOpen(true)}
+                            className="text-destructive focus:text-destructive"
+                        >
+                            <Trash2 />
+                            <span>Remove</span>
+                        </DropdownMenuItem>
                     </DropdownMenuGroup>
                 </DropdownMenuContent>
             </DropdownMenu>

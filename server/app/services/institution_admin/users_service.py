@@ -5,6 +5,7 @@ import uuid
 from app.models.admin import User, CreateUser
 from app.core.db import supabase
 from datetime import datetime, timezone
+from app.services.email_service import send_removal_email
 
 
 
@@ -103,6 +104,9 @@ async def create_new_user(
     password: str,
     role: str,
 ):
+    
+    from app.services.email_service import send_welcome_email
+
     print("i reached here")
     auth_response = supabase.auth.admin.create_user(
         {
@@ -132,6 +136,10 @@ async def create_new_user(
         )
         .execute()
     )
+
+    # Send welcome email with the password
+    await send_welcome_email(new_user_email, new_user_name, password, role)
+
     return db_response.data
 
 async def ban_user(supabase: Client, user_id: str) -> dict:
@@ -413,4 +421,198 @@ async def flag_reported_post(
         return {"status": "flagged"}
     except Exception as e:
         print(f"EXACT ERROR: {e}")  # ← shows the real error
+        raise
+
+
+async def bulk_import_users(
+    supabase: Client,
+    inst_id: str,
+    users: list[dict],
+) -> dict:
+    print(f"Importing {len(users)} users for inst_id: {inst_id}")
+    from app.services.email_service import send_welcome_email
+    import secrets
+    import string
+
+    results = {
+        "success": [],
+        "failed": [],
+    }
+
+    for user in users:
+        name = user.get("name", "").strip()
+        email = user.get("email", "").strip()
+        role = user.get("role", "").strip().lower()
+
+        # Validate row
+        errors = []
+        if not name or len(name) < 2:
+            errors.append("Name must be at least 2 characters")
+        if not email or "@" not in email:
+            errors.append("Invalid email")
+        if role not in ["student", "staff"]:
+            errors.append("Role must be 'student' or 'staff'")
+
+        if errors:
+            results["failed"].append({
+                "row": user,
+                "errors": errors,
+            })
+            continue
+
+        # Generate a strong password
+        alphabet = string.ascii_letters + string.digits + "!@#$%"
+        password = "".join(secrets.choice(alphabet) for _ in range(12))
+
+        try:
+            # Create user in Supabase Auth
+            auth_response = supabase.auth.admin.create_user({
+                "email": email,
+                "password": password,
+                "email_confirm": True,
+                "user_metadata": {
+                    "name": name,
+                    "role": role,
+                    "inst_id": inst_id,
+                },
+            })
+
+            if not auth_response.user:
+                results["failed"].append({
+                    "row": user,
+                    "errors": ["Failed to create auth user"],
+                })
+                continue
+
+            user_id = auth_response.user.id
+
+            # Insert into users table
+            supabase.table("users").insert({
+                "id": user_id,
+                "inst_id": inst_id,
+                "name": name,
+                "email": email,
+                "role": role,
+                "status": "active",
+            }).execute()
+
+            # Send welcome email
+            await send_welcome_email(email, name, password, role)
+
+            results["success"].append({
+                "name": name,
+                "email": email,
+                "role": role,
+                "password": password,  # show in summary
+            })
+
+        except Exception as e:
+            results["failed"].append({
+                "row": user,
+                "errors": [str(e)],
+            })
+
+    return results
+
+
+async def bulk_remove_users(
+    supabase: Client,
+    inst_id: str,
+    emails: list[str],
+) -> dict:
+    results = {
+        "success": [],
+        "failed": [],
+    }
+
+    for email in emails:
+        email = email.strip()
+        if not email or "@" not in email:
+            results["failed"].append({
+                "email": email,
+                "errors": ["Invalid email"],
+            })
+            continue
+
+        try:
+            # Find user by email
+            user_response = (
+                supabase.table("users")
+                .select("id, name, email")
+                .eq("email", email)
+                .eq("inst_id", inst_id)
+                .single()
+                .execute()
+            )
+
+            if not user_response.data:
+                results["failed"].append({
+                    "email": email,
+                    "errors": ["User not found in this institution"],
+                })
+                continue
+
+            user_id = user_response.data["id"]
+
+            # Delete from Supabase Auth first ← ADD THIS
+            supabase.auth.admin.delete_user(user_id)
+
+            # Delete from users table
+            supabase.table("users").delete().eq("id", user_id).execute()
+
+            user_name = user_response.data.get("name", "User")
+
+            # Send removal email
+            await send_removal_email(email, user_name)
+
+            results["success"].append({"email": email})
+
+        except Exception as e:
+            results["failed"].append({
+                "email": email,
+                "errors": [str(e)],
+            })
+
+    return results
+
+async def remove_user(supabase: Client, user_id: str) -> dict:
+
+    try:
+        print(f"Looking for user_id: {user_id}")
+
+        # Get user details first for the email
+        user_response = (
+            supabase.table("users")
+            .select("id, name, email")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+
+        print(f"Query result: {user_response.data}")
+        print(f"Query error: {user_response}")
+
+        if not user_response.data:
+            print("User not found in DB!")
+            return None
+
+        name = user_response.data["name"]
+        email = user_response.data["email"]
+        print(f"Found user: {name}, {email}")
+
+        # Delete from Supabase Auth
+        try:
+            supabase.auth.admin.delete_user(user_id)
+        except Exception as auth_error:
+            print(f"Auth delete failed (continuing anyway): {auth_error}")
+
+        # Delete from users table
+        supabase.table("users").delete().eq("id", user_id).execute()
+
+        # Send removal email
+        await send_removal_email(email, name)
+        return {"removed": True}
+    
+    except Exception as e:
+        print(f"EXACT ERROR: {e}")
         raise

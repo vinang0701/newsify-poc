@@ -1,5 +1,5 @@
 import { Button } from "../../components/ui/button";
-import { EyeIcon, EyeOffIcon, Plus } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Plus, Upload, Trash2 } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -26,8 +26,7 @@ import axios from "axios";
 import * as z from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-// const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+import CsvImportDialog from "./csv-import-dialog";
 
 const createUserSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters long").trim(),
@@ -47,6 +46,7 @@ const StaffUsersMgmtPage = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [sortStatus, setSortStatus] = useState<"all" | "active" | "suspended" | "banned">("all");
+    const [csvMode, setCsvMode] = useState<"import" | "remove" | null>(null);
 
     const form = useForm<z.infer<typeof createUserSchema>>({
         resolver: zodResolver(createUserSchema),
@@ -135,8 +135,10 @@ const StaffUsersMgmtPage = () => {
                     Staff Account Management
                 </div>
                 <section className="flex flex-col py-3 px-4 gap-6">
-                    {/* Search and Add */}
-                    <div className="flex flex-row justify-end gap-4">
+
+                    {/* Search + Add + CSV */}
+                    <div className="flex flex-row justify-end gap-4 items-center">
+                        {/* Search */}
                         <ButtonGroup className="flex flex-row">
                             <Input
                                 type="text"
@@ -154,6 +156,8 @@ const StaffUsersMgmtPage = () => {
                                 </Button>
                             )}
                         </ButtonGroup>
+
+                        {/* Add button */}
                         <Dialog
                             open={dialogOpen}
                             onOpenChange={() => {
@@ -269,14 +273,12 @@ const StaffUsersMgmtPage = () => {
                                                 </Field>
                                             )}
                                         />
-
-                                            <Field className="flex flex-col items-center">
-                                                <Label className="w-xs">Role</Label>
-                                                <div className="w-full border border-input rounded-md px-3 py-2 text-sm bg-muted text-muted-foreground">
-                                                    Staff
-                                                </div>
-                                            </Field>
-                                            
+                                        <Field className="flex flex-col items-center">
+                                            <Label className="w-xs">Role</Label>
+                                            <div className="w-full border border-input rounded-md px-3 py-2 text-sm bg-muted text-muted-foreground">
+                                                Staff
+                                            </div>
+                                        </Field>
                                         {form.formState.errors.root && (
                                             <p className="text-sm text-destructive">
                                                 {form.formState.errors.root.message}
@@ -296,6 +298,26 @@ const StaffUsersMgmtPage = () => {
                                 </DialogContent>
                             </form>
                         </Dialog>
+
+                        {/* Import CSV */}
+                        <Button
+                            variant="outline"
+                            className="rounded-sm font-semibold border border-border flex flex-row items-center gap-2"
+                            onClick={() => setCsvMode("import")}
+                        >
+                            <Upload size={16} />
+                            <span>Import CSV</span>
+                        </Button>
+
+                        {/* Remove CSV */}
+                        <Button
+                            variant="outline"
+                            className="rounded-sm font-semibold border border-border text-destructive hover:text-destructive flex flex-row items-center gap-2"
+                            onClick={() => setCsvMode("remove")}
+                        >
+                            <Trash2 size={16} />
+                            <span>Remove CSV</span>
+                        </Button>
                     </div>
 
                     {/* Filter by status */}
@@ -326,6 +348,12 @@ const StaffUsersMgmtPage = () => {
                     <DataTable data={filteredData} columns={UserMgmtColumns} />
                 </section>
             </div>
+            <CsvImportDialog
+                open={csvMode !== null}
+                onClose={() => setCsvMode(null)}
+                mode={csvMode ?? "import"}
+                queryKey="staffUsers"
+            />
         </div>
     );
 };
