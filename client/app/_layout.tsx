@@ -31,7 +31,7 @@ export default function RootLayout() {
     const [loaded, error] = useFonts({
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
     });
-    usePushNotifications();
+    // usePushNotifications();
 
     // Create a client
     useEffect(() => {

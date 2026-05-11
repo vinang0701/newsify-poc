@@ -3,15 +3,16 @@ from typing import Any
 
 
 class NotificationItem(BaseModel):
-    id: str
-    type: str
-    title: str
-    body: str | None = None
+    notification_id: str
+    notification_type: str
+    title: str | None = None
+    message: str | None = None
     created_at: str
     is_read: bool
     actor_name: str | None = None
     actor_avatar_url: str | None = None
-    metadata: dict[str, Any] | None = None
+    reference_id: str | None = None
+    reference_table: str | None = None
 
 
 class InvitationItem(BaseModel):

@@ -253,7 +253,8 @@ async def get_my_notifications(
     try:
         user_id = app_user["id"]
         rows = await users_notifications_service.get_user_notifications(user_id)
-        return {"items": users_notifications_service.map_notifications(rows)}
+        # return {"items": users_notifications_service.map_notifications(rows)}
+        return {"items": rows}
     except Exception as e:
         print(f"My Notifications Error: {repr(e)}")
         raise HTTPException(status_code=500, detail=str(e))

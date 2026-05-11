@@ -3,13 +3,13 @@ from app.core.db import supabase
 
 async def get_user_notifications(user_id: str) -> list[dict]:
     response = (
-        supabase.table("notifications")
+        supabase.table("user_notifications_view")
         .select("*")
         .eq("recipient_user_id", user_id)
-        .order("created_at", desc=True)
         .execute()
     )
-    return response.data or []
+    return [NotificationItem(**item) for item in response.data]
+    # return response.data or []
 
 
 async def get_unread_notification_count(user_id: str) -> int:
@@ -21,30 +21,6 @@ async def get_unread_notification_count(user_id: str) -> int:
         .execute()
     )
     return response.count or 0
-
-
-def map_notifications(rows: list[dict]) -> list[dict]:
-    mapped_rows = []
-
-    for item in rows:
-        mapped_rows.append(
-            {
-                "id": str(item["notification_id"]),
-                "type": item.get("notification_type", "system"),
-                "title": item.get("notification_type", "Notification"),
-                "body": item.get("message"),
-                "created_at": item["created_at"],
-                "is_read": item.get("is_read", False),
-                "actor_name": None,
-                "actor_avatar_url": None,
-                "metadata": {
-                    "reference_id": item.get("reference_id"),
-                    "reference_table": item.get("reference_table"),
-                },
-            }
-        )
-
-    return mapped_rows
 
 
 async def mark_notification_as_read(user_id: str, notification_id: str) -> None:

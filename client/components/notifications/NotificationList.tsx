@@ -8,12 +8,17 @@ import {
     View,
 } from "react-native";
 import { NotificationItem } from "@/hooks/useNotifications";
+import { ThemedText } from "../themed-text";
 
 type Props = {
     data: NotificationItem[];
     refreshing: boolean;
     onRefresh: () => void;
     onPressItem: (item: NotificationItem) => void;
+};
+
+type NotificationViewProps = {
+    notification: NotificationItem;
 };
 
 function formatRelativeTime(dateString: string) {
@@ -31,6 +36,69 @@ function AvatarPlaceholder() {
     return <View style={styles.avatar} />;
 }
 
+const NotificationView = ({ notification }: NotificationViewProps) => {
+    switch (notification.notification_type.toLocaleLowerCase()) {
+        case "comment":
+            return (
+                <View style={styles.content}>
+                    <View style={{ flexDirection: "row" }}>
+                        <ThemedText type="body_medium" emphasized>
+                            {notification.actor_name}{" "}
+                        </ThemedText>
+                        <ThemedText type="body_medium">
+                            commented on your post:
+                        </ThemedText>
+                    </View>
+                    <ThemedText type="body_medium">
+                        "{notification.message}"
+                    </ThemedText>
+                </View>
+            );
+
+        case "post_published":
+            return (
+                <View style={styles.content}>
+                    <ThemedText type="defaultSemiBold">
+                        Your story has been published!
+                    </ThemedText>
+                    <View>
+                        <ThemedText>{notification.title}</ThemedText>
+                        <ThemedText>{notification.message}</ThemedText>
+                    </View>
+                </View>
+            );
+
+        case "like":
+            return (
+                <View style={styles.content}>
+                    <View style={{ flexDirection: "row" }}>
+                        <ThemedText type="body_medium" emphasized>
+                            {notification.actor_name}{" "}
+                        </ThemedText>
+                        <ThemedText type="body_medium">
+                            liked your post:
+                        </ThemedText>
+                    </View>
+                    <ThemedText type="body_medium">
+                        "{notification.message}"
+                    </ThemedText>
+                </View>
+            );
+
+        default:
+            return (
+                <View style={styles.content}>
+                    <ThemedText
+                        type="body_medium"
+                        style={{ overflow: "hidden" }}
+                    >
+                        {notification.message}
+                    </ThemedText>
+                </View>
+            );
+    }
+};
+
 export default function NotificationList({
     data,
     refreshing,
@@ -40,14 +108,18 @@ export default function NotificationList({
     return (
         <FlatList
             data={data}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.notification_id}
             refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
-            contentContainerStyle={data.length === 0 ? styles.emptyListContainer : undefined}
+            contentContainerStyle={
+                data.length === 0 ? styles.emptyListContainer : undefined
+            }
             ListEmptyComponent={
                 <View style={styles.emptyWrap}>
-                    <Text style={styles.emptyTitle}>No notifications available</Text>
+                    <Text style={styles.emptyTitle}>
+                        No notifications available
+                    </Text>
                     <Text style={styles.emptyText}>
                         You do not have any notifications at the moment.
                     </Text>
@@ -60,14 +132,15 @@ export default function NotificationList({
                     activeOpacity={0.8}
                 >
                     <AvatarPlaceholder />
-                    <View style={styles.content}>
+                    {/* <View style={styles.content}>
                         <Text style={styles.messageText}>
                             <Text style={styles.boldText}>
                                 {item.actor_name || "System"}
                             </Text>{" "}
                             {item.body || item.title}
                         </Text>
-                    </View>
+                    </View> */}
+                    <NotificationView notification={item} />
                     <Text style={styles.timeText}>
                         {formatRelativeTime(item.created_at)}
                     </Text>

@@ -7,7 +7,6 @@ from pydantic import AnyUrl, BeforeValidator, HttpUrl, computed_field, model_val
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Self
 
-
 BASE_DIR = Path(__file__).resolve().parents[3]
 ENV_FILE = BASE_DIR / "server" / ".env"
 
@@ -39,7 +38,9 @@ class Settings(BaseSettings):
     FRONTEND_HOST: str = "http://localhost:8081"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
-    BACKEND_CORS_ORIGINS: Annotated[list[AnyUrl] | str, BeforeValidator(parse_cors)] = []
+    BACKEND_CORS_ORIGINS: Annotated[list[AnyUrl] | str, BeforeValidator(parse_cors)] = (
+        []
+    )
 
     @computed_field
     @property
@@ -47,7 +48,7 @@ class Settings(BaseSettings):
         origins = self.BACKEND_CORS_ORIGINS
         if isinstance(origins, str):
             origins = [origins]
-        return [str(origin).rstrip("/") for origin in origins] + [self.FRONTEND_HOST]
+        return [str(origin).rstrip("/") for origin in origins]
 
     PROJECT_NAME: str
 

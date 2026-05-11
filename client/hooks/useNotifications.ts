@@ -2,18 +2,29 @@ import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
 
+// export type NotificationItem = {
+//     id: string;
+//     type: string;
+//     title: string;
+//     body: string | null;
+//     created_at: string;
+//     is_read: boolean;
+//     actor_name?: string | null;
+//     actor_avatar_url?: string | null;
+//     metadata?: Record<string, any> | null;
+// };
 export type NotificationItem = {
-    id: string;
-    type: string;
-    title: string;
-    body: string | null;
+    notification_id: string;
+    notification_type: string;
+    title: string | null;
+    message: string | null;
     created_at: string;
     is_read: boolean;
-    actor_name?: string | null;
-    actor_avatar_url?: string | null;
-    metadata?: Record<string, any> | null;
+    actor_name: string | null;
+    actor_avatar_url: string | null;
+    reference_id: string | null;
+    reference_table: string | null;
 };
-
 type NotificationsResponse = {
     items: NotificationItem[];
 };
@@ -42,18 +53,23 @@ export function useNotifications() {
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/users/me/notifications`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
+            const response = await fetch(
+                `${API_BASE_URL}/users/me/notifications`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
                 },
-            });
+            );
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data?.detail || "Failed to fetch notifications");
+                throw new Error(
+                    data?.detail || "Failed to fetch notifications",
+                );
             }
 
             const typedData = data as NotificationsResponse;
@@ -85,19 +101,23 @@ export function useNotifications() {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
-            }
+            },
         );
 
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data?.detail || "Failed to mark notification as read");
+            throw new Error(
+                data?.detail || "Failed to mark notification as read",
+            );
         }
 
         setNotifications((prev) =>
             prev.map((item) =>
-                item.id === notificationId ? { ...item, is_read: true } : item
-            )
+                item.notification_id === notificationId
+                    ? { ...item, is_read: true }
+                    : item,
+            ),
         );
     };
 
@@ -105,13 +125,16 @@ export function useNotifications() {
         const token = await getAccessToken();
         if (!token) throw new Error("No active session found");
 
-        const response = await fetch(`${API_BASE_URL}/users/me/notifications/read-all`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
+        const response = await fetch(
+            `${API_BASE_URL}/users/me/notifications/read-all`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                },
             },
-        });
+        );
 
         const data = await response.json();
 
@@ -120,7 +143,7 @@ export function useNotifications() {
         }
 
         setNotifications((prev) =>
-            prev.map((item) => ({ ...item, is_read: true }))
+            prev.map((item) => ({ ...item, is_read: true })),
         );
     };
 
