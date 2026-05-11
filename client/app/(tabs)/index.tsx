@@ -40,6 +40,8 @@ import { usePreferences } from "@/hooks/usePreferences";
 import Loading from "@/components/loading";
 import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
 import { useUserFollowing } from "@/hooks/useUserFollowing";
+import Feather from "@expo/vector-icons/Feather";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 const HEADER_HEIGHT = 250;
 
@@ -116,17 +118,6 @@ export default function HomeScreen() {
         }, 2000);
     }, []);
 
-    // Get the currently logged in user from Supabase auth
-    const { data: currentUser } = useQuery({
-        queryKey: ["current_user"],
-        queryFn: async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            return user;
-        },
-    });
-
     // Fetch personalised posts — only runs once we have the user's id
     const {
         data: personalisedData,
@@ -141,29 +132,35 @@ export default function HomeScreen() {
             // if (!response.ok) throw new Error("Network response was not ok");
             return await response.data;
         },
-        enabled: !!currentUser?.id, // only fetch once we have the user id
+        enabled: !!user?.id, // only fetch once we have the user id
     });
 
-    // When the screen loads and we have the current user,
-    // check if they have any preferences saved
-    // If none → show the modal
-    useEffect(() => {
-        const checkPreferences = async () => {
-            if (!currentUser?.id) return;
-            if (!loading) {
-                const data = preferences;
-
-                if (!data || data.length === 0) {
-                    setShowPrefsModal(true);
-                }
-            }
+    const filters = useMemo(() => {
+        // 1. The "Recent" item we always want at the start
+        const recentItem = {
+            user_id: user.id,
+            category: {
+                category_id: "Recent",
+                category_name: "Recent",
+                category_status: "active",
+            },
+            preference_type: "include",
+            created_at: "",
         };
 
-        checkPreferences();
-    }, [currentUser?.id]);
+        // 2. If preferences hasn't loaded yet, just show "Recent"
+        if (!preferences || preferences.length === 0) {
+            return [recentItem];
+        }
+
+        // 3. Map the nested category objects into a flat list
+
+        // 4. Combine them: "Recent" is now at index 0
+        return [recentItem, ...preferences];
+    }, [preferences]);
 
     const handleSavePreferences = async () => {
-        if (!currentUser?.id) return;
+        if (!user?.id) return;
 
         try {
             setSavingPrefs(true);
@@ -313,6 +310,7 @@ export default function HomeScreen() {
                 style={{
                     flex: 1,
                     paddingHorizontal: 16,
+                    paddingVertical: 12,
                     paddingBottom: insets.bottom,
                     backgroundColor: Colors[colorScheme].bg,
                 }}
@@ -323,105 +321,96 @@ export default function HomeScreen() {
                     />
                 }
             >
-                <View
-                    style={{
-                        flexDirection: "row",
-                        paddingVertical: 12,
-                        alignItems: "center",
-                    }}
-                >
-                    <Pressable
-                        style={{
-                            backgroundColor:
-                                activeFilter === "Recent"
-                                    ? Colors[colorScheme].tint
-                                    : Colors[colorScheme].bg_light,
-                            paddingHorizontal: 12,
-                            paddingVertical: 4,
-                            borderColor: Colors[colorScheme].border,
-                            borderWidth: 1,
-                            marginRight: 8,
-                            borderRadius: 4,
-                        }}
-                        onPress={() => {
-                            if (activeFilter === "Recent") {
-                                return;
-                            } else {
-                                setActiveFilter("Recent");
-                            }
-                        }}
-                    >
-                        <ThemedText
-                            type="body_small"
-                            emphasized={true}
+                <FlashList
+                    keyExtractor={(item) => item.category.category_id}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ marginBottom: 12 }}
+                    style={{ elevation: 10 }}
+                    data={filters}
+                    renderItem={({ item }) => (
+                        <Pressable
                             style={{
-                                color:
-                                    activeFilter === "Recent"
-                                        ? Colors[colorScheme].button_text
-                                        : Colors[colorScheme].tint,
+                                backgroundColor:
+                                    activeFilter === item.category.category_id
+                                        ? Colors[colorScheme].tint
+                                        : Colors[colorScheme].bg_light,
+                                paddingHorizontal: 12,
+                                paddingVertical: 4,
+                                borderColor: Colors[colorScheme].border,
+                                borderWidth: 1,
+                                marginRight: 8,
+                                borderRadius: 4,
+                            }}
+                            onPress={() => {
+                                if (
+                                    activeFilter === item.category.category_id
+                                ) {
+                                    return;
+                                } else {
+                                    setActiveFilter(item.category.category_id);
+                                }
                             }}
                         >
-                            Recent
-                        </ThemedText>
-                    </Pressable>
-                    <FlashList
-                        keyExtractor={(item) => item.category_id}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        style={{ elevation: 10 }}
-                        data={categories}
-                        renderItem={({ item }) => (
-                            <Pressable
+                            <ThemedText
+                                type="body_small"
+                                emphasized={true}
                                 style={{
-                                    backgroundColor:
-                                        activeFilter === item.category_id
-                                            ? Colors[colorScheme].tint
-                                            : Colors[colorScheme].bg_light,
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 4,
-                                    borderColor: Colors[colorScheme].border,
-                                    borderWidth: 1,
-                                    marginRight: 8,
-                                    borderRadius: 4,
-                                }}
-                                onPress={() => {
-                                    if (activeFilter === item.category_id) {
-                                        return;
-                                    } else {
-                                        setActiveFilter(item.category_id);
-                                    }
+                                    color:
+                                        activeFilter ===
+                                        item.category.category_id
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].tint,
                                 }}
                             >
-                                <ThemedText
-                                    type="body_small"
-                                    emphasized={true}
-                                    style={{
-                                        color:
-                                            activeFilter === item.category_id
-                                                ? Colors[colorScheme]
-                                                      .button_text
-                                                : Colors[colorScheme].tint,
-                                    }}
-                                >
-                                    {item.category_name}
-                                </ThemedText>
-                            </Pressable>
-                        )}
-                    />
-                </View>
+                                {item.category.category_name}
+                            </ThemedText>
+                        </Pressable>
+                    )}
+                />
 
-                <View style={{ paddingBottom: insets.bottom + 20 }}>
-                    <FlashList
-                        style={{ marginBottom: 16 }}
-                        data={filteredNews}
-                        renderItem={({ item }) => (
-                            <NewsPostCard
-                                news={item}
-                                handleSheetExpand={handleSheetExpand}
+                <FlashList
+                    data={filteredNews}
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        paddingBottom: insets.bottom + 20,
+                    }}
+                    ListEmptyComponent={() => (
+                        <View
+                            style={{
+                                flex: 1,
+                                marginTop: "50%",
+                                justifyContent: "center",
+                                alignItems: "center",
+                            }}
+                        >
+                            <MaterialCommunityIcons
+                                name="newspaper-variant-multiple"
+                                size={60}
                             />
-                        )}
-                    />
-                </View>
+                            <ThemedText
+                                type="sub_heading"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                No news posted yet.
+                            </ThemedText>
+                            <ThemedText
+                                type="default"
+                                style={{
+                                    color: Colors[colorScheme].text_light,
+                                }}
+                            >
+                                Be the first to share some insights!
+                            </ThemedText>
+                        </View>
+                    )}
+                    renderItem={({ item }) => (
+                        <NewsPostCard
+                            news={item}
+                            handleSheetExpand={handleSheetExpand}
+                        />
+                    )}
+                />
             </ScrollView>
             {/* BottomSheetModal */}
             <NewsPostBottomSheet

@@ -15,7 +15,7 @@ export interface News {
     community_id: string | null;
     community_name: string | null;
     community_image: string | null;
-    category_id: string;
+    category_id: string | null;
 }
 
 // export interface Community {

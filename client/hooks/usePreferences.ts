@@ -22,34 +22,21 @@ export function usePreferences() {
         },
     });
 
-    const preferencesQuery = useQuery({
+    const preferencesQuery = useQuery<UserPreference[]>({
         queryKey: ["user_preferences", inst_id, userId],
         queryFn: async () => {
             const response = await api.get(`/users/me/preferences`);
-            return (
+            const preferenceIds =
                 response.data?.map(
                     (p: UserPreference) => p.category.category_id,
-                ) || []
-            );
+                ) || [];
+            setSelectedIds(preferenceIds);
+            return response.data;
         },
         enabled: !!inst_id && !!userId,
     });
 
-    // 3. Local state for the "Ticked" UI
-    // We initialize this in a useEffect when preferencesQuery data arrives
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-    useEffect(() => {
-        if (preferencesQuery.data) {
-            setSelectedIds(preferencesQuery.data);
-        }
-    }, [preferencesQuery.data]);
-
-    const toggleCategory = (id: string) => {
-        setSelectedIds((prev) =>
-            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
-        );
-    };
 
     //called when user saves preferences
     //deletes old preferences, inserts new ones
@@ -70,8 +57,8 @@ export function usePreferences() {
     //return everything the screen needs to use
     return {
         categories: categoriesQuery.data, //all available categories
-        preferences: selectedIds, //which ones the user has selected
-        toggleCategory, //function to select/deselect a category
+        preferences: preferencesQuery.data, //which ones the user has selected
+        selectedIds,
         savePreferences: savePreferences.mutate, //function to save to DB
         loading:
             categoriesQuery.isLoading ||
