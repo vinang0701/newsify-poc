@@ -5,6 +5,7 @@ import {
     ScrollView,
     Pressable,
     useColorScheme,
+    Alert,
 } from "react-native";
 
 import { SafeAreaView } from "react-native-safe-area-context"; // respects phone notches
@@ -13,12 +14,42 @@ import { usePreferences } from "@/hooks/usePreferences"; // our custom hook abov
 import { Colors } from "@/constants/theme"; // your app's color palette
 import { ThemedText } from "@/components/themed-text"; // your custom text component
 import Feather from "@expo/vector-icons/Feather"; // icon library
+import { useEffect, useMemo, useState } from "react";
+import { useAuthStore } from "@/utils/authStore";
+import { useQueryClient } from "@tanstack/react-query";
+import Loading from "@/components/loading";
 
 export default function PreferencesScreen() {
     const colorScheme = useColorScheme() ?? "light"; // get light/dark mode
+    const { user, metadata } = useAuthStore();
+    const queryClient = useQueryClient();
 
     // Pull everything we need from our custom hook
-    const { categories, selected, toggleCategory, loading } = usePreferences();
+    const { categories, preferences, savePreferences, loading } =
+        usePreferences();
+
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(
+        [],
+    );
+
+    useEffect(() => {
+        if (!loading && preferences) {
+            const ids = preferences.map((p) => p);
+            setSelectedCategoryIds(ids);
+        }
+    }, [loading, preferences]);
+
+    const toggleCategory = (id: string) => {
+        setSelectedCategoryIds((prev) =>
+            prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+        );
+    };
+
+    const isUnchanged = useMemo(() => {
+        const initial = (preferences || []).map((p) => p).sort();
+        const current = [...selectedCategoryIds].sort();
+        return JSON.stringify(initial) === JSON.stringify(current);
+    }, [preferences, selectedCategoryIds]);
 
     // Runs when user taps "Save Preferences"
     const handleNext = () => {
@@ -29,22 +60,43 @@ export default function PreferencesScreen() {
             params: {
                 //json.stringify turns the array into a string so it can be passed as a parameter
                 //e.g. ["uuid-1", "uuid-2"] → '["uuid-1","uuid-2"]'
-                includeIds: JSON.stringify(selected),
+                includeIds: JSON.stringify(preferences),
+            },
+        });
+    };
+    const handleSavePreferences = async () => {
+        if (!user || !metadata) {
+            console.error("No user data found.");
+            return;
+        }
+        // Build rows for include and exclude
+        // const includeRows = selectedCategoryIds.map((category_id) => ({
+        //     category_id: category_id,
+        //     preference_type: "include",
+        // }));
+
+        savePreferences(selectedCategoryIds, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({
+                    queryKey: ["user_preferences"],
+                });
+                Alert.alert("Success", "Your preferences have been updated.");
+            },
+            onError: (err: any) => {
+                console.log("Failed to save preferences: " + err.detail);
+                Alert.alert("Error", "Failed to save preferences.");
             },
         });
     };
 
     // Show a loading state while fetching from DB
-    if (loading) {
-        return (
-            <SafeAreaView>
-                <ThemedText>Loading...</ThemedText>
-            </SafeAreaView>
-        );
+    if (!categories || !preferences) {
+        return <Loading />;
     }
 
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+            {loading && <Loading />}
             {/* Header bar at the top */}
             <View
                 style={[
@@ -75,57 +127,68 @@ export default function PreferencesScreen() {
                     Pick Your Interests
                 </ThemedText>
                 <ThemedText style={styles.subtitle}>
-                    Choose what will appear on your news feed!
+                    Pick at least 3 categories you wish to see on your news
+                    feed!
                 </ThemedText>
 
                 {/* The grid of category chips */}
                 <View style={styles.grid}>
                     {/* Loop through every category and render a chip for each */}
-                    {categories.map((cat) => (
-                        <TouchableOpacity
-                            key={cat.category_id} // React needs a unique key for each item in a list
-                            style={[
-                                styles.chip,
-                                {
-                                    borderColor: Colors[colorScheme].tint,
-                                    // if this category is selected → fill with tint color
-                                    // if not selected → transparent background
-                                    backgroundColor: selected.includes(
-                                        cat.category_id,
-                                    )
-                                        ? Colors[colorScheme].tint
-                                        : "transparent",
-                                },
-                            ]}
-                            onPress={() => toggleCategory(cat.category_id)} // toggle on tap
-                        >
-                            <ThemedText
-                                style={{
-                                    // selected = white text, unselected = default text color
-                                    color: selected.includes(cat.category_id)
-                                        ? Colors[colorScheme].button_text
-                                        : Colors[colorScheme].text,
-                                }}
+                    {categories !== undefined &&
+                        categories.map((cat) => (
+                            <TouchableOpacity
+                                key={cat.category_id} // React needs a unique key for each item in a list
+                                style={[
+                                    styles.chip,
+                                    {
+                                        borderColor: Colors[colorScheme].tint,
+                                        // if this category is selected → fill with tint color
+                                        // if not selected → transparent background
+                                        backgroundColor:
+                                            selectedCategoryIds.includes(
+                                                cat.category_id,
+                                            )
+                                                ? Colors[colorScheme].tint
+                                                : "transparent",
+                                    },
+                                ]}
+                                onPress={() => toggleCategory(cat.category_id)} // toggle on tap
                             >
-                                {cat.category_name}
-                            </ThemedText>
-                        </TouchableOpacity>
-                    ))}
+                                <ThemedText
+                                    style={{
+                                        // selected = white text, unselected = default text color
+                                        color: selectedCategoryIds.includes(
+                                            cat.category_id,
+                                        )
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].text,
+                                    }}
+                                >
+                                    {cat.category_name}
+                                </ThemedText>
+                            </TouchableOpacity>
+                        ))}
                 </View>
 
                 {/* Save button - disabled if nothing is selected */}
                 <Pressable
                     style={[
                         styles.saveBtn,
-                        { backgroundColor: Colors[colorScheme].tint },
+                        {
+                            backgroundColor:
+                                selectedCategoryIds.length < 3 || isUnchanged
+                                    ? Colors[colorScheme].bg_dark
+                                    : Colors[colorScheme].tint,
+                        },
                     ]}
-                    onPress={handleNext}
-                    disabled={selected.length === 0} // cant save if nothing selected
+                    onPress={handleSavePreferences}
+                    disabled={selectedCategoryIds.length < 3 || isUnchanged} // cant save if nothing selected
                 >
                     <ThemedText
+                        emphasized
                         style={{ color: Colors[colorScheme].button_text }}
                     >
-                        Next
+                        {loading ? "Saving..." : "Save"}
                     </ThemedText>
                 </Pressable>
             </ScrollView>

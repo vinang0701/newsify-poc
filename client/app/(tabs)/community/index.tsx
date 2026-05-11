@@ -26,48 +26,19 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import axios from "axios";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
-import { useCommunity } from "@/hooks/useCommunity";
 import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;
 
-const DATA = [
-    {
-        id: "1",
-        title: "All",
-    },
-    {
-        id: "2",
-        title: "Tech",
-    },
-    {
-        id: "3",
-        title: "Arts",
-    },
-    {
-        id: "4",
-        title: "Lifestyle",
-    },
-];
-
-interface UserCommunities {
-    community_id: string;
-    community_name: string;
-    role: string;
-}
-
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-// const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-// const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+const DATA = ["Joined", "Explore"];
 
 export default function CommunitiesTab() {
     const colorScheme = useColorScheme() ?? "light";
     const [comm, setComm] = useState<Community[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [activeFilter, setActiveFilter] = useState("All");
+    const [activeFilter, setActiveFilter] = useState("Joined");
     const [refreshing, setRefreshing] = React.useState(false);
     const insets = useSafeAreaInsets();
     const router = useRouter();
@@ -76,18 +47,6 @@ export default function CommunitiesTab() {
     const { session, metadata } = useAuthStore();
     const inst_id = metadata?.inst_id;
     const user_id = metadata?.user_id;
-    // console.log(session?.access_token);
-
-    function formatMemberCount(count: number) {
-        if (count < 1000) {
-            return count;
-        } else if (count < 1000000) {
-            count = Math.round((count /= 1000) * 100) / 100;
-            return count;
-        } else {
-            return count;
-        }
-    }
 
     function nameToAvatar(name: string) {
         // 1. Split by whitespace and filter out any empty strings from extra spaces
@@ -107,13 +66,11 @@ export default function CommunitiesTab() {
 
     const joinComm = async (id: string) => {
         try {
-            await api.post(`/users/me/communities`, {
+            const response = await api.post(`/users/me/communities`, {
                 community_id: id,
                 user_id: user_id,
             });
-
-            // Refresh the query so the button changes to "Leave"
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+            return response.data;
         } catch (err) {
             console.error("Join failed", err);
         }
@@ -121,6 +78,9 @@ export default function CommunitiesTab() {
 
     const { mutate, isPending } = useMutation({
         mutationFn: joinComm,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["communities"] });
+        },
     });
 
     const getAvatarColor = (name: string) => {
@@ -148,21 +108,6 @@ export default function CommunitiesTab() {
             !!inst_id && (searchQuery.length === 0 || searchQuery.length > 2),
     });
 
-    // const {
-    //     data: comm_mem_data,
-    //     error: comm_mem_error,
-    //     refetch: comm_mem_refetch,
-    //     isFetching: isFetchingCommMem,
-    // } = useQuery<UserCommunities[]>({
-    //     queryKey: ["user_communities", user_id],
-    //     queryFn: async () => {
-    //         // axios try catch
-    //         const response = await api.get(`/users/me/communities`);
-
-    //         return response.data;
-    //     },
-    // });
-
     async function leaveCommunity(community_id: string) {
         console.log("Leaving community");
         try {
@@ -170,7 +115,6 @@ export default function CommunitiesTab() {
                 `/users/me/communities/${community_id}`,
             );
 
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
             return response.data;
         } catch (error) {
             console.error("Failed to leave:", error);
@@ -178,28 +122,36 @@ export default function CommunitiesTab() {
     }
 
     const { mutate: mu_leaveCommunity } = useMutation({
-        mutationKey: ["user_communities"],
         mutationFn: leaveCommunity,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["communities"] });
+        },
         onError: (error) => {
             Alert.alert("Error", "Something went wrong.");
             console.error(error);
         },
     });
 
-    // const joinedCommunityIds = React.useMemo(() => {
-    //     return new Set(comm_mem_data?.map((c) => c.community_id) || []);
-    // }, [comm_mem_data]);
+    const filteredCommunities = React.useMemo(() => {
+        // 1. If data is still loading or undefined, return an empty array
+        if (!data) return [];
 
-    // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
-    const filteredCommunities =
-        data?.filter((community) =>
-            community.name.toLowerCase().includes(searchQuery.toLowerCase()),
-        ) ?? [];
+        // 2. Filter based on the 'isMember' boolean
+        if (activeFilter === "Joined") {
+            return data.filter((community) => community.isMember === true);
+        }
+
+        if (activeFilter === "Explore") {
+            return data.filter((community) => community.isMember === false);
+        }
+
+        // 3. Fallback (e.g., if you have an 'All' filter or initial state)
+        return data;
+    }, [data, activeFilter]);
 
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         refetch();
-        // comm_mem_refetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -291,7 +243,6 @@ export default function CommunitiesTab() {
                 </View>
 
                 <FlashList
-                    keyExtractor={(item) => item.id}
                     horizontal={true}
                     style={{ marginBottom: 12, elevation: 10 }}
                     data={DATA}
@@ -299,7 +250,7 @@ export default function CommunitiesTab() {
                         <Pressable
                             style={{
                                 backgroundColor:
-                                    activeFilter === item.title
+                                    activeFilter === item
                                         ? Colors[colorScheme].tint
                                         : Colors[colorScheme].bg_light,
                                 paddingHorizontal: 12,
@@ -311,10 +262,10 @@ export default function CommunitiesTab() {
                             }}
                             onPress={() => {
                                 // Check if active state is pressed
-                                if (activeFilter === item.title) {
+                                if (activeFilter === item) {
                                     return;
                                 } else {
-                                    setActiveFilter(item.title);
+                                    setActiveFilter(item);
                                 }
                             }}
                         >
@@ -323,12 +274,12 @@ export default function CommunitiesTab() {
                                 emphasized={true}
                                 style={{
                                     color:
-                                        activeFilter === item.title
+                                        activeFilter === item
                                             ? Colors[colorScheme].button_text
                                             : Colors[colorScheme].tint,
                                 }}
                             >
-                                {item.title}
+                                {item}
                             </ThemedText>
                         </Pressable>
                     )}
@@ -402,19 +353,6 @@ export default function CommunitiesTab() {
                                             { gap: 8 },
                                         ]}
                                     >
-                                        {/* <Image
-                                                source={require("@/assets/images/icon.png")}
-                                                style={{
-                                                    height: 36,
-                                                    width: 36,
-                                                    borderRadius: 100,
-                                                    borderWidth: 1,
-                                                    borderColor:
-                                                        Colors[colorScheme]
-                                                            .border,
-                                                }}
-                                            /> */}
-
                                         <View
                                             style={{
                                                 width: 36,
@@ -453,7 +391,7 @@ export default function CommunitiesTab() {
                                                         .text_light,
                                                 }}
                                             >
-                                                20 members
+                                                {item.member_count} members
                                             </ThemedText>
                                         </View>
                                     </View>

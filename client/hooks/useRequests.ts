@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE_URL } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
+import api from "@/lib/axios";
+import { useQuery } from "@tanstack/react-query";
 
 export type UserRequestItem = {
     id: string;
@@ -33,58 +35,62 @@ export function useRequests() {
         return data.session?.access_token ?? null;
     };
 
-    const fetchRequests = useCallback(async () => {
-        try {
-            setError(null);
+    const fetchRequests = useQuery({
+        queryKey: ["requests"],
+        queryFn: async () => {
+            const response = await api.get("/users/me/requests");
+            return response.data;
+        },
+    });
 
-            const token = await getAccessToken();
+    // const fetchRequests = useCallback(async () => {
+    //     try {
+    //         setError(null);
 
-            if (!token) {
-                setRequests([]);
-                setError("No active session found");
-                return;
-            }
+    //         const token = await getAccessToken();
 
-            const response = await fetch(`${API_BASE_URL}/users/me/requests`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            });
+    //         if (!token) {
+    //             setRequests([]);
+    //             setError("No active session found");
+    //             return;
+    //         }
 
-            const data = await response.json();
+    //         const response = await api.get(`/users/me/requests`);
 
-            if (!response.ok) {
-                throw new Error(data?.detail || "Failed to fetch user requests");
-            }
+    //         const data = await response.json();
 
-            const typedData = data as RequestsResponse;
-            setRequests(typedData.requests || []);
-        } catch (err: any) {
-            setError(err?.message || "Failed to load requests");
-            setRequests([]);
-            console.error("fetchRequests error:", err);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
+    //         if (!response.ok) {
+    //             throw new Error(
+    //                 data?.detail || "Failed to fetch user requests",
+    //             );
+    //         }
 
-    const refresh = async () => {
-        setRefreshing(true);
-        await fetchRequests();
-    };
+    //         const typedData = data as RequestsResponse;
+    //         setRequests(typedData.requests || []);
+    //     } catch (err: any) {
+    //         setError(err?.message || "Failed to load requests");
+    //         setRequests([]);
+    //         console.error("fetchRequests error:", err);
+    //     } finally {
+    //         setLoading(false);
+    //         setRefreshing(false);
+    //     }
+    // }, []);
 
-    useEffect(() => {
-        fetchRequests();
-    }, [fetchRequests]);
+    // const refresh = async () => {
+    //     setRefreshing(true);
+    //     await fetchRequests();
+    // };
+
+    // useEffect(() => {
+    //     fetchRequests();
+    // }, [fetchRequests]);
 
     return {
-        requests,
-        loading,
-        refreshing,
-        error,
-        refresh,
+        requests: fetchRequests.data,
+        loading: fetchRequests.isLoading,
+        refreshing: fetchRequests.isRefetching,
+        error: fetchRequests.error,
+        refresh: fetchRequests.refetch,
     };
 }

@@ -22,6 +22,8 @@ import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import Loading from "@/components/loading";
+import api from "@/lib/axios";
+import { useAuthStore } from "@/utils/authStore";
 
 // Define the shape of your form data
 interface CommunityRequest {
@@ -30,8 +32,6 @@ interface CommunityRequest {
     image_url: string;
     request_by_user_id: string;
 }
-
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
 
 const CommunityRequestForm = () => {
     const colorScheme = useColorScheme() ?? "light";
@@ -42,8 +42,7 @@ const CommunityRequestForm = () => {
     const [nameInput, setNameInput] = useState("");
     const [descInput, setDescInput] = useState("");
 
-    const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-    const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
+    const { user, metadata } = useAuthStore();
 
     // Can add in categories
 
@@ -89,12 +88,12 @@ const CommunityRequestForm = () => {
         }) => {
             // Axios
             try {
-                const response = await axios.post(
-                    `${BASE_URL}/${inst_id}/communities/requests`,
+                const response = await api.post(
+                    `/${metadata?.inst_id}/communities/requests`,
                     {
                         name: newRequest.name,
                         description: newRequest.description,
-                        requested_by_user_id: user_id,
+                        requested_by_user_id: user?.id,
                     },
                 );
 

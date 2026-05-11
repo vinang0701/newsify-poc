@@ -37,11 +37,17 @@ import api from "@/lib/axios";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import PostTarget from "@/components/post_target";
 import { usePreferences } from "@/hooks/usePreferences";
-import { useCommunity, UserCommunities } from "@/hooks/useCommunity";
 import useCreatePost from "@/hooks/useCreatePost";
 import useDrafts from "@/hooks/useDrafts";
-import { DraftData, PostData, ServerReponse } from "@/data/types";
+import {
+    Community,
+    DraftData,
+    PostData,
+    PostDestination,
+    ServerReponse,
+} from "@/data/types";
 import { ModerationData, ModerationModal } from "@/components/moderation_modal";
+import Checkbox from "expo-checkbox";
 
 export default function CreatePost() {
     // get user data
@@ -86,11 +92,11 @@ export default function CreatePost() {
         // enabled: activeFilter === "drafts",
     });
     const { data: myCommunities, error: myCommunitiesError } = useQuery<
-        UserCommunities[]
+        Community[]
     >({
         queryKey: ["user_communities"],
         queryFn: async () => {
-            const response = await api.get<UserCommunities[]>(
+            const response = await api.get<Community[]>(
                 `/users/me/communities`,
             );
             if (!response.data || !response) {
@@ -105,7 +111,7 @@ export default function CreatePost() {
 
     // to store thumbnail and any images within content
     const [images, setImages] = useState<string[]>([]);
-    const [thumbnail, setThumbnail] = useState("");
+    const [thumbnail, setThumbnail] = useState<string | undefined>(undefined);
 
     // Rich text editor ref
     const ref = useRef<EnrichedTextInputInstance>(null);
@@ -117,12 +123,15 @@ export default function CreatePost() {
 
     // States to pass to PostTarget
     // School checkbox
-    const [isSchoolChecked, setIsSchoolChecked] = useState(false);
+    const [destination, setDestination] = useState<PostDestination>("PUBLIC");
     // Stores the category_id the user picks for this post
     const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
     const [selectedCategoryName, setSelectedCategoryName] = useState("");
     // Selected community IDs
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [selectedCommunityId, setSelectedCommunityId] = useState<string>("");
+
+    const [commPublicModalVisible, setCommPublicModalVisible] = useState(false);
+    const [isPublicOverride, setIsPublicOverride] = useState(false);
 
     // drag to refresh page
     const [refreshing, setRefreshing] = useState(false);
@@ -172,10 +181,6 @@ export default function CreatePost() {
     };
 
     const handleNavigateToTarget = async () => {
-        if (thumbnail === "" || thumbnail === undefined) {
-            Alert.alert("Error", "Please add a thumbnail.");
-            return;
-        }
         if (!titleInputValue.trim()) {
             Alert.alert("Error", "Please include a title.");
             return;
@@ -194,47 +199,45 @@ export default function CreatePost() {
 
     // Upload post
     const handlePublish = () => {
-        if (!isSchoolChecked && selectedIds.length === 0) {
-            Alert.alert("Error", "Please select at least one target audience.");
-            return;
-        }
-
         if (selectedCategoryId === "" || selectedCategoryId === null) {
             Alert.alert("Error", "Please select a category.");
             return;
         }
 
+        const finalIsPublic =
+            destination === "PUBLIC" ||
+            (destination === "COMMUNITY" && isPublicOverride);
+        const finalCommunityId =
+            destination === "COMMUNITY" ? selectedCommunityId : undefined;
+
         const payload: PostData = {
             title: titleInputValue,
             description: descriptionValue,
             content: contentHtml,
-            isSchoolChecked: isSchoolChecked,
+            destination: destination,
+            is_public: finalIsPublic,
             selectedCategoryId: selectedCategoryId,
-            selectedIds: selectedIds,
+            selectedCommunityId: finalCommunityId,
             thumbnail: thumbnail,
         };
-        // {
-        //                 status: string;
-        //                 score: string;
-        //                 is_flagged: boolean;
-        //                 flagged_categories: { category: string; score: string }[];
-        //             }
         mutate(payload, {
             onSuccess: (data: ModerationData) => {
                 // Success logic here (e.g., redirecting)
-                setThumbnail("");
+                setThumbnail(undefined);
                 setTitleInputValue("");
                 setContentHtml("");
                 setDescriptionValue("");
-                setIsSchoolChecked(false);
+                setDestination("PUBLIC");
                 setSelectedCategoryId("");
                 setSelectedCategoryName("");
-                setSelectedIds([]);
+                setSelectedCommunityId("");
                 setContentHtml("");
                 contentRef.current = "";
                 setModerationData(data);
                 setModerationModalVisible(true);
-                // Alert.alert("Post created!", data.message);
+                setCommPublicModalVisible(false);
+                setIsPublicOverride(false);
+                setActiveFilter("new");
             },
             onError: (err: any) => {
                 // Specific UI feedback
@@ -248,13 +251,13 @@ export default function CreatePost() {
 
         const payload: DraftData = {
             draft_id: draftId ? draftId : undefined,
-            thumbnail: thumbnail,
+            thumbnail: thumbnail ? thumbnail : undefined,
             title: titleInputValue,
             content: content,
         };
         mu_saveDraft(payload, {
             onSuccess: (data: ServerReponse) => {
-                setThumbnail("");
+                setThumbnail(undefined);
                 setTitleInputValue("");
                 setContentHtml("");
                 queryClient.invalidateQueries({ queryKey: ["drafts"] });
@@ -669,26 +672,156 @@ export default function CreatePost() {
 
                     {activeFilter === "target" && (
                         <PostTarget
-                            isSchoolChecked={isSchoolChecked}
-                            setIsSchoolChecked={setIsSchoolChecked}
+                            destination={destination}
+                            setDestination={setDestination}
                             selectedCategoryId={selectedCategoryId}
                             setSelectedCategoryId={setSelectedCategoryId}
                             selectedCategoryName={selectedCategoryName}
                             setSelectedCategoryName={setSelectedCategoryName}
-                            selectedIds={selectedIds}
-                            setSelectedIds={setSelectedIds}
+                            selectedCommunityId={selectedCommunityId}
+                            setSelectedCommunityId={setSelectedCommunityId}
                             categories={categories}
                             communities={myCommunities}
-                            // communities={[]}
                             onBack={() => {
                                 setActiveFilter("new");
                                 ref.current?.setValue(contentHtml);
                             }}
                             onSubmit={handlePublish}
                             isPendingSubmit={isPending}
+                            onNext={() => setCommPublicModalVisible(true)}
                         />
                     )}
                 </View>
+                <Modal
+                    visible={commPublicModalVisible}
+                    animationType="slide"
+                    backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                    onRequestClose={() => setCommPublicModalVisible(false)}
+                >
+                    <View style={styles.centeredView}>
+                        <View
+                            style={[
+                                styles.modalView,
+                                {
+                                    backgroundColor:
+                                        Colors[colorScheme].bg_light,
+                                },
+                            ]}
+                        >
+                            <View
+                                style={{
+                                    gap: 4,
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Community Admin Privilege
+                                </ThemedText>
+                                <ThemedText
+                                    type="body_medium"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Do you want this post to be public or
+                                    private?
+                                </ThemedText>
+                            </View>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    gap: 8,
+                                }}
+                            >
+                                <Checkbox
+                                    value={!isPublicOverride}
+                                    onValueChange={() => {
+                                        setIsPublicOverride(false);
+                                    }}
+                                    style={styles.checkbox}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText emphasized>
+                                    Private (Community Only)
+                                </ThemedText>
+                            </View>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    gap: 8,
+                                }}
+                            >
+                                <Checkbox
+                                    value={isPublicOverride}
+                                    onValueChange={() => {
+                                        setIsPublicOverride(true);
+                                    }}
+                                    style={styles.checkbox}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText emphasized>
+                                    Public (School + Community)
+                                </ThemedText>
+                            </View>
+
+                            <View style={styles.buttonContainer}>
+                                <Pressable
+                                    style={[
+                                        styles.commButton,
+                                        {
+                                            backgroundColor:
+                                                Colors[colorScheme].text,
+                                        },
+                                    ]}
+                                    onPress={() => {
+                                        setCommPublicModalVisible(false);
+                                        setIsPublicOverride(false);
+                                    }}
+                                >
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={{
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        Close
+                                    </ThemedText>
+                                </Pressable>
+                                <Pressable
+                                    style={[
+                                        styles.commButton,
+                                        {
+                                            backgroundColor:
+                                                Colors[colorScheme].tint,
+                                        },
+                                    ]}
+                                    onPress={() => {
+                                        handlePublish();
+                                    }}
+                                >
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={{
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                            textAlign: "center",
+                                        }}
+                                    >
+                                        Publish
+                                    </ThemedText>
+                                </Pressable>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </ScrollView>
             <ModerationModal
                 visible={moderationModalVisible}
@@ -754,5 +887,43 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         borderRadius: 4,
         borderWidth: 1,
+    },
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    modalView: {
+        width: "100%",
+        gap: 12,
+        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    buttonContainer: {
+        width: "100%",
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 12,
+    },
+    commButton: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+    },
+    checkbox: {
+        width: 16,
+        height: 16,
     },
 });

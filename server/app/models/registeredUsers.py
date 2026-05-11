@@ -54,3 +54,17 @@ class PreferenceItem(BaseModel):
 
 class SavePreferencesRequest(BaseModel):
     preferences: List[PreferenceItem]
+
+
+class UserRequestItem(BaseModel):
+    id: str
+    request_type: str
+    title: str
+    subtitle: str | None = None
+    community_name: str | None = None
+    status: str
+    rejection_reason: str | None = None
+    created_at: str
+
+    class Config:
+        from_attributes = True

@@ -7,7 +7,6 @@ from app.models.news_post import (
     LikeToggleResponseData,
 )
 from app.models.category import Category
-from app.core.db import supabase
 import uuid
 from fastapi import File, UploadFile
 from fastapi import HTTPException
@@ -85,27 +84,20 @@ async def get_community_news(
             description, 
             image_url,
             content,
+            created_at,
             users!news_posts_author_fkey!inner(name, image_url),
             likes_count:post_likes(count),
             comments_count:post_comments(count),
-            community_posts!inner(created_at, community_id, post_id)
             user_liked:post_likes(count).eq(user_id, {user_id}),
             user_saved:saved_post(count).eq(user_id, {user_id}),
             """.format(user_id=f"'{user_id}'"))
-        .eq("community_posts.community_id", community_id)
+        .eq("community_id", community_id)
         .eq("status", "PUBLISHED")
-        .order("created_at", desc=True, foreign_table="community_posts")
+        .order("created_at", desc=True)
         .execute()
     )
-
     posts = []
     for post in response.data:
-        cp_data = post.get("community_posts", [{}])
-        created_at = (
-            cp_data[0].get("created_at")
-            if isinstance(cp_data, list)
-            else cp_data.get("created_at")
-        )
         # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
         likes = post.get("likes_count", [{}])[0].get("count", 0)
         comments = post.get("comments_count", [{}])[0].get("count", 0)
@@ -117,13 +109,14 @@ async def get_community_news(
         posts.append(
             NewsPost(
                 id=post["id"],
-                created_at=created_at,
+                # created_at=created_at,
+                created_at=post["created_at"],
                 author_id=post["author"],
                 author=post["users"]["name"],
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",
-                content=post["content"]["text"] or "",
+                content=post["content"] or "",
                 likes_count=likes,
                 comments_count=comments,
                 has_liked=has_liked,
@@ -142,33 +135,63 @@ async def create_post(
     description: str,
     content: str,
     category_id: str,
-    school: str,
-    communities: list[str],
-    thumbnail: UploadFile,
+    destination: str,
+    is_public: bool,
+    community_id: Optional[str],
+    thumbnail: UploadFile | None,
     content_images: list[UploadFile],
     is_flagged: str,
 ) -> List[dict]:
     try:
+        user_role = None
+        is_request = False
+        if destination == "COMMUNITY" and community_id:
+            # Check user membership and role
+            member_res = (
+                supabase.table("community_members")
+                .select("role")
+                .eq("community_id", community_id)
+                .eq("user_id", user_id)
+                .single()
+                .execute()
+            )
 
-        # 1. Upload Thumbnail
-        file_extension = thumbnail.filename.split(".")[-1]
-        storage_path = f"news_images/{uuid.uuid4()}.{file_extension}"
+            # If user isn't in the community at all, block it
+            if not member_res.data:
+                raise Exception("You are not a member of this community.")
 
-        # 2. Read the binary content of the uploaded file
-        file_content = await thumbnail.read()
-        response = supabase.storage.from_("post_media").upload(
-            path=storage_path,
-            file=file_content,
-            file_options={"content-type": thumbnail.content_type},
-        )
+            user_role = member_res.data.get("role")
 
-        # Get image url after inserting
-        storage_res = supabase.storage.from_("post_media").get_public_url(storage_path)
+            # RULE: Only admins can post to "Public + Community"
+            if is_public and user_role != "admin":
+                raise Exception("Only admins can post publicly to a community.")
+
+        thumbnail_url = None
+        if thumbnail and thumbnail.filename:
+            try:
+                # 1. Upload Thumbnail
+                file_extension = thumbnail.filename.split(".")[-1]
+                storage_path = f"news_images/{uuid.uuid4()}.{file_extension}"
+
+                # 2. Read the binary content of the uploaded file
+                file_content = await thumbnail.read()
+                response = supabase.storage.from_("post_media").upload(
+                    path=storage_path,
+                    file=file_content,
+                    file_options={"content-type": thumbnail.content_type},
+                )
+
+                # Get image url after inserting
+                thumbnail_url = supabase.storage.from_("post_media").get_public_url(
+                    storage_path
+                )
+            except Exception as e:
+                print(f"Thumbnail upload failed, proceeding without one: {e}")
 
         # Upload Content Images and Replace URIs in HTML
         final_content_html = content
 
-        if content_images:
+        if len(content_images) > 0:
             for img_file in content_images:
                 # Read file
                 img_ext = img_file.filename.split(".")[-1]
@@ -191,39 +214,57 @@ async def create_post(
                     img_file.filename, public_url
                 )
 
-        news_res = (
-            supabase.table("news_posts")
-            .insert(
-                {
-                    "inst_id": inst_id,
-                    "author": user_id,
-                    "image_url": storage_res,
-                    "title": title,
-                    "description": description,
-                    "content": final_content_html,
-                    "status": is_flagged,
-                    "category_id": category_id,
-                }
-            )
-            .execute()
+        # If it's a community post by a regular member, it goes to requests
+        is_request = (
+            destination == "COMMUNITY" and community_id and user_role != "admin"
         )
 
-        # Insert to community_post
-        new_post_id = news_res.data[0]["id"]
-        if communities:
-            junction_data = [
-                {"community_id": comm, "post_id": new_post_id} for comm in communities
-            ]
-
-            comm_post_res = (
-                supabase.table("community_posts").insert(junction_data).execute()
-            )
-            return comm_post_res.data
-
-        return {
-            "status": "success",
-            "message": "You have successfully published the news post.",
+        post_payload = {
+            "inst_id": inst_id,
+            "author": user_id,
+            "image_url": thumbnail_url,
+            "title": title,
+            "description": description,
+            "content": final_content_html,
+            "status": is_flagged,
+            "category_id": category_id,
+            "is_public": (
+                is_public if not is_request else False
+            ),  # Force false if request
+            "community_id": (
+                community_id if not is_request else None
+            ),  # Only link if approved/admin
         }
+
+        if is_request:
+            # Create the post first (unlinked to community)
+            news_res = supabase.table("news_posts").insert(post_payload).execute()
+            news_post_id = news_res.data[0]["id"]
+
+            # Create the request for the admin
+            supabase.table("community_post_requests").insert(
+                {
+                    "request_id": news_post_id,
+                    "institution_id": inst_id,
+                    "community_id": community_id,
+                    "requested_by_user_id": user_id,
+                    "status": "pending",
+                }
+            ).execute()
+
+            return {
+                "status": "success",
+                "message": "Post submitted to community admins for review.",
+            }
+
+        else:
+            # Direct insert for Public, Followers, or Admin Community posts
+            news_res = supabase.table("news_posts").insert(post_payload).execute()
+
+            return {
+                "status": "success",
+                "message": "You have successfully published the news post.",
+            }
 
     except Exception as e:
         raise e
@@ -446,86 +487,74 @@ async def delete_user_draft(supabase: Client, user_id: str, draft_id: str):
     return True
 
 
-async def get_personalised_news(
-    supabase: Client, inst_id: str, user_id: str
-) -> List[dict]:
-
-    # Step 1: Get this user's preferred category_ids from user_preferences table
-    prefs_response = (
-        supabase.table("user_preferences")
-        .select("category_id")
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    # Turn the list of dicts into a flat list of ids
-    # e.g. [{"category_id": "abc"}] → ["abc"]
-    preferred_ids = [row["category_id"] for row in prefs_response.data]
-
-    # If user has no preferences, return the normal feed so screen isnt empty
-    if not preferred_ids:
-        return await get_institution_news(supabase, str(inst_id), user_id)
-
-    # Step 2: Fetch posts where category_id matches user's preferences
-    # category_id is now directly on news_posts so no joining needed!
+async def get_news_post_by_id(supabase: Client, news_id: str, user_id: str) -> NewsPost:
     response = (
         supabase.table("news_posts")
         .select("""
-            id,
-            created_at,
-            author,
-            title, 
-            description, 
-            image_url,
-            content,
-            users!news_posts_author_fkey!inner(name, image_url),
-            likes_count:post_likes(count),
-            comments_count:post_comments(count),
-            user_saved:saved_post(count),
-            user_liked:post_likes(count)
-            """)
-        .eq("inst_id", inst_id)
-        .in_("category_id", preferred_ids)
-        .eq("status", "PUBLISHED")
+        id,
+        created_at,
+        author,
+        title, 
+        description, 
+        image_url,
+        content,
+        users!news_posts_author_fkey!inner(name, image_url),
+        likes_count:post_likes(count),
+        comments_count:post_comments(count),
+        user_saved:saved_post(count),
+        user_liked:post_likes(count)
+        """)
+        .eq("id", news_id)
         .eq("user_liked.user_id", user_id)
-        .eq(
-            "user_saved.user_id", user_id
-        )  # <- show only published posts. no suspended posts
-        .order("created_at", desc=True)
+        .eq("user_saved.user_id", user_id)
+        .single()
         .execute()
     )
+    if response.data is None:
+        return None
 
-    if not response.data:
+    post = response.data
+    # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
+    likes = post.get("likes_count", [{}])[0].get("count", 0)
+    comments = post.get("comments_count", [{}])[0].get("count", 0)
+
+    # 3. Boolean check: if count > 0, the user has interacted with it
+    has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
+    has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
+
+    return NewsPost(
+        id=post["id"],
+        created_at=post["created_at"],
+        author_id=post["author"],
+        author=post["users"]["name"],
+        title=post["title"],
+        description=post["description"] or "",
+        image_url=post["image_url"] or "",
+        content=post["content"] or {},
+        likes_count=likes,
+        comments_count=comments,
+        has_liked=has_liked,
+        has_saved=has_saved,
+    )
+
+
+async def get_personalised_news(
+    supabase: Client, inst_id: str, user_id: str, limit: int, offset: int
+) -> List[dict]:
+    results = supabase.rpc(
+        "get_user_feed",
+        {
+            "p_user_id": str(user_id),
+            "p_inst_id": str(inst_id),  # added
+            "p_limit": limit,
+            "p_offset": offset,
+        },
+    ).execute()
+
+    if not results.data:
         return []
 
-    posts = []
-    for post in response.data:
-        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
-        likes = post.get("likes_count", [{}])[0].get("count", 0)
-        comments = post.get("comments_count", [{}])[0].get("count", 0)
-
-        # 3. Boolean check: if count > 0, the user has interacted with it
-        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
-        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
-
-        posts.append(
-            NewsPost(
-                id=post["id"],
-                created_at=post["created_at"],
-                author_id=post["author"],
-                author=post["users"]["name"],
-                title=post["title"],
-                description=post["description"] or "",
-                image_url=post["image_url"] or "",
-                content=post["content"] or {},
-                likes_count=likes,
-                comments_count=comments,
-                has_liked=has_liked,
-                has_saved=has_saved,
-            )
-        )
-
-    return posts
+    return [NewsPost(**np) for np in results.data]
 
 
 async def save_post(supabase: Client, user_id: str, post_id: str) -> dict:
@@ -643,7 +672,7 @@ async def is_post_saved(supabase: Client, user_id: str, post_id: str) -> bool:
 # ----------------------------
 # MY LIKES
 # ----------------------------
-async def toggle_post_like(post_id: uuid.UUID, user_id: str):
+async def toggle_post_like(supabase: Client, post_id: uuid.UUID, user_id: str):
     try:
 
         response = supabase.rpc(
@@ -661,7 +690,110 @@ async def toggle_post_like(post_id: uuid.UUID, user_id: str):
         raise HTTPException(status_code=400, detail=f"Database error: {e.message}")
 
 
-async def get_categories(supabase: Client) -> List[dict]:
-    response = supabase.table("categories").select("*").eq("status", "active").execute()
+async def get_categories(supabase: Client, inst_id: str):
+    try:
+        response = (
+            supabase.table("categories")
+            .select("*")
+            .eq("inst_id", inst_id)
+            .eq("status", "active")
+            .execute()
+        )
 
-    return [Category(**category) for category in response.data]
+        if response.data is None:
+            return None
+
+        return [
+            Category(
+                category_id=category["category_id"],
+                category_name=category["category_name"],
+            )
+            for category in response.data
+        ]
+    except Exception as e:
+        # Log the error here
+        raise HTTPException(status_code=500, detail="Database retrieval failed")
+
+
+'''
+async def get_personalised_news(
+    supabase: Client, inst_id: str, user_id: str
+) -> List[dict]:
+
+    # Step 1: Get this user's preferred category_ids from user_preferences table
+    prefs_response = (
+        supabase.table("user_preferences")
+        .select("category_id")
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    # Turn the list of dicts into a flat list of ids
+    # e.g. [{"category_id": "abc"}] → ["abc"]
+    preferred_ids = [row["category_id"] for row in prefs_response.data]
+
+    # If user has no preferences, return the normal feed so screen isnt empty
+    if not preferred_ids:
+        return await get_institution_news(supabase, str(inst_id), user_id)
+
+    # Step 2: Fetch posts where category_id matches user's preferences
+    # category_id is now directly on news_posts so no joining needed!
+    response = (
+        supabase.table("news_posts")
+        .select("""
+            id,
+            created_at,
+            author,
+            title, 
+            description, 
+            image_url,
+            content,
+            users!news_posts_author_fkey!inner(name, image_url),
+            likes_count:post_likes(count),
+            comments_count:post_comments(count),
+            user_saved:saved_post(count),
+            user_liked:post_likes(count)
+            """)
+        .eq("inst_id", inst_id)
+        .in_("category_id", preferred_ids)
+        .eq("status", "PUBLISHED")
+        .eq("user_liked.user_id", user_id)
+        .eq(
+            "user_saved.user_id", user_id
+        )  # <- show only published posts. no suspended posts
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    if not response.data:
+        return []
+
+    posts = []
+    for post in response.data:
+        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
+        likes = post.get("likes_count", [{}])[0].get("count", 0)
+        comments = post.get("comments_count", [{}])[0].get("count", 0)
+
+        # 3. Boolean check: if count > 0, the user has interacted with it
+        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
+        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
+
+        posts.append(
+            NewsPost(
+                id=post["id"],
+                created_at=post["created_at"],
+                author_id=post["author"],
+                author=post["users"]["name"],
+                title=post["title"],
+                description=post["description"] or "",
+                image_url=post["image_url"] or "",
+                content=post["content"] or {},
+                likes_count=likes,
+                comments_count=comments,
+                has_liked=has_liked,
+                has_saved=has_saved,
+            )
+        )
+
+    return posts
+'''

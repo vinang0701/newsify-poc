@@ -14,14 +14,14 @@ import Feather from "@expo/vector-icons/Feather";
 import NotificationTabs from "@/components/notifications/NotificationTabs";
 import NotificationList from "@/components/notifications/NotificationList";
 import InvitationList from "@/components/notifications/InvitationList";
-import { useNotifications } from "@/hooks/useNotifications";
+import { NotificationItem, useNotifications } from "@/hooks/useNotifications";
 import { useInvitations } from "@/hooks/useInvitations";
 import { useUnreadNotificationCount } from "@/hooks/useUnreadNotificationCount";
 
 export default function NotificationsScreen() {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<"notifications" | "invitations">(
-        "notifications"
+        "notifications",
     );
 
     const {
@@ -45,15 +45,29 @@ export default function NotificationsScreen() {
 
     const { unreadCount, refetchUnreadCount } = useUnreadNotificationCount();
 
-    const handleNotificationPress = async (item: any) => {
+    const handleNotificationPress = async (item: NotificationItem) => {
         try {
             if (!item.is_read) {
-                await markAsRead(item.id);
+                await markAsRead(item.notification_id);
                 await refetchUnreadCount();
             }
 
-            if (item.metadata?.route) {
-                router.push(item.metadata.route);
+            if (
+                item.reference_id &&
+                (item.notification_type.toLocaleLowerCase() === "comment" ||
+                    item.notification_type.toLocaleLowerCase() === "like")
+            ) {
+                router.push({
+                    pathname: "/view_news_post",
+                    params: { news_id: item.reference_id },
+                });
+            }
+
+            if (item.reference_id && item.reference_table === "communities") {
+                router.push({
+                    pathname: "/(tabs)/community/[communityId]",
+                    params: { communityId: item.reference_id },
+                });
             }
         } catch (err: any) {
             Alert.alert("Error", err.message || "Failed to open notification");
@@ -69,7 +83,10 @@ export default function NotificationsScreen() {
         }
     };
 
-    const handleRespond = async (id: string, action: "accepted" | "declined") => {
+    const handleRespond = async (
+        id: string,
+        action: "accepted" | "declined",
+    ) => {
         try {
             await respondToInvitation(id, action);
             Alert.alert("Success", `Invitation ${action}.`);
@@ -79,7 +96,9 @@ export default function NotificationsScreen() {
     };
 
     const loading =
-        activeTab === "notifications" ? notificationsLoading : invitationsLoading;
+        activeTab === "notifications"
+            ? notificationsLoading
+            : invitationsLoading;
 
     const refreshing =
         activeTab === "notifications"
@@ -90,14 +109,19 @@ export default function NotificationsScreen() {
         activeTab === "notifications" ? notificationsError : invitationsError;
 
     const refresh =
-        activeTab === "notifications" ? refreshNotifications : refreshInvitations;
+        activeTab === "notifications"
+            ? refreshNotifications
+            : refreshInvitations;
 
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>
             <Stack.Screen options={{ headerShown: false }} />
 
             <View style={styles.topHeader}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <TouchableOpacity
+                    onPress={() => router.back()}
+                    style={styles.backButton}
+                >
                     <Feather name="arrow-left" size={18} color="#FFFFFF" />
                 </TouchableOpacity>
 
@@ -126,7 +150,10 @@ export default function NotificationsScreen() {
                 <View style={styles.centerWrap}>
                     <Text style={styles.errorTitle}>Unable to load</Text>
                     <Text style={styles.errorText}>{error}</Text>
-                    <TouchableOpacity style={styles.retryButton} onPress={refresh}>
+                    <TouchableOpacity
+                        style={styles.retryButton}
+                        onPress={refresh}
+                    >
                         <Text style={styles.retryButtonText}>Try again</Text>
                     </TouchableOpacity>
                 </View>

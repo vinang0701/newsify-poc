@@ -11,37 +11,38 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useFonts } from "@expo-google-fonts/roboto";
 import { TextInput, StyleSheet } from "react-native";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStore } from "@/utils/authStore";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { supabase } from "@/lib/supabase";
 import Loading from "@/components/loading";
+
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 export const unstable_settings = {
     anchor: "(tabs)",
 };
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
     const { session, isVerified, initialized } = useAuthStore();
     const colorScheme = useColorScheme() || "light";
     const [loaded, error] = useFonts({
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
-        // Poppins: require("@/assets/fonts/Poppins-Regular.ttf"),
     });
-    if (!initialized) {
-        return <Loading />;
-    }
+    // usePushNotifications();
 
     // Create a client
-    const queryClient = new QueryClient();
-
     useEffect(() => {
         if (loaded || error) {
             SplashScreen.hideAsync();
         }
     }, [loaded, error]);
+
+    if (!initialized) {
+        return <Loading />;
+    }
 
     if (!loaded && !error) {
         return null;
@@ -101,6 +102,18 @@ export default function RootLayout() {
                                     />
                                     <Stack.Screen
                                         name="update_password"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="edit_news_post"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="view_news_post"
                                         options={{
                                             headerShown: false,
                                         }}

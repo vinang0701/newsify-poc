@@ -1,11 +1,13 @@
+import { News } from "@/data/types";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { Alert } from "react-native";
 
-export default function usePosts() {
+export default function usePosts(news_id?: string) {
     const queryClient = useQueryClient();
+    const { metadata } = useAuthStore();
 
     const [suspendModalVisible, setSuspendModalVisible] = useState(false);
 
@@ -27,20 +29,24 @@ export default function usePosts() {
             },
         });
 
-    // const handleSuspend = async (news_id: string) => {
-    //     // Add this safety check at the very top of handleSuspend:
-    //     if (!user.id) {
-    //         Alert.alert(
-    //             "Error",
-    //             "Could not verify your identity. Please try again.",
-    //         );
-    //         return;
-    //     }
-
-    //     mu_suspendPost(news_id);
-    // };
+    const {
+        data: postData,
+        error: postDataError,
+        isLoading,
+    } = useQuery({
+        queryKey: ["news_post"],
+        queryFn: async (): Promise<News> => {
+            const response = await api.get(
+                `/${metadata?.inst_id}/news/${news_id}`,
+            );
+            return response.data;
+        },
+        enabled: !!news_id,
+    });
 
     return {
+        postData,
+        isLoading,
         suspendModalVisible,
         setSuspendModalVisible,
         mu_suspendPost,

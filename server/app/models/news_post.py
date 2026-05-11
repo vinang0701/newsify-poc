@@ -18,6 +18,10 @@ class NewsPost(BaseModel):
     comments_count: int = 0
     has_liked: bool = False
     has_saved: bool = False
+    community_id: str | None = None
+    community_name: str | None = None
+    community_image: str | None = None
+    category_id: str | None = None
 
     class Config:
         from_attributes = True

@@ -45,9 +45,7 @@ async def create_comment(
     comment_text: str,
     parent_comment_id: Optional[uuid.UUID] = None,
 ):
-    print("trying")
     try:
-
         payload = {
             "post_id": str(post_id),
             "commented_by_user_id": commented_by_user_id,
@@ -57,7 +55,43 @@ async def create_comment(
         insert_result = supabase.table("post_comments").insert(payload).execute()
         if not insert_result.data[0]:
             raise ValueError("No data returned from database insert")
-        return PostComment(**insert_result.data[0])
+
+        new_comment = insert_result.data[0]
+        recipient_id = None
+        if parent_comment_id:
+            # Case: Reply to a comment
+            parent_res = (
+                supabase.table("post_comments")
+                .select("commented_by_user_id")
+                .eq("comment_id", str(parent_comment_id))
+                .single()
+                .execute()
+            )
+            recipient_id = parent_res.data.get("commented_by_user_id")
+        else:
+            # Case: Top-level comment (Post Author gets notified)
+            post_res = (
+                supabase.table("news_posts")
+                .select("author")
+                .eq("id", str(post_id))
+                .single()
+                .execute()
+            )
+            recipient_id = post_res.data.get("author")
+
+        if recipient_id and recipient_id != commented_by_user_id:
+            notification_payload = {
+                "actor_user_id": commented_by_user_id,
+                "recipient_user_id": recipient_id,
+                "notification_type": "REPLY" if parent_comment_id else "COMMENT",
+                "reference_id": new_comment["comment_id"],
+                "reference_table": "post_comments",
+                "message": f"{comment_text[:50]}...",
+                "is_read": False,
+            }
+            supabase.table("notifications").insert(notification_payload).execute()
+
+        return PostComment(**new_comment)
 
     except APIError as e:
         # Log the error here if you have a logger

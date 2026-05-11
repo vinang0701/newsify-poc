@@ -16,13 +16,8 @@ import { useRequests } from "@/hooks/useRequests";
 export default function RequestsScreen() {
     const router = useRouter();
 
-    const {
-        requests,
-        loading,
-        refreshing,
-        error,
-        refresh,
-    } = useRequests();
+    const { requests, loading, refreshing, error, refresh } = useRequests();
+    console.log(requests);
 
     return (
         <SafeAreaView style={styles.container} edges={["top"]}>
@@ -51,12 +46,14 @@ export default function RequestsScreen() {
                         <Text style={styles.errorTitle}>
                             Unable to load requests
                         </Text>
-                        <Text style={styles.errorText}>{error}</Text>
+                        <Text style={styles.errorText}>{error.message}</Text>
                         <TouchableOpacity
                             style={styles.retryButton}
-                            onPress={refresh}
+                            onPress={() => refresh}
                         >
-                            <Text style={styles.retryButtonText}>Try again</Text>
+                            <Text style={styles.retryButtonText}>
+                                Try again
+                            </Text>
                         </TouchableOpacity>
                     </View>
                 ) : (

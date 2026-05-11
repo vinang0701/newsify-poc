@@ -64,7 +64,9 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                 await queryClient.cancelQueries({ queryKey: ["news"] });
 
                 // Snapshot current cache state
-                const previousNews = queryClient.getQueryData<News[]>(["news"]);
+                const previousNews = queryClient.getQueriesData<News[]>({
+                    queryKey: ["news"],
+                });
 
                 // Optimistically update the "news" list
                 queryClient.setQueriesData<News[]>(
@@ -93,12 +95,9 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
 
             onError: (err, post_id, context) => {
                 // Rollback to the exact state before the click
-                if (context?.previousNews) {
-                    queryClient.setQueriesData<News[]>(
-                        { queryKey: ["news"] },
-                        context.previousNews,
-                    );
-                }
+                context?.previousNews.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
                 console.error(`Like failed for ${post_id}:`, err);
             },
         });
@@ -133,7 +132,17 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
         router.push({
             // pathname: "/(tabs)/profile_page/[user_id]",
             pathname: "/[user_id]",
-            params: { user_id: user_id },
+            params: { user_id: user_id, inst_id: metadata?.inst_id },
+        });
+    }
+
+    function handleNavigateToComm(community_id: string | null) {
+        if (community_id === null) {
+            return;
+        }
+        router.push({
+            pathname: "/(tabs)/community/[communityId]",
+            params: { communityId: community_id },
         });
     }
 
@@ -195,7 +204,7 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
 
     return (
         <View>
-            <View
+            <Pressable
                 style={[
                     styles.card,
                     {
@@ -203,26 +212,60 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                         borderColor: Colors[colorScheme].border,
                     },
                 ]}
+                onPress={() =>
+                    router.push({
+                        pathname: "/view_news_post",
+                        params: { news_id: news.id },
+                    })
+                }
             >
                 <View style={styles.cardInfoContainer}>
-                    <Pressable onPress={() => handleNavigate(news.author_id)}>
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 4,
-                            }}
+                    {news.community_id !== null ? (
+                        <Pressable
+                            onPress={() =>
+                                handleNavigateToComm(news.community_id)
+                            }
                         >
-                            <Image
-                                source={require("@/assets/images/profile.png")}
-                                style={{ width: 28, height: 28 }}
-                            />
-                            <ThemedText type="defaultSemiBold">
-                                {news.author}
-                            </ThemedText>
-                        </View>
-                    </Pressable>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 4,
+                                }}
+                            >
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 28, height: 28 }}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    {news.community_name}
+                                </ThemedText>
+                            </View>
+                        </Pressable>
+                    ) : (
+                        <Pressable
+                            onPress={() => handleNavigate(news.author_id)}
+                        >
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 4,
+                                }}
+                            >
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 28, height: 28 }}
+                                />
+                                <ThemedText type="defaultSemiBold">
+                                    {news.author}
+                                </ThemedText>
+                            </View>
+                        </Pressable>
+                    )}
+
                     <ThemedText
                         type="caption"
                         style={{
@@ -249,21 +292,24 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                 </View>
                 <View>
                     {/* Content */}
-                    <Image
-                        alt="image"
-                        source={{
-                            uri: news.image_url,
-                        }}
-                        style={{
-                            width: "100%",
-                            height: 200,
-                            resizeMode: "cover",
-                        }}
-                    />
+                    {news.image_url && (
+                        <Image
+                            alt="image"
+                            source={{
+                                uri: news.image_url,
+                            }}
+                            style={{
+                                width: "100%",
+                                height: 200,
+                                resizeMode: "cover",
+                                marginBottom: 12,
+                            }}
+                        />
+                    )}
+
                     <ThemedText
                         type="sub_heading"
                         style={{
-                            paddingTop: 12,
                             paddingHorizontal: 12,
                             fontSize: 20,
                         }}
@@ -360,7 +406,7 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                         )}
                     </Pressable>
                 </View>
-            </View>
+            </Pressable>
         </View>
     );
 }

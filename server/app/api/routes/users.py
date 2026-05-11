@@ -44,18 +44,6 @@ router = APIRouter(tags=["users"], dependencies=[Depends(get_current_user)])
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
-class UserPublishPostBody(BaseModel):
-    user_id: uuid.UUID
-    image: UploadFile
-    title: str
-    content: str
-    school: str
-    communities: List[uuid.UUID]
-
-    def print_content(self):
-        print(self.content)
-
-
 class JoinCommunityRequest(BaseModel):
     community_id: uuid.UUID
     user_id: uuid.UUID | None = None
@@ -65,7 +53,6 @@ class FollowRequest(BaseModel):
     followed_user_id: uuid.UUID
 
 
-# helper function to extract src url from img tags
 def extract_text_content(html_content: str):
     if not html_content:
         return ""
@@ -148,6 +135,8 @@ def moderate_text(text: str):
 
 
 async def moderate_image(file: UploadFile):
+    if file is None or not file.filename:
+        return {"flagged": False, "categories": [], "scores": {}}
     # 1. Read file into memory
     file_bytes = await file.read()
 
@@ -237,29 +226,21 @@ def calculate_safety_score(moderation_results: list) -> int:
     return int(max(0, min(100, score)))
 
 
-@router.post("/users/create")
-async def create_post_preview(item: UserPublishPostBody):
-    moderation = moderate_text(item.content)
-
-    return {
-        "content": item.content,
-        "moderation": moderation,
-    }
-
-
 # ----------------------------
 # SELF / AUTHENTICATED USER ROUTES
 # ----------------------------
 
 
-@router.get("/users/me/requests", response_model=UserRequestsResponse)
+@router.get("/users/me/requests")
 async def get_my_requests(
     app_user=Depends(get_current_app_user),
 ):
     try:
         user_id = app_user["id"]
-        requests = await requests_service.get_all_user_requests(user_id)
-        return {"requests": requests}
+        requests = await requests_service.get_all_user_requests(
+            supabase=supabase, user_id=user_id
+        )
+        return requests
     except Exception as e:
         print(f"Requests Fetch Error: {repr(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -272,7 +253,8 @@ async def get_my_notifications(
     try:
         user_id = app_user["id"]
         rows = await users_notifications_service.get_user_notifications(user_id)
-        return {"items": users_notifications_service.map_notifications(rows)}
+        # return {"items": users_notifications_service.map_notifications(rows)}
+        return {"items": rows}
     except Exception as e:
         print(f"My Notifications Error: {repr(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -405,30 +387,41 @@ async def create_news_post(
     description: str = Form(...),
     content: str = Form(...),
     category_id: str = Form(...),
-    school: str = Form(...),
-    communities: list[str] = Form([]),
-    thumbnail: UploadFile = File(...),
+    destination: str = Form(...),
+    is_public: bool = Form(...),
+    community_id: Optional[str] = Form(None),
+    thumbnail: Optional[UploadFile] = File(None),
     content_images: list[UploadFile] = File([]),
     app_user=Depends(get_current_app_user),
 ):
     try:
         user_id = app_user["id"]
         inst_id = app_user["inst_id"]
-        isSchool = school.lower() == "true"
-        if not school and not communities:
-            raise HTTPException(
-                status_code=400,
-                detail="Target is empty. Please select at least one target audience.",
-            )
+
+        all_results = []
 
         extracted_text = extract_text_content(content)
         text_res = moderate_text(title + " " + extracted_text)
-        thumb_res = await moderate_image(thumbnail)
-        content_img_res = await asyncio.gather(
-            *[moderate_image(img) for img in content_images]
-        )
+        all_results.append(text_res)
 
-        all_results = [text_res, thumb_res] + content_img_res
+        if thumbnail and thumbnail.filename:
+            # Ensure cursor is at start
+            await thumbnail.seek(0)
+            thumb_res = await moderate_image(thumbnail)
+            all_results.append(thumb_res)
+            # Reset cursor after reading for the next step (uploading)
+            await thumbnail.seek(0)
+
+        if content_images:
+            # Gather results for all images in the list
+            content_img_results = await asyncio.gather(
+                *[moderate_image(img) for img in content_images]
+            )
+            all_results.extend(content_img_results)
+
+            # Crucial: Reset cursors for content images so service can read them
+            for img in content_images:
+                await img.seek(0)
 
         # 2. Check if globally flagged
         is_flagged = any(r["flagged"] for r in all_results)
@@ -450,8 +443,9 @@ async def create_news_post(
             title=title,
             description=description,
             content=content,
-            school=isSchool,
-            communities=communities,
+            destination=destination,
+            is_public=is_public,
+            community_id=community_id,
             category_id=category_id,
             content_images=content_images,
             is_flagged=post_status,
@@ -481,6 +475,79 @@ async def create_news_post(
     except Exception as e:
         print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail="Failed to publish news post.")
+
+
+@router.patch("/users/me/news/{news_id}")
+async def edit_news_post(
+    news_id: uuid.UUID, app_user: UserPayload = Depends(get_current_app_user)
+):
+    # check if the user is allowed to edit this post
+    # If not, early return
+    post = await news_service.get_news_post(
+        supabase=supabase,
+        inst_id=app_user["inst_id"],
+        news_id=str(news_id),
+        user_id=app_user["id"],
+    )
+    if not post or post.author_id != app_user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to edit this post.",
+        )
+
+    # else, moderate the images and
+    # if fail moderation, no change and return score to user
+    all_results = []
+
+    extracted_text = extract_text_content(content)
+    text_res = moderate_text(title + " " + extracted_text)
+    all_results.append(text_res)
+
+    if thumbnail and thumbnail.filename:
+        # Ensure cursor is at start
+        await thumbnail.seek(0)
+        thumb_res = await moderate_image(thumbnail)
+        all_results.append(thumb_res)
+        # Reset cursor after reading for the next step (uploading)
+        await thumbnail.seek(0)
+
+    if content_images:
+        # Gather results for all images in the list
+        content_img_results = await asyncio.gather(
+            *[moderate_image(img) for img in content_images]
+        )
+        all_results.extend(content_img_results)
+
+        # Crucial: Reset cursors for content images so service can read them
+        for img in content_images:
+            await img.seek(0)
+
+    # 2. Check if globally flagged
+    is_flagged = any(r["flagged"] for r in all_results)
+
+    # 3. Calculate the 0-100 score
+    safety_score = calculate_safety_score(all_results)
+    if safety_score >= 90:
+        post_status = "PUBLISHED"
+    elif 80 <= safety_score < 90:
+        post_status = "PENDING REVIEW"
+    else:
+        post_status = "REJECTED"
+
+    if post_status == "REJECTED":
+        return {
+            "status": post_status,
+            "score": f"{safety_score}%",
+            "is_flagged": safety_score < 80,
+            "flagged_categories": list(
+                set([c for r in all_results for c in r["categories"]])
+            ),
+        }
+
+    # if pass moderation, delete old thumbnail and content images
+    # insert new ones
+
+    return None
 
 
 @router.delete("/users/me/news/{post_id}")
@@ -599,6 +666,14 @@ async def delete_user_draft(
         )
 
 
+@router.get("/users/me/following")
+async def get_my_following(current_user=Depends(get_current_app_user)):
+    my_following = await users_service.get_user_following(
+        supabase, current_user["inst_id"], current_user["id"]
+    )
+    return my_following
+
+
 @router.post("/users/me/following")
 async def follow_user(
     body: FollowRequest,
@@ -701,14 +776,6 @@ async def get_user_news(inst_id: str, user_id: str):
     if my_news is None:
         raise HTTPException(status_code=404, detail="No news found")
     return my_news
-
-
-@router.get("/{inst_id}/users/me/following")
-async def get_my_following(inst_id: str, current_user=Depends(get_current_app_user)):
-    my_following = await users_service.get_user_following(
-        supabase, inst_id, str(current_user["id"])
-    )
-    return my_following
 
 
 @router.get("/{inst_id}/users/{user_id}/following")
@@ -815,9 +882,9 @@ async def get_saved_posts(
         raise HTTPException(status_code=500, detail="Could not fetch saved posts")
 
 
-@router.get("/{inst_id}/users/me/preferences")
+@router.get("/users/me/preferences")
 async def get_user_preferences(
-    inst_id: str, current_user: UserPayload = Depends(get_current_app_user)
+    current_user: UserPayload = Depends(get_current_app_user),
 ):
     user_id = current_user["id"]
     user_preferences = await users_preferences_service.get_user_preferences(
@@ -826,9 +893,8 @@ async def get_user_preferences(
     return user_preferences
 
 
-@router.post("/{inst_id}/users/me/preferences")
+@router.post("/users/me/preferences")
 async def update_preferences(
-    inst_id: str,
     payload: SavePreferencesRequest,
     current_user: UserPayload = Depends(get_current_app_user),
 ):

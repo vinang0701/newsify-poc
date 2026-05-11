@@ -51,14 +51,46 @@ async def get_communities(
     return formatted_communities
 
 
-async def get_community(supabase: Client, community_id: str):
+async def get_community(
+    supabase: Client, community_id: str, inst_id: str, user_id: str
+):
     response = (
-        supabase.table("communities").select("*").eq("id", community_id).execute()
+        supabase.table("communities")
+        .select(
+            "*, member_info:community_members(role, user_id), member_count:community_members(count)"
+        )
+        .eq("inst_id", inst_id)
+        .eq("id", community_id)
+        .eq("member_info.user_id", user_id)
+        .eq("status", "active")
+        .order("name", desc=False)
+        .single()
+        .execute()
     )
 
-    if response.data:
-        return Community(**response.data[0])
-    return None
+    if response.data is None:
+        return None
+
+    comm = response.data
+    user_info_list = comm.get("member_info", [])
+    user_membership = user_info_list[0] if user_info_list else None
+
+    count_data = comm.get("member_count", [])
+    total_count = count_data[0].get("count", 0) if count_data else 0
+
+    comm["role"] = user_membership.get("role") if user_membership else None
+    comm["isMember"] = user_membership is not None
+    comm["member_count"] = total_count
+
+    return Community(**comm)
+
+    # response = (
+    #     supabase.table("communities").select("*").eq("id", community_id).execute()
+    # )
+
+    # if response.data:
+    #     return Community(**response.data[0])
+    # return None
 
 
 # Function to insert new community application into communities_requests
@@ -68,7 +100,7 @@ async def create_community_application(
     supabase: Client, formData: CommunityApplication
 ):
     req_res = (
-        supabase.table("community_requests")
+        supabase.table("community_creation_requests")
         .insert(
             {
                 "requested_by_user_id": str(formData.requested_by_user_id),
@@ -84,43 +116,7 @@ async def create_community_application(
     # add error handling
     if req_res.data is None:
         return None, req_res.error
-
-    response = (
-        supabase.table("communities")
-        .insert(
-            {
-                "created_by_user_id": str(formData.requested_by_user_id),
-                "name": formData.name,
-                "description": formData.description,
-                "status": "active",
-                "inst_id": str(formData.inst_id),
-            }
-        )
-        .execute()
-    )
-
-    if response.data is None:
-        return None, response.error
-
-    # Insert into members
-    mem_res = (
-        supabase.table("community_members")
-        .insert(
-            {
-                "community_id": response.data[0]["id"],
-                "user_id": response.data[0]["created_by_user_id"],
-                "role": "admin",
-            }
-        )
-        .execute()
-    )
-
-    supabase.table("community_admins").insert({
-        "community_id": response.data[0]["id"],
-        "user_id": response.data[0]["created_by_user_id"],
-    }).execute()
-
-    return response.data, None
+    return req_res.data, None
 
 
 async def get_community_role(supabase, community_id: str, user_id: str):

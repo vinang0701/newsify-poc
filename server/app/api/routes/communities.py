@@ -48,9 +48,18 @@ async def get_communities(
 
 
 @router.get("/{community_id}")
-async def get_community(community_id: str):
+async def get_community(
+    community_id: str,
+    inst_id: str,
+    app_user: UserPayload = Depends(get_current_app_user),
+):
     try:
-        community = await communities_service.get_community(supabase, community_id)
+        community = await communities_service.get_community(
+            supabase, community_id=community_id, inst_id=inst_id, user_id=app_user["id"]
+        )
+
+        if community is None:
+            raise HTTPException(status_code=400, detail="Community cannot be found.")
 
         return community
     except Exception as e:

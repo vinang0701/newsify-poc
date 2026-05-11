@@ -1,6 +1,5 @@
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
-import newsArticles from "@/data/news.json";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -38,9 +37,11 @@ import { Image } from "expo-image";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { usePreferences } from "@/hooks/usePreferences";
-import Feather from "@expo/vector-icons/Feather";
 import Loading from "@/components/loading";
 import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
+import { useUserFollowing } from "@/hooks/useUserFollowing";
+import Feather from "@expo/vector-icons/Feather";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 const HEADER_HEIGHT = 250;
 
@@ -48,7 +49,7 @@ export default function HomeScreen() {
     const { user, metadata, initialized } = useAuthStore();
 
     if (!metadata || !user) {
-        throw new Error("Error occurred when retrieving user data.");
+        return null;
     }
 
     if (!initialized) {
@@ -61,12 +62,13 @@ export default function HomeScreen() {
     const [activeFilter, setActiveFilter] = useState("Recent");
     const insets = useSafeAreaInsets();
     // Pull categories from the hook — we reuse this for both steps of the modal
-    const { categories, selected, toggleCategory, loading } = usePreferences();
-    if (categories === undefined) {
-        throw new Error("Error occurred while fetching categories.");
-    }
-
+    const { categories, preferences, loading, error } = usePreferences();
     const [refreshing, setRefreshing] = React.useState(false);
+    const {
+        loading: loadingFollow,
+        followUser,
+        unfollowUser,
+    } = useUserFollowing(user.id);
 
     // Bottom sheet
     const [selectedNewsId, setSelectedNewsId] = useState("");
@@ -116,17 +118,6 @@ export default function HomeScreen() {
         }, 2000);
     }, []);
 
-    // Get the currently logged in user from Supabase auth
-    const { data: currentUser } = useQuery({
-        queryKey: ["current_user"],
-        queryFn: async () => {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            return user;
-        },
-    });
-
     // Fetch personalised posts — only runs once we have the user's id
     const {
         data: personalisedData,
@@ -136,45 +127,40 @@ export default function HomeScreen() {
         queryKey: ["news"],
         queryFn: async (): Promise<News[]> => {
             const response = await api.get(
-                `/${metadata.inst_id}/news/feed/personalised?user_id=${currentUser?.id}`,
+                `/${metadata.inst_id}/news/feed/personalised`,
             );
             // if (!response.ok) throw new Error("Network response was not ok");
             return await response.data;
         },
-        enabled: !!currentUser?.id, // only fetch once we have the user id
+        enabled: !!user?.id, // only fetch once we have the user id
     });
 
-    const renderBackdrop = useCallback(
-        (props: any) => (
-            <BottomSheetBackdrop
-                appearsOnIndex={0}
-                disappearsOnIndex={-1}
-                {...props}
-            />
-        ),
-        [],
-    );
-
-    // When the screen loads and we have the current user,
-    // check if they have any preferences saved
-    // If none → show the modal
-    useEffect(() => {
-        const checkPreferences = async () => {
-            if (!currentUser?.id) return;
-            if (!loading) {
-                const data = selected;
-
-                if (!data || data.length === 0) {
-                    setShowPrefsModal(true);
-                }
-            }
+    const filters = useMemo(() => {
+        // 1. The "Recent" item we always want at the start
+        const recentItem = {
+            user_id: user.id,
+            category: {
+                category_id: "Recent",
+                category_name: "Recent",
+                category_status: "active",
+            },
+            preference_type: "include",
+            created_at: "",
         };
 
-        checkPreferences();
-    }, [currentUser?.id]);
+        // 2. If preferences hasn't loaded yet, just show "Recent"
+        if (!preferences || preferences.length === 0) {
+            return [recentItem];
+        }
+
+        // 3. Map the nested category objects into a flat list
+
+        // 4. Combine them: "Recent" is now at index 0
+        return [recentItem, ...preferences];
+    }, [preferences]);
 
     const handleSavePreferences = async () => {
-        if (!currentUser?.id) return;
+        if (!user?.id) return;
 
         try {
             setSavingPrefs(true);
@@ -208,6 +194,18 @@ export default function HomeScreen() {
             setSavingPrefs(false);
         }
     };
+
+    const filteredNews = useMemo(() => {
+        if (!personalisedData) return [];
+
+        if (activeFilter === "Recent") {
+            return personalisedData;
+        }
+
+        return personalisedData.filter(
+            (news) => news.category_id === activeFilter,
+        );
+    }, [personalisedData, preferences, activeFilter]);
 
     // report post
     function handleReportPost() {
@@ -256,11 +254,42 @@ export default function HomeScreen() {
         mu_suspendPost();
     };
 
+    const handleEditPress = async () => {
+        // Add this safety check at the very top of handleSuspend:
+        if (!user.id) {
+            Alert.alert(
+                "Error",
+                "Could not verify your identity. Please try again.",
+            );
+            return;
+        }
+        bottomSheetRef.current?.dismiss();
+
+        router.push({
+            pathname: "/edit_news_post",
+            params: { news_id: selectedNewsId },
+        });
+    };
+
+    const handleFollowPress = (user_id: string) => {
+        followUser(user_id);
+        bottomSheetRef.current?.dismiss();
+    };
+
+    const handleUnfollowPress = (user_id: string) => {
+        unfollowUser(user_id);
+        bottomSheetRef.current?.dismiss();
+    };
+
     if (
         isFetchingPersonalised ||
         !personalisedData ||
         savingPrefs ||
-        isPendingSuspendPost
+        isPendingSuspendPost ||
+        !user.id ||
+        !metadata.inst_id ||
+        loading ||
+        loadingFollow
     ) {
         return <Loading />;
     }
@@ -293,15 +322,17 @@ export default function HomeScreen() {
                 }
             >
                 <FlashList
-                    keyExtractor={(item) => item.id}
+                    keyExtractor={(item) => item.category.category_id}
                     horizontal
-                    style={{ marginBottom: 12, elevation: 10 }}
-                    data={categories}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ marginBottom: 12 }}
+                    style={{ elevation: 10 }}
+                    data={filters}
                     renderItem={({ item }) => (
                         <Pressable
                             style={{
                                 backgroundColor:
-                                    activeFilter === item.category_name
+                                    activeFilter === item.category.category_id
                                         ? Colors[colorScheme].tint
                                         : Colors[colorScheme].bg_light,
                                 paddingHorizontal: 12,
@@ -312,10 +343,12 @@ export default function HomeScreen() {
                                 borderRadius: 4,
                             }}
                             onPress={() => {
-                                if (activeFilter === item.category_name) {
+                                if (
+                                    activeFilter === item.category.category_id
+                                ) {
                                     return;
                                 } else {
-                                    setActiveFilter(item.category_name);
+                                    setActiveFilter(item.category.category_id);
                                 }
                             }}
                         >
@@ -324,198 +357,60 @@ export default function HomeScreen() {
                                 emphasized={true}
                                 style={{
                                     color:
-                                        activeFilter === item.category_name
+                                        activeFilter ===
+                                        item.category.category_id
                                             ? Colors[colorScheme].button_text
                                             : Colors[colorScheme].tint,
                                 }}
                             >
-                                {item.category_name}
+                                {item.category.category_name}
                             </ThemedText>
                         </Pressable>
                     )}
                 />
 
-                {activeFilter === "Recent" ? (
-                    <View style={{ paddingBottom: insets.bottom + 20 }}>
-                        <FlashList
-                            style={{ marginBottom: 16 }}
-                            data={personalisedData}
-                            renderItem={({ item }) => (
-                                <NewsPostCard
-                                    news={item}
-                                    handleSheetExpand={handleSheetExpand}
-                                />
-                            )}
+                <FlashList
+                    data={filteredNews}
+                    contentContainerStyle={{
+                        flexGrow: 1,
+                        paddingBottom: insets.bottom + 20,
+                    }}
+                    ListEmptyComponent={() => (
+                        <View
+                            style={{
+                                flex: 1,
+                                marginTop: "50%",
+                                justifyContent: "center",
+                                alignItems: "center",
+                            }}
+                        >
+                            <MaterialCommunityIcons
+                                name="newspaper-variant-multiple"
+                                size={60}
+                            />
+                            <ThemedText
+                                type="sub_heading"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                No news posted yet.
+                            </ThemedText>
+                            <ThemedText
+                                type="default"
+                                style={{
+                                    color: Colors[colorScheme].text_light,
+                                }}
+                            >
+                                Be the first to share some insights!
+                            </ThemedText>
+                        </View>
+                    )}
+                    renderItem={({ item }) => (
+                        <NewsPostCard
+                            news={item}
+                            handleSheetExpand={handleSheetExpand}
                         />
-                    </View>
-                ) : (
-                    <View style={{ paddingBottom: insets.bottom + 20 }}>
-                        <View
-                            style={[
-                                styles.card,
-                                {
-                                    backgroundColor:
-                                        Colors[colorScheme].bg_light,
-                                    borderColor: Colors[colorScheme].border,
-                                },
-                            ]}
-                        >
-                            <View style={styles.cardInfoContainer}>
-                                <Pressable>
-                                    <View
-                                        style={{
-                                            flexDirection: "row",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: 4,
-                                        }}
-                                    >
-                                        <Image
-                                            source={require("@/assets/images/profile.png")}
-                                            style={{
-                                                width: 28,
-                                                height: 28,
-                                            }}
-                                        />
-                                        <ThemedText type="defaultSemiBold">
-                                            SIM Office
-                                        </ThemedText>
-                                    </View>
-                                </Pressable>
-                                <ThemedText
-                                    type="caption"
-                                    style={{
-                                        color: Colors[colorScheme].text,
-                                    }}
-                                >
-                                    1d
-                                </ThemedText>
-                            </View>
-                            <View>
-                                {/* Content */}
-                                <Image
-                                    alt="image"
-                                    source={{
-                                        uri: "https://westfield.dorset.sch.uk/wp-content/uploads/2018/12/School-closed.jpg",
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        height: 200,
-                                        resizeMode: "contain",
-                                    }}
-                                />
-                                <ThemedText
-                                    type="sub_heading"
-                                    style={{
-                                        paddingTop: 12,
-                                        paddingHorizontal: 12,
-                                        fontSize: 20,
-                                    }}
-                                >
-                                    School closure due to haze from 30th March
-                                    2026.
-                                </ThemedText>
-                                <ThemedText
-                                    style={{
-                                        paddingVertical: 4,
-                                        paddingHorizontal: 12,
-                                        fontSize: 14,
-                                    }}
-                                >
-                                    Please be advised that all physical campus
-                                    operations at [Your Institution Name] will
-                                    be suspended starting Monday, 30th March
-                                    2026, until further notice. This decision
-                                    follows the National Environment Agency
-                                    (NEA) health advisory regarding the current
-                                    PSI levels. Stay safe and keep your windows
-                                    closed. We will provide a status update on
-                                    March 31st at 6:00 PM.
-                                </ThemedText>
-                            </View>
-                        </View>
-                        <View
-                            style={[
-                                styles.card,
-                                {
-                                    backgroundColor:
-                                        Colors[colorScheme].bg_light,
-                                    borderColor: Colors[colorScheme].border,
-                                },
-                            ]}
-                        >
-                            <View style={styles.cardInfoContainer}>
-                                <Pressable>
-                                    <View
-                                        style={{
-                                            flexDirection: "row",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: 4,
-                                        }}
-                                    >
-                                        <Image
-                                            source={require("@/assets/images/profile.png")}
-                                            style={{
-                                                width: 28,
-                                                height: 28,
-                                            }}
-                                        />
-                                        <ThemedText type="defaultSemiBold">
-                                            SIM IT
-                                        </ThemedText>
-                                    </View>
-                                </Pressable>
-                                <ThemedText
-                                    type="default"
-                                    style={{
-                                        fontSize: 10,
-                                        color: "hsl(0, 0%, 5%)",
-                                    }}
-                                >
-                                    3d
-                                </ThemedText>
-                            </View>
-                            <View>
-                                {/* Content */}
-                                <Image
-                                    alt="image"
-                                    source={{
-                                        uri: "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/scam-alert-poster-design-template-54d411d404bbaff0b9b060eb1c0e0ab9_screen.jpg?ts=1682506517",
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        height: 200,
-                                        resizeMode: "cover",
-                                    }}
-                                />
-                                <ThemedText
-                                    type="sub_heading"
-                                    style={{
-                                        paddingTop: 12,
-                                        paddingHorizontal: 12,
-                                        fontSize: 20,
-                                    }}
-                                >
-                                    Beware of online scams!
-                                </ThemedText>
-                                <ThemedText
-                                    style={{
-                                        paddingVertical: 4,
-                                        paddingHorizontal: 12,
-                                        fontSize: 14,
-                                    }}
-                                >
-                                    There has been a recent influx of scams in
-                                    Singapore. We have received multiple reports
-                                    of scam emails, in which the threat actor
-                                    attempt to trick students by asking them to
-                                    pay their school fees.
-                                </ThemedText>
-                            </View>
-                        </View>
-                    </View>
-                )}
+                    )}
+                />
             </ScrollView>
             {/* BottomSheetModal */}
             <NewsPostBottomSheet
@@ -527,6 +422,9 @@ export default function HomeScreen() {
                     bottomSheetRef.current?.dismiss();
                     setSuspendModalVisible(true);
                 }}
+                onFollow={handleFollowPress}
+                onUnfollow={handleUnfollowPress}
+                onEdit={handleEditPress}
                 colorScheme={"light"}
             />
             {/* Suspned News confirmation modal */}
@@ -645,7 +543,7 @@ export default function HomeScreen() {
                                     contentContainerStyle={styles.modalGrid}
                                 >
                                     <View style={styles.grid}>
-                                        {categories.map((cat) => (
+                                        {categories?.map((cat) => (
                                             <TouchableOpacity
                                                 key={cat.category_id}
                                                 style={[
@@ -743,7 +641,7 @@ export default function HomeScreen() {
                                     contentContainerStyle={styles.modalGrid}
                                 >
                                     <View style={styles.grid}>
-                                        {categories.map((cat) => {
+                                        {categories?.map((cat) => {
                                             const isExcluded =
                                                 excludeIds.includes(
                                                     cat.category_id,

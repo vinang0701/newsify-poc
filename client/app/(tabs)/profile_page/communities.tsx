@@ -29,7 +29,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import axios from "axios";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
-import { useCommunity } from "@/hooks/useCommunity";
 import Loading from "@/components/loading";
 
 const HEADER_HEIGHT = 250;
@@ -61,7 +60,6 @@ interface UserCommunities {
 
 export default function UserCommunitiesList() {
     const colorScheme = useColorScheme() ?? "light";
-    const [comm, setComm] = useState<Community[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [activeFilter, setActiveFilter] = useState("All");
     const [refreshing, setRefreshing] = React.useState(false);

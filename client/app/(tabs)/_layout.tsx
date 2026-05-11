@@ -1,10 +1,10 @@
-// import {registerGlobals} from "@livekit/react-native";
-// registerGlobals();
 import AchievementToast from "@/components/achievement_toast";
 import { HapticTab } from "@/components/haptic-tab";
+import Loading from "@/components/loading";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Achievement } from "@/hooks/useAchievements";
+import { usePreferences } from "@/hooks/usePreferences";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -17,7 +17,10 @@ import { View } from "react-native";
 
 export default function TabLayout() {
     const colorScheme = useColorScheme() || "light";
-    const { user, metadata } = useAuthStore();
+    const { user, metadata, session } = useAuthStore();
+    if (!user?.id || !metadata?.inst_id) {
+        return <Loading />;
+    }
 
     const [achievementPopupVisible, setAchievementPopupVisible] =
         useState(false);
