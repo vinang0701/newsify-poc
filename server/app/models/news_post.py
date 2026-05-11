@@ -21,6 +21,7 @@ class NewsPost(BaseModel):
     community_id: str | None = None
     community_name: str | None = None
     community_image: str | None = None
+    category_id: str
 
     class Config:
         from_attributes = True

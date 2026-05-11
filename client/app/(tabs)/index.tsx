@@ -198,6 +198,18 @@ export default function HomeScreen() {
         }
     };
 
+    const filteredNews = useMemo(() => {
+        if (!personalisedData) return [];
+
+        if (activeFilter === "Recent") {
+            return personalisedData;
+        }
+
+        return personalisedData.filter(
+            (news) => news.category_id === activeFilter,
+        );
+    }, [personalisedData, preferences, activeFilter]);
+
     // report post
     function handleReportPost() {
         // setMenuVisible(false);
@@ -301,7 +313,6 @@ export default function HomeScreen() {
                 style={{
                     flex: 1,
                     paddingHorizontal: 16,
-                    paddingVertical: 12,
                     paddingBottom: insets.bottom,
                     backgroundColor: Colors[colorScheme].bg,
                 }}
@@ -312,230 +323,105 @@ export default function HomeScreen() {
                     />
                 }
             >
-                <FlashList
-                    keyExtractor={(item) => item.category_id}
-                    horizontal
-                    style={{ marginBottom: 12, elevation: 10 }}
-                    data={categories}
-                    renderItem={({ item }) => (
-                        <Pressable
+                <View
+                    style={{
+                        flexDirection: "row",
+                        paddingVertical: 12,
+                        alignItems: "center",
+                    }}
+                >
+                    <Pressable
+                        style={{
+                            backgroundColor:
+                                activeFilter === "Recent"
+                                    ? Colors[colorScheme].tint
+                                    : Colors[colorScheme].bg_light,
+                            paddingHorizontal: 12,
+                            paddingVertical: 4,
+                            borderColor: Colors[colorScheme].border,
+                            borderWidth: 1,
+                            marginRight: 8,
+                            borderRadius: 4,
+                        }}
+                        onPress={() => {
+                            if (activeFilter === "Recent") {
+                                return;
+                            } else {
+                                setActiveFilter("Recent");
+                            }
+                        }}
+                    >
+                        <ThemedText
+                            type="body_small"
+                            emphasized={true}
                             style={{
-                                backgroundColor:
-                                    activeFilter === item.category_name
-                                        ? Colors[colorScheme].tint
-                                        : Colors[colorScheme].bg_light,
-                                paddingHorizontal: 12,
-                                paddingVertical: 4,
-                                borderColor: Colors[colorScheme].border,
-                                borderWidth: 1,
-                                marginRight: 8,
-                                borderRadius: 4,
-                            }}
-                            onPress={() => {
-                                if (activeFilter === item.category_name) {
-                                    return;
-                                } else {
-                                    setActiveFilter(item.category_name);
-                                }
+                                color:
+                                    activeFilter === "Recent"
+                                        ? Colors[colorScheme].button_text
+                                        : Colors[colorScheme].tint,
                             }}
                         >
-                            <ThemedText
-                                type="body_small"
-                                emphasized={true}
+                            Recent
+                        </ThemedText>
+                    </Pressable>
+                    <FlashList
+                        keyExtractor={(item) => item.category_id}
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={{ elevation: 10 }}
+                        data={categories}
+                        renderItem={({ item }) => (
+                            <Pressable
                                 style={{
-                                    color:
-                                        activeFilter === item.category_name
-                                            ? Colors[colorScheme].button_text
-                                            : Colors[colorScheme].tint,
+                                    backgroundColor:
+                                        activeFilter === item.category_id
+                                            ? Colors[colorScheme].tint
+                                            : Colors[colorScheme].bg_light,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 4,
+                                    borderColor: Colors[colorScheme].border,
+                                    borderWidth: 1,
+                                    marginRight: 8,
+                                    borderRadius: 4,
+                                }}
+                                onPress={() => {
+                                    if (activeFilter === item.category_id) {
+                                        return;
+                                    } else {
+                                        setActiveFilter(item.category_id);
+                                    }
                                 }}
                             >
-                                {item.category_name}
-                            </ThemedText>
-                        </Pressable>
-                    )}
-                />
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized={true}
+                                    style={{
+                                        color:
+                                            activeFilter === item.category_id
+                                                ? Colors[colorScheme]
+                                                      .button_text
+                                                : Colors[colorScheme].tint,
+                                    }}
+                                >
+                                    {item.category_name}
+                                </ThemedText>
+                            </Pressable>
+                        )}
+                    />
+                </View>
 
-                {activeFilter === "Recent" ? (
-                    <View style={{ paddingBottom: insets.bottom + 20 }}>
-                        <FlashList
-                            style={{ marginBottom: 16 }}
-                            data={personalisedData}
-                            renderItem={({ item }) => (
-                                <NewsPostCard
-                                    news={item}
-                                    handleSheetExpand={handleSheetExpand}
-                                />
-                            )}
-                        />
-                    </View>
-                ) : (
-                    <View style={{ paddingBottom: insets.bottom + 20 }}>
-                        <View
-                            style={[
-                                styles.card,
-                                {
-                                    backgroundColor:
-                                        Colors[colorScheme].bg_light,
-                                    borderColor: Colors[colorScheme].border,
-                                },
-                            ]}
-                        >
-                            <View style={styles.cardInfoContainer}>
-                                <Pressable>
-                                    <View
-                                        style={{
-                                            flexDirection: "row",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: 4,
-                                        }}
-                                    >
-                                        <Image
-                                            source={require("@/assets/images/profile.png")}
-                                            style={{
-                                                width: 28,
-                                                height: 28,
-                                            }}
-                                        />
-                                        <ThemedText type="defaultSemiBold">
-                                            SIM Office
-                                        </ThemedText>
-                                    </View>
-                                </Pressable>
-                                <ThemedText
-                                    type="caption"
-                                    style={{
-                                        color: Colors[colorScheme].text,
-                                    }}
-                                >
-                                    1d
-                                </ThemedText>
-                            </View>
-                            <View>
-                                {/* Content */}
-                                <Image
-                                    alt="image"
-                                    source={{
-                                        uri: "https://westfield.dorset.sch.uk/wp-content/uploads/2018/12/School-closed.jpg",
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        height: 200,
-                                        resizeMode: "contain",
-                                    }}
-                                />
-                                <ThemedText
-                                    type="sub_heading"
-                                    style={{
-                                        paddingTop: 12,
-                                        paddingHorizontal: 12,
-                                        fontSize: 20,
-                                    }}
-                                >
-                                    School closure due to haze from 30th March
-                                    2026.
-                                </ThemedText>
-                                <ThemedText
-                                    style={{
-                                        paddingVertical: 4,
-                                        paddingHorizontal: 12,
-                                        fontSize: 14,
-                                    }}
-                                >
-                                    Please be advised that all physical campus
-                                    operations at [Your Institution Name] will
-                                    be suspended starting Monday, 30th March
-                                    2026, until further notice. This decision
-                                    follows the National Environment Agency
-                                    (NEA) health advisory regarding the current
-                                    PSI levels. Stay safe and keep your windows
-                                    closed. We will provide a status update on
-                                    March 31st at 6:00 PM.
-                                </ThemedText>
-                            </View>
-                        </View>
-                        <View
-                            style={[
-                                styles.card,
-                                {
-                                    backgroundColor:
-                                        Colors[colorScheme].bg_light,
-                                    borderColor: Colors[colorScheme].border,
-                                },
-                            ]}
-                        >
-                            <View style={styles.cardInfoContainer}>
-                                <Pressable>
-                                    <View
-                                        style={{
-                                            flexDirection: "row",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: 4,
-                                        }}
-                                    >
-                                        <Image
-                                            source={require("@/assets/images/profile.png")}
-                                            style={{
-                                                width: 28,
-                                                height: 28,
-                                            }}
-                                        />
-                                        <ThemedText type="defaultSemiBold">
-                                            SIM IT
-                                        </ThemedText>
-                                    </View>
-                                </Pressable>
-                                <ThemedText
-                                    type="default"
-                                    style={{
-                                        fontSize: 10,
-                                        color: "hsl(0, 0%, 5%)",
-                                    }}
-                                >
-                                    3d
-                                </ThemedText>
-                            </View>
-                            <View>
-                                {/* Content */}
-                                <Image
-                                    alt="image"
-                                    source={{
-                                        uri: "https://d1csarkz8obe9u.cloudfront.net/posterpreviews/scam-alert-poster-design-template-54d411d404bbaff0b9b060eb1c0e0ab9_screen.jpg?ts=1682506517",
-                                    }}
-                                    style={{
-                                        width: "100%",
-                                        height: 200,
-                                        resizeMode: "cover",
-                                    }}
-                                />
-                                <ThemedText
-                                    type="sub_heading"
-                                    style={{
-                                        paddingTop: 12,
-                                        paddingHorizontal: 12,
-                                        fontSize: 20,
-                                    }}
-                                >
-                                    Beware of online scams!
-                                </ThemedText>
-                                <ThemedText
-                                    style={{
-                                        paddingVertical: 4,
-                                        paddingHorizontal: 12,
-                                        fontSize: 14,
-                                    }}
-                                >
-                                    There has been a recent influx of scams in
-                                    Singapore. We have received multiple reports
-                                    of scam emails, in which the threat actor
-                                    attempt to trick students by asking them to
-                                    pay their school fees.
-                                </ThemedText>
-                            </View>
-                        </View>
-                    </View>
-                )}
+                <View style={{ paddingBottom: insets.bottom + 20 }}>
+                    <FlashList
+                        style={{ marginBottom: 16 }}
+                        data={filteredNews}
+                        renderItem={({ item }) => (
+                            <NewsPostCard
+                                news={item}
+                                handleSheetExpand={handleSheetExpand}
+                            />
+                        )}
+                    />
+                </View>
             </ScrollView>
             {/* BottomSheetModal */}
             <NewsPostBottomSheet

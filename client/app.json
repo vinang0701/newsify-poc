@@ -84,7 +84,9 @@
 					}
 				}
 			],
-			"expo-notifications"
+			[
+				"expo-notifications"
+			]
 		],
 		"experiments": {
 			"typedRoutes": true,
