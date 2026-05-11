@@ -46,8 +46,8 @@ export default function OtherUserProfileStack() {
     const colorScheme = useColorScheme() ?? "light";
 
     const params = useLocalSearchParams<{
-        user_id?: string;
-        inst_id?: string;
+        user_id: string;
+        inst_id: string;
     }>();
 
     const target_user_id = params.user_id ?? "";

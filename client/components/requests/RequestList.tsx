@@ -4,9 +4,12 @@ import {
     RefreshControl,
     StyleSheet,
     Text,
+    useColorScheme,
     View,
 } from "react-native";
 import { UserRequestItem } from "@/hooks/useRequests";
+import { ThemedText } from "../themed-text";
+import { Colors } from "@/constants/theme";
 
 type Props = {
     data: UserRequestItem[];
@@ -36,18 +39,8 @@ function getStatusLabel(status: UserRequestItem["status"]) {
     }
 }
 
-function getRequestLabel(item: UserRequestItem) {
-    if (item.request_type === "community_application") {
-        return "Community Application:";
-    }
-    return "Post Request to Community:";
-}
-
-export default function RequestList({
-    data,
-    refreshing,
-    onRefresh,
-}: Props) {
+export default function RequestList({ data, refreshing, onRefresh }: Props) {
+    const colorScheme = useColorScheme() ?? "light";
     return (
         <FlatList
             data={data}
@@ -69,37 +62,88 @@ export default function RequestList({
                 </View>
             }
             renderItem={({ item }) => (
-                <View style={styles.card}>
-                    <Text style={styles.labelText}>{getRequestLabel(item)}</Text>
+                <>
+                    {item.request_type === "community_application" ? (
+                        <View style={styles.card}>
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Community Application:
+                            </ThemedText>
 
-                    <Text style={styles.mainText}>{item.title}</Text>
+                            <ThemedText
+                                type="default"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Community creation for: {item.community_name}
+                            </ThemedText>
 
-                    {!!item.subtitle && (
-                        <Text style={styles.subText}>{item.subtitle}</Text>
-                    )}
+                            <ThemedText
+                                type="body_medium"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Status:{" "}
+                                <Text style={getStatusStyle(item.status)}>
+                                    {getStatusLabel(item.status)}
+                                </Text>
+                            </ThemedText>
 
-                    {!!item.community_name &&
-                        item.request_type === "post_request" && (
-                            <Text style={styles.subText}>
-                                Community: {item.community_name}
-                            </Text>
-                        )}
-
-                    <Text style={styles.statusLine}>
-                        Status:{" "}
-                        <Text style={getStatusStyle(item.status)}>
-                            {getStatusLabel(item.status)}
-                        </Text>
-                    </Text>
-
-                    {item.status === "rejected" && item.rejection_reason ? (
-                        <View style={styles.reasonBadge}>
-                            <Text style={styles.reasonBadgeText}>
-                                Rejection Reason
-                            </Text>
+                            {item.status === "rejected" &&
+                            item.rejection_reason ? (
+                                <View style={styles.reasonBadge}>
+                                    <Text style={styles.reasonBadgeText}>
+                                        Rejection Reason
+                                    </Text>
+                                </View>
+                            ) : null}
                         </View>
-                    ) : null}
-                </View>
+                    ) : (
+                        <View style={styles.card}>
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Post Request to {item.community_name}:
+                            </ThemedText>
+
+                            <ThemedText
+                                type="body_medium"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Title: {item.title}
+                            </ThemedText>
+
+                            {!!item.subtitle && (
+                                <ThemedText
+                                    type="body_medium"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    {item.subtitle}
+                                </ThemedText>
+                            )}
+
+                            <ThemedText
+                                type="body_medium"
+                                style={{ color: Colors[colorScheme].text }}
+                            >
+                                Status:{" "}
+                                <Text style={getStatusStyle(item.status)}>
+                                    {getStatusLabel(item.status)}
+                                </Text>
+                            </ThemedText>
+
+                            {item.status === "rejected" &&
+                            item.rejection_reason ? (
+                                <View style={styles.reasonBadge}>
+                                    <Text style={styles.reasonBadgeText}>
+                                        Rejection Reason
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </View>
+                    )}
+                </>
             )}
         />
     );
@@ -116,12 +160,12 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 12,
         paddingVertical: 10,
+        gap: 4,
     },
     labelText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: "700",
         color: "#111827",
-        marginBottom: 4,
     },
     mainText: {
         fontSize: 14,
@@ -129,13 +173,11 @@ const styles = StyleSheet.create({
         lineHeight: 14,
     },
     subText: {
-        marginTop: 2,
         fontSize: 12,
         color: "#374151",
         lineHeight: 13,
     },
     statusLine: {
-        marginTop: 4,
         fontSize: 12,
         color: "#111827",
     },
@@ -153,16 +195,15 @@ const styles = StyleSheet.create({
     },
     reasonBadge: {
         alignSelf: "flex-start",
-        marginTop: 6,
-        backgroundColor: "#E5E7EB",
+        backgroundColor: "#666666",
         borderRadius: 999,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
+        paddingHorizontal: 12,
+        paddingVertical: 4,
     },
     reasonBadgeText: {
-        fontSize: 8.5,
-        color: "#374151",
-        fontWeight: "600",
+        fontSize: 12,
+        color: "#FFFFFF",
+        fontWeight: "700",
     },
     emptyListContainer: {
         flexGrow: 1,

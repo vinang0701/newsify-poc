@@ -1,12 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { useAuthStore } from "@/utils/authStore";
-import { getItem, setItem, deleteItemAsync } from "expo-secure-store";
+import { SecureStorageAdapter } from "./secureStorage";
 
-const SecureStorageAdapter = {
-    getItem: (key: string) => getItem(key),
-    setItem: (key: string, value: string) => setItem(key, value),
-    removeItem: (key: string) => deleteItemAsync(key),
-};
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || "";
 const supabaseKey =
     process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || "";
@@ -41,3 +35,5 @@ supabase.auth.onAuthStateChange((event, session) => {
         setAuth(null, false);
     }
 });
+
+import { useAuthStore } from "@/utils/authStore";

@@ -5,13 +5,14 @@ import { Session, User, UserAppMetadata } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { jwtDecode } from "jwt-decode";
 import { JwtPayload } from "@supabase/supabase-js";
+import { SecureStorageAdapter } from "@/lib/secureStorage";
 
 // Custom storage adapter for Supabase & Zustand
-const SecureStorageAdapter = {
-    getItem: (key: string) => getItem(key),
-    setItem: (key: string, value: string) => setItem(key, value),
-    removeItem: (key: string) => deleteItemAsync(key),
-};
+// const SecureStorageAdapter = {
+//     getItem: (key: string) => getItem(key),
+//     setItem: (key: string, value: string) => setItem(key, value),
+//     removeItem: (key: string) => deleteItemAsync(key),
+// };
 
 interface AppMetadata {
     // UPDATED: Extracted from JWT app_metadata.

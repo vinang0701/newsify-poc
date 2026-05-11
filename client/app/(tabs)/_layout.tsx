@@ -21,7 +21,6 @@ export default function TabLayout() {
     if (!user?.id || !metadata?.inst_id) {
         return <Loading />;
     }
-    console.log(session?.access_token);
 
     const [achievementPopupVisible, setAchievementPopupVisible] =
         useState(false);

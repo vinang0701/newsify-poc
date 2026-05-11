@@ -29,6 +29,7 @@ import BottomSheet, {
 } from "@gorhom/bottom-sheet";
 import api from "@/lib/axios";
 import Feather from "@expo/vector-icons/Feather";
+import { useAuthStore } from "@/utils/authStore";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -47,6 +48,7 @@ type ConfirmAction = "ban" | "remove" | "promote" | "revoke" | null;
 const MembersPage = () => {
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
+    const { user, metadata } = useAuthStore();
     const { communityId: communityIdParam } = useLocalSearchParams();
     const communityId = Array.isArray(communityIdParam)
         ? communityIdParam[0]
@@ -68,6 +70,9 @@ const MembersPage = () => {
             return res.data;
         },
     });
+
+    const isCurrentUserAdmin =
+        members?.find((m) => m.user_id === user?.id)?.role === "admin";
 
     // --- Mutations ---
 
@@ -280,39 +285,41 @@ const MembersPage = () => {
                     }}
                 >
                     <ThemedText type="defaultSemiBold">Members</ThemedText>
-                    <Pressable
-                        style={{
-                            flexDirection: "row",
-                            backgroundColor: Colors[colorScheme].tint,
-                            alignItems: "center",
-                            paddingVertical: 4,
-                            paddingHorizontal: 8,
-                            borderRadius: 4,
-                            gap: 4,
-                        }}
-                        onPress={() =>
-                            router.push({
-                                pathname:
-                                    "/(tabs)/community/[communityId]/invite_members",
-                                params: { communityId },
-                            })
-                        }
-                    >
-                        <Feather
-                            name="user-plus"
-                            size={16}
-                            color={Colors[colorScheme].button_text}
-                        />
-                        <ThemedText
-                            type="body_small"
-                            emphasized
+                    {isCurrentUserAdmin && (
+                        <Pressable
                             style={{
-                                color: Colors[colorScheme].button_text,
+                                flexDirection: "row",
+                                backgroundColor: Colors[colorScheme].tint,
+                                alignItems: "center",
+                                paddingVertical: 4,
+                                paddingHorizontal: 8,
+                                borderRadius: 4,
+                                gap: 4,
                             }}
+                            onPress={() =>
+                                router.push({
+                                    pathname:
+                                        "/(tabs)/community/[communityId]/invite_members",
+                                    params: { communityId },
+                                })
+                            }
                         >
-                            Invite
-                        </ThemedText>
-                    </Pressable>
+                            <Feather
+                                name="user-plus"
+                                size={16}
+                                color={Colors[colorScheme].button_text}
+                            />
+                            <ThemedText
+                                type="body_small"
+                                emphasized
+                                style={{
+                                    color: Colors[colorScheme].button_text,
+                                }}
+                            >
+                                Invite
+                            </ThemedText>
+                        </Pressable>
+                    )}
                 </View>
 
                 {/* Search bar */}
@@ -395,7 +402,6 @@ const MembersPage = () => {
                 ref={bottomSheetRef}
                 backdropComponent={renderBackdrop}
                 enablePanDownToClose
-                onChange={handleSheetChange}
             >
                 <BottomSheetView
                     style={[
@@ -406,13 +412,20 @@ const MembersPage = () => {
                         },
                     ]}
                 >
-                    {/* Ban */}
                     <Pressable
                         style={styles.sheetOption}
-                        onPress={() => setConfirmAction("ban")}
+                        onPress={() =>
+                            router.push({
+                                pathname: "/[user_id]",
+                                params: {
+                                    user_id: selectedMember?.user_id,
+                                    inst_id: metadata?.inst_id,
+                                },
+                            })
+                        }
                     >
                         <MaterialCommunityIcons
-                            name="close-octagon-outline"
+                            name="account-outline"
                             size={24}
                             color={Colors[colorScheme].text}
                         />
@@ -420,63 +433,88 @@ const MembersPage = () => {
                             type="defaultSemiBold"
                             style={{ color: Colors[colorScheme].text }}
                         >
-                            Ban
+                            View profile
                         </ThemedText>
                     </Pressable>
-
-                    {/* Remove */}
-                    <Pressable
-                        style={styles.sheetOption}
-                        onPress={() => setConfirmAction("remove")}
-                    >
-                        <MaterialCommunityIcons
-                            name="account-remove-outline"
-                            size={24}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{ color: Colors[colorScheme].text }}
-                        >
-                            Remove
-                        </ThemedText>
-                    </Pressable>
-
-                    {/* Promote / Revoke */}
-                    {isSelectedMemberAdmin ? (
-                        <Pressable
-                            style={styles.sheetOption}
-                            onPress={() => setConfirmAction("revoke")}
-                        >
-                            <MaterialCommunityIcons
-                                name="shield-off-outline"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{ color: Colors[colorScheme].text }}
+                    {isCurrentUserAdmin && (
+                        <>
+                            {/* Ban */}
+                            <Pressable
+                                style={styles.sheetOption}
+                                onPress={() => setConfirmAction("ban")}
                             >
-                                Revoke admin
-                            </ThemedText>
-                        </Pressable>
-                    ) : (
-                        <Pressable
-                            style={styles.sheetOption}
-                            onPress={() => setConfirmAction("promote")}
-                        >
-                            <MaterialCommunityIcons
-                                name="shield-outline"
-                                size={24}
-                                color={Colors[colorScheme].text}
-                            />
-                            <ThemedText
-                                type="defaultSemiBold"
-                                style={{ color: Colors[colorScheme].text }}
+                                <MaterialCommunityIcons
+                                    name="close-octagon-outline"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Ban
+                                </ThemedText>
+                            </Pressable>
+
+                            {/* Remove */}
+                            <Pressable
+                                style={styles.sheetOption}
+                                onPress={() => setConfirmAction("remove")}
                             >
-                                Promote to admin
-                            </ThemedText>
-                        </Pressable>
+                                <MaterialCommunityIcons
+                                    name="account-remove-outline"
+                                    size={24}
+                                    color={Colors[colorScheme].text}
+                                />
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Remove
+                                </ThemedText>
+                            </Pressable>
+
+                            {/* Promote / Revoke */}
+                            {isSelectedMemberAdmin ? (
+                                <Pressable
+                                    style={styles.sheetOption}
+                                    onPress={() => setConfirmAction("revoke")}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="shield-off-outline"
+                                        size={24}
+                                        color={Colors[colorScheme].text}
+                                    />
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={{
+                                            color: Colors[colorScheme].text,
+                                        }}
+                                    >
+                                        Revoke admin
+                                    </ThemedText>
+                                </Pressable>
+                            ) : (
+                                <Pressable
+                                    style={styles.sheetOption}
+                                    onPress={() => setConfirmAction("promote")}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="shield-outline"
+                                        size={24}
+                                        color={Colors[colorScheme].text}
+                                    />
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={{
+                                            color: Colors[colorScheme].text,
+                                        }}
+                                    >
+                                        Promote to admin
+                                    </ThemedText>
+                                </Pressable>
+                            )}
+                        </>
                     )}
                 </BottomSheetView>
             </BottomSheetModal>

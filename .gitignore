@@ -49,3 +49,5 @@ client/android/
 venv/
 __pycache__/
 ant-media-server-community-3.0.1.zip
+client/google-services.json
+client/service-account.json

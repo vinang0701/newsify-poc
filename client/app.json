@@ -23,9 +23,12 @@
 			"predictiveBackGestureEnabled": false,
 			"permissions": [
 				"android.permission.CAMERA",
-				"android.permission.RECORD_AUDIO"
+				"android.permission.RECORD_AUDIO",
+				"android.permission.FOREGROUND_SERVICE",
+				"android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
 			],
-			"package": "com.anonymous.client"
+			"package": "com.anonymous.client",
+			"googleServicesFile": "./google-services.json"
 		},
 		"web": {
 			"output": "static",
@@ -80,7 +83,8 @@
 						"useExoplayerHls": true
 					}
 				}
-			]
+			],
+			"expo-notifications"
 		],
 		"experiments": {
 			"typedRoutes": true,
@@ -89,9 +93,9 @@
 		"extra": {
 			"router": {},
 			"eas": {
-				"projectId": "6c18fa71-84f8-406d-bcb7-3de6a5939a61"
+				"projectId": "bf96626f-6f3d-4ab3-931c-f5007c362d14"
 			}
 		},
-		"owner": "vinang0701s-organization"
+		"owner": "vinang0701"
 	}
 }

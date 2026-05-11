@@ -57,10 +57,6 @@ interface UserCommunities {
     role: string;
 }
 
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-// const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-// const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
-
 export default function CommunitiesTab() {
     const colorScheme = useColorScheme() ?? "light";
     const [comm, setComm] = useState<Community[]>([]);
@@ -105,13 +101,11 @@ export default function CommunitiesTab() {
 
     const joinComm = async (id: string) => {
         try {
-            await api.post(`/users/me/communities`, {
+            const response = await api.post(`/users/me/communities`, {
                 community_id: id,
                 user_id: user_id,
             });
-
-            // Refresh the query so the button changes to "Leave"
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
+            return response.data;
         } catch (err) {
             console.error("Join failed", err);
         }
@@ -119,6 +113,9 @@ export default function CommunitiesTab() {
 
     const { mutate, isPending } = useMutation({
         mutationFn: joinComm,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["communities"] });
+        },
     });
 
     const getAvatarColor = (name: string) => {
@@ -146,21 +143,6 @@ export default function CommunitiesTab() {
             !!inst_id && (searchQuery.length === 0 || searchQuery.length > 2),
     });
 
-    // const {
-    //     data: comm_mem_data,
-    //     error: comm_mem_error,
-    //     refetch: comm_mem_refetch,
-    //     isFetching: isFetchingCommMem,
-    // } = useQuery<UserCommunities[]>({
-    //     queryKey: ["user_communities", user_id],
-    //     queryFn: async () => {
-    //         // axios try catch
-    //         const response = await api.get(`/users/me/communities`);
-
-    //         return response.data;
-    //     },
-    // });
-
     async function leaveCommunity(community_id: string) {
         console.log("Leaving community");
         try {
@@ -168,7 +150,6 @@ export default function CommunitiesTab() {
                 `/users/me/communities/${community_id}`,
             );
 
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
             return response.data;
         } catch (error) {
             console.error("Failed to leave:", error);
@@ -176,17 +157,15 @@ export default function CommunitiesTab() {
     }
 
     const { mutate: mu_leaveCommunity } = useMutation({
-        mutationKey: ["user_communities"],
         mutationFn: leaveCommunity,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["communities"] });
+        },
         onError: (error) => {
             Alert.alert("Error", "Something went wrong.");
             console.error(error);
         },
     });
-
-    // const joinedCommunityIds = React.useMemo(() => {
-    //     return new Set(comm_mem_data?.map((c) => c.community_id) || []);
-    // }, [comm_mem_data]);
 
     // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
     const filteredCommunities =
@@ -197,7 +176,6 @@ export default function CommunitiesTab() {
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         refetch();
-        // comm_mem_refetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);

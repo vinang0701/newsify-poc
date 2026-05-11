@@ -231,14 +231,16 @@ def calculate_safety_score(moderation_results: list) -> int:
 # ----------------------------
 
 
-@router.get("/users/me/requests", response_model=UserRequestsResponse)
+@router.get("/users/me/requests")
 async def get_my_requests(
     app_user=Depends(get_current_app_user),
 ):
     try:
         user_id = app_user["id"]
-        requests = await requests_service.get_all_user_requests(user_id)
-        return {"requests": requests}
+        requests = await requests_service.get_all_user_requests(
+            supabase=supabase, user_id=user_id
+        )
+        return requests
     except Exception as e:
         print(f"Requests Fetch Error: {repr(e)}")
         raise HTTPException(status_code=500, detail=str(e))
