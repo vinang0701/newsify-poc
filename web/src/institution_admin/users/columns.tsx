@@ -304,9 +304,22 @@ export const UserMgmtColumns: ColumnDef<User>[] = [
     {
         accessorKey: "status",
         header: "Status",
-        cell: ({ row }) => titleCase(row.original.status),
+        cell: ({ row }) => {
+            const status = row.original.status;
+            const colorMap: Record<string, string> = {
+                active: "bg-green-100 text-green-700",
+                suspended: "bg-orange-100 text-orange-700",
+                banned: "bg-red-100 text-red-700",
+            };
+            return (
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorMap[status] ?? "bg-gray-100 text-gray-700"}`}>
+                    {titleCase(status)}
+                </span>
+            );
+        },
         minSize: 80,
     },
+    
     {
         id: "action",
         cell: ({ row }) => <ActionButton row={row} />,
