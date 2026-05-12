@@ -57,7 +57,7 @@ async def get_community(
     response = (
         supabase.table("communities")
         .select(
-            "*, member_info:community_members(role, user_id), member_count:community_members(count)"
+            "*, member_info:community_members(role, user_id, status), member_count:community_members(count)"
         )
         .eq("inst_id", inst_id)
         .eq("id", community_id)
@@ -81,6 +81,8 @@ async def get_community(
     comm["role"] = user_membership.get("role") if user_membership else None
     comm["isMember"] = user_membership is not None
     comm["member_count"] = total_count
+
+    comm["member_status"] = user_membership.get("status") if user_membership else None
 
     return Community(**comm)
 
@@ -146,9 +148,21 @@ async def leave_community(supabase: Client, community_id: str, user_id: str):
 
 
 async def join_community(supabase: Client, community_id: str, user_id: str):
-    response = (
-        supabase.table("community_members")
-        .insert(
+    comm_res = (
+        supabase.table("communities")
+        .select("public")
+        .eq("id", community_id)
+        .single()
+        .execute()
+    )
+
+    if not comm_res.data:
+        return None
+
+    public = comm_res.data
+
+    if public is True:
+        query = supabase.table("community_members").insert(
             {
                 "community_id": community_id,
                 "user_id": user_id,
@@ -156,10 +170,22 @@ async def join_community(supabase: Client, community_id: str, user_id: str):
                 "role": "member",
             }
         )
-        .execute()
-    )
+    else:
+        query = supabase.table("community_members").insert(
+            {
+                "community_id": community_id,
+                "user_id": user_id,
+                "joined_at": datetime.utcnow().isoformat(),
+                "role": "member",
+                "status": "pending",
+            }
+        )
 
-    return response
+    response = query.execute()
+    if not response.data:
+        return None
+
+    return response.data
 
 
 async def get_members_by_community(supabase: Client, community_id: str):

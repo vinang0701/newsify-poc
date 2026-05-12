@@ -17,6 +17,8 @@ class Community(BaseModel):
     role: str | None = None
     isMember: bool = False
     member_count: int = 0
+    public: bool
+    member_status: str | None
 
     class Config:
         from_attributes = True

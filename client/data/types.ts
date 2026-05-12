@@ -39,6 +39,8 @@ export interface Community {
     role: string | null;
     isMember: boolean;
     member_count: number;
+    member_status: string | null;
+    public: boolean;
 }
 
 export interface ModalProps {

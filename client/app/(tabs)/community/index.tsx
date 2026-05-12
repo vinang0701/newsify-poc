@@ -157,6 +157,26 @@ export default function CommunitiesTab() {
         }, 2000);
     }, []);
 
+    const getButtonStatus = (item: Community) => {
+        // 1. User is already in the group
+        if (item.isMember && item.member_status === "active") {
+            return "Leave";
+        }
+
+        // 2. User has already interacted but is waiting for approval
+        if (item.member_status === "pending") {
+            return "Requested";
+        }
+
+        // 3. User is not a member and the group is public
+        if (item.public && item.isMember && item.member_status === "active") {
+            return "Join";
+        }
+
+        // 4. Default: User is not a member and the group is private (needs to ask)
+        return "Request";
+    };
+
     return (
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
             {isFetching && <Loading />}
@@ -384,15 +404,74 @@ export default function CommunitiesTab() {
                                             <ThemedText type="defaultSemiBold">
                                                 {item.name}
                                             </ThemedText>
-                                            <ThemedText
-                                                type="caption"
+
+                                            <View
                                                 style={{
-                                                    color: Colors[colorScheme]
-                                                        .text_light,
+                                                    flexDirection: "row",
+                                                    alignItems: "center",
+                                                    gap: 4,
                                                 }}
                                             >
-                                                {item.member_count} members
-                                            </ThemedText>
+                                                <ThemedText
+                                                    type="caption"
+                                                    style={{
+                                                        color: Colors[
+                                                            colorScheme
+                                                        ].text_light,
+                                                    }}
+                                                >
+                                                    {item.member_count} members
+                                                </ThemedText>
+                                                {item.public ? (
+                                                    <View
+                                                        style={[
+                                                            styles.adminBadge,
+                                                            {
+                                                                backgroundColor:
+                                                                    Colors[
+                                                                        colorScheme
+                                                                    ].tint,
+                                                            },
+                                                        ]}
+                                                    >
+                                                        <ThemedText
+                                                            type="caption"
+                                                            emphasized
+                                                            style={{
+                                                                color: Colors[
+                                                                    colorScheme
+                                                                ].button_text,
+                                                            }}
+                                                        >
+                                                            Public
+                                                        </ThemedText>
+                                                    </View>
+                                                ) : (
+                                                    <View
+                                                        style={[
+                                                            styles.adminBadge,
+                                                            {
+                                                                backgroundColor:
+                                                                    Colors[
+                                                                        colorScheme
+                                                                    ].alert_red,
+                                                            },
+                                                        ]}
+                                                    >
+                                                        <ThemedText
+                                                            type="caption"
+                                                            emphasized
+                                                            style={{
+                                                                color: Colors[
+                                                                    colorScheme
+                                                                ].button_text,
+                                                            }}
+                                                        >
+                                                            Private
+                                                        </ThemedText>
+                                                    </View>
+                                                )}
+                                            </View>
                                         </View>
                                     </View>
                                     <Pressable
@@ -426,7 +505,7 @@ export default function CommunitiesTab() {
                                                 fontWeight: "semibold",
                                             }}
                                         >
-                                            {item.isMember ? "Leave" : "Join"}
+                                            {getButtonStatus(item)}
                                         </ThemedText>
                                     </Pressable>
                                 </View>
@@ -504,5 +583,11 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         fontSize: 12,
         textAlignVertical: "center",
+    },
+    adminBadge: {
+        backgroundColor: "#1976D2",
+        borderRadius: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
     },
 });
