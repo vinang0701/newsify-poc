@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List
 from app.core.db import supabase
-from app.services import community_members_service
+from app.services import community_members_service, communities_service
 from app.core.auth import UserPayload, get_current_app_user, get_current_user
 
 router = APIRouter(
@@ -23,6 +23,10 @@ class InviteRequest(BaseModel):
 
 class RoleUpdateRequest(BaseModel):
     role: str  # "community_admin" or "member"
+
+
+class MembershipUpdate(BaseModel):
+    status: str
 
 
 # ---------------------------------------------------------------------------
@@ -151,3 +155,39 @@ async def update_member_role(
     except Exception as e:
         print(f"Error updating role: {e}")
         raise HTTPException(status_code=500, detail="Could not update member role")
+
+
+# ---------------------------------------------------------------------------
+# PATCH /members/{user_id}/status — update membership for private communities
+# ---------------------------------------------------------------------------
+@router.patch("/members/{user_id}/status")
+async def handle_membership_request(
+    community_id: str,
+    user_id: str,
+    payload: MembershipUpdate,
+    current_user=Depends(get_current_app_user),
+):
+    try:
+        result = await communities_service.update_membership_status(
+            supabase=supabase,
+            community_id=community_id,
+            user_id=user_id,
+            new_status=payload.status,
+            admin_user_id=current_user["id"],
+        )
+
+        if not result:
+            raise HTTPException(status_code=404, detail="Membership request not found.")
+
+        verb = "approved" if payload.status == "active" else "rejected"
+        return {
+            "status": "success",
+            "message": f"Member has been successfully {verb}.",
+            "data": result[0],
+        }
+
+    except Exception as e:
+        print(f"Error updating membership: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to process membership request."
+        )

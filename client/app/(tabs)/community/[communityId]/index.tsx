@@ -81,18 +81,8 @@ export default function CommunityPage() {
     // Suspend post
     const [suspendModalVisible, setSuspendModalVisible] = useState(false);
 
-    const {
-        community,
-        news,
-        memberCount,
-        isMember,
-        userRole,
-        joinCommunity,
-        leaveCommunity,
-        // refresh,
-        refetch,
-        loading,
-    } = useCommunity(communityId);
+    const { community, news, joinCommunity, leaveCommunity, refetch, loading } =
+        useCommunity(communityId);
 
     const sortedNews = useMemo(() => {
         if (!news) return [];
@@ -139,10 +129,34 @@ export default function CommunityPage() {
         ),
         [],
     );
+    const getButtonStatus = (item: Community) => {
+        if (item.isMember) {
+            if (item.member_status === "pending") {
+                return "Requested";
+            } else {
+                return "Leave";
+            }
+        }
+
+        if (item.public) {
+            return "Join";
+        }
+
+        return "Request";
+    };
+
+    const handleViewMembers = () => {
+        router.push({
+            pathname: "/community/[communityId]/members",
+            params: { communityId: communityId },
+        });
+        postBottomSheetRef.current?.dismiss();
+        bottomSheetRef.current?.dismiss();
+    };
 
     useFocusEffect(
         useCallback(() => {
-            // refetch();
+            refetch();
         }, []),
     );
 
@@ -324,31 +338,24 @@ export default function CommunityPage() {
                                 </ThemedText>
                             </View>
                             {/* Community name and Member Count */}
-                            <Link
-                                href={{
-                                    pathname:
-                                        "/community/[communityId]/members",
-                                    params: { communityId: communityId },
-                                }}
-                            >
-                                <View>
-                                    <ThemedText type="defaultSemiBold">
-                                        {/* Chess Club */}
-                                        {community?.name ?? ""}
-                                    </ThemedText>
-                                    <ThemedText
-                                        type="caption"
-                                        style={{
-                                            color: Colors[colorScheme].caption,
-                                        }}
-                                    >
-                                        {community.member_count} members
-                                    </ThemedText>
-                                </View>
-                            </Link>
+
+                            <Pressable onPress={handleViewMembers}>
+                                <ThemedText type="defaultSemiBold">
+                                    {/* Chess Club */}
+                                    {community?.name ?? ""}
+                                </ThemedText>
+                                <ThemedText
+                                    type="caption"
+                                    style={{
+                                        color: Colors[colorScheme].caption,
+                                    }}
+                                >
+                                    {community.member_count} members
+                                </ThemedText>
+                            </Pressable>
                         </View>
                         {/* Join Button */}
-                        <Pressable
+                        {/* <Pressable
                             style={{
                                 paddingVertical: 8,
                                 paddingHorizontal: 12,
@@ -379,6 +386,46 @@ export default function CommunityPage() {
                                 }}
                             >
                                 {community.isMember ? "Leave" : "Join"}
+                            </ThemedText>
+                        </Pressable> */}
+
+                        <Pressable
+                            style={{
+                                paddingVertical: 8,
+                                paddingHorizontal: 12,
+                                backgroundColor:
+                                    community.isMember &&
+                                    community.member_status === "active"
+                                        ? Colors[colorScheme].alert_red
+                                        : Colors[colorScheme].bg_light,
+                                borderRadius: 20,
+                                borderWidth: 2,
+                                borderColor:
+                                    community.isMember &&
+                                    community.member_status === "active"
+                                        ? "transparent"
+                                        : Colors[colorScheme].tint,
+                            }}
+                            onPress={() => {
+                                community.isMember === false
+                                    ? handleJoinCommunity()
+                                    : setModalVisible(true);
+                            }}
+                        >
+                            <ThemedText
+                                type="body_small"
+                                emphasized
+                                style={{
+                                    color:
+                                        community.isMember &&
+                                        community.member_status === "active"
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].tint,
+
+                                    fontWeight: "semibold",
+                                }}
+                            >
+                                {getButtonStatus(community)}
                             </ThemedText>
                         </Pressable>
                     </View>
@@ -518,7 +565,7 @@ export default function CommunityPage() {
                         { paddingBottom: insets.bottom + 28 },
                     ]}
                 >
-                    {userRole === "admin" && (
+                    {community.role === "admin" && (
                         <Pressable
                             style={styles.modalActionButtonCtn}
                             onPress={() => {
@@ -543,13 +590,18 @@ export default function CommunityPage() {
                             </ThemedText>
                         </Pressable>
                     )}
-                    <Pressable style={styles.modalActionButtonCtn}>
+                    <Pressable
+                        style={styles.modalActionButtonCtn}
+                        onPress={handleViewMembers}
+                    >
                         <MaterialCommunityIcons
-                            name="help-circle-outline"
+                            name="account-multiple-outline"
                             size={24}
                             color={Colors[colorScheme].text}
                         />
-                        <ThemedText type="defaultSemiBold">About</ThemedText>
+                        <ThemedText type="defaultSemiBold">
+                            View members
+                        </ThemedText>
                     </Pressable>
                     <Pressable style={styles.modalActionButtonCtn}>
                         <MaterialCommunityIcons
@@ -558,14 +610,6 @@ export default function CommunityPage() {
                             color={Colors[colorScheme].text}
                         />
                         <ThemedText type="defaultSemiBold">Report</ThemedText>
-                    </Pressable>
-                    <Pressable style={styles.modalActionButtonCtn}>
-                        <MaterialCommunityIcons
-                            name="plus"
-                            size={24}
-                            color={Colors[colorScheme].text}
-                        />
-                        <ThemedText type="defaultSemiBold">Join</ThemedText>
                     </Pressable>
                 </BottomSheetView>
             </BottomSheetModal>
@@ -681,7 +725,10 @@ export default function CommunityPage() {
                             type="defaultSemiBold"
                             style={styles.modalText}
                         >
-                            Leave group?
+                            {community.isMember &&
+                            community.member_status === "active"
+                                ? "Leave group?"
+                                : "Remove request?"}
                         </ThemedText>
                         <View style={{ flexDirection: "row", gap: 24 }}>
                             <Pressable

@@ -5,9 +5,6 @@ import { Link, useRouter } from "expo-router";
 import * as React from "react";
 import { useEffect, useState } from "react";
 import {
-    Text,
-    Button,
-    FlatList,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -121,16 +118,17 @@ export default function CommunitiesTab() {
         }
     }
 
-    const { mutate: mu_leaveCommunity } = useMutation({
-        mutationFn: leaveCommunity,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["communities"] });
-        },
-        onError: (error) => {
-            Alert.alert("Error", "Something went wrong.");
-            console.error(error);
-        },
-    });
+    const { mutate: mu_leaveCommunity, isPending: isPendingLeave } =
+        useMutation({
+            mutationFn: leaveCommunity,
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ["communities"] });
+            },
+            onError: (error) => {
+                Alert.alert("Error", "Something went wrong.");
+                console.error(error);
+            },
+        });
 
     const filteredCommunities = React.useMemo(() => {
         // 1. If data is still loading or undefined, return an empty array
@@ -158,28 +156,24 @@ export default function CommunitiesTab() {
     }, []);
 
     const getButtonStatus = (item: Community) => {
-        // 1. User is already in the group
-        if (item.isMember && item.member_status === "active") {
-            return "Leave";
+        if (item.isMember) {
+            if (item.member_status === "pending") {
+                return "Requested";
+            } else {
+                return "Leave";
+            }
         }
 
-        // 2. User has already interacted but is waiting for approval
-        if (item.member_status === "pending") {
-            return "Requested";
-        }
-
-        // 3. User is not a member and the group is public
-        if (item.public && item.isMember && item.member_status === "active") {
+        if (item.public) {
             return "Join";
         }
 
-        // 4. Default: User is not a member and the group is private (needs to ask)
         return "Request";
     };
 
     return (
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-            {isFetching && <Loading />}
+            {isFetching || (isPending && <Loading />)}
             <Header />
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -375,9 +369,9 @@ export default function CommunitiesTab() {
                                     >
                                         <View
                                             style={{
-                                                width: 36,
-                                                height: 36,
-                                                borderRadius: 20,
+                                                width: 48,
+                                                height: 48,
+                                                borderRadius: 50,
                                                 backgroundColor: getAvatarColor(
                                                     item.name,
                                                 ),
@@ -404,88 +398,84 @@ export default function CommunitiesTab() {
                                             <ThemedText type="defaultSemiBold">
                                                 {item.name}
                                             </ThemedText>
-
-                                            <View
+                                            {item.public ? (
+                                                <View
+                                                    style={[
+                                                        styles.adminBadge,
+                                                        {
+                                                            backgroundColor:
+                                                                Colors[
+                                                                    colorScheme
+                                                                ].secondary,
+                                                        },
+                                                    ]}
+                                                >
+                                                    <ThemedText
+                                                        type="caption"
+                                                        emphasized
+                                                        style={{
+                                                            color: Colors[
+                                                                colorScheme
+                                                            ].button_text,
+                                                        }}
+                                                    >
+                                                        Public
+                                                    </ThemedText>
+                                                </View>
+                                            ) : (
+                                                <View
+                                                    style={[
+                                                        styles.adminBadge,
+                                                        {
+                                                            backgroundColor:
+                                                                Colors[
+                                                                    colorScheme
+                                                                ].alert_red,
+                                                        },
+                                                    ]}
+                                                >
+                                                    <ThemedText
+                                                        type="caption"
+                                                        emphasized
+                                                        style={{
+                                                            color: Colors[
+                                                                colorScheme
+                                                            ].button_text,
+                                                        }}
+                                                    >
+                                                        Private
+                                                    </ThemedText>
+                                                </View>
+                                            )}
+                                            <ThemedText
+                                                type="caption"
                                                 style={{
-                                                    flexDirection: "row",
-                                                    alignItems: "center",
-                                                    gap: 4,
+                                                    color: Colors[colorScheme]
+                                                        .text_light,
                                                 }}
                                             >
-                                                <ThemedText
-                                                    type="caption"
-                                                    style={{
-                                                        color: Colors[
-                                                            colorScheme
-                                                        ].text_light,
-                                                    }}
-                                                >
-                                                    {item.member_count} members
-                                                </ThemedText>
-                                                {item.public ? (
-                                                    <View
-                                                        style={[
-                                                            styles.adminBadge,
-                                                            {
-                                                                backgroundColor:
-                                                                    Colors[
-                                                                        colorScheme
-                                                                    ].tint,
-                                                            },
-                                                        ]}
-                                                    >
-                                                        <ThemedText
-                                                            type="caption"
-                                                            emphasized
-                                                            style={{
-                                                                color: Colors[
-                                                                    colorScheme
-                                                                ].button_text,
-                                                            }}
-                                                        >
-                                                            Public
-                                                        </ThemedText>
-                                                    </View>
-                                                ) : (
-                                                    <View
-                                                        style={[
-                                                            styles.adminBadge,
-                                                            {
-                                                                backgroundColor:
-                                                                    Colors[
-                                                                        colorScheme
-                                                                    ].alert_red,
-                                                            },
-                                                        ]}
-                                                    >
-                                                        <ThemedText
-                                                            type="caption"
-                                                            emphasized
-                                                            style={{
-                                                                color: Colors[
-                                                                    colorScheme
-                                                                ].button_text,
-                                                            }}
-                                                        >
-                                                            Private
-                                                        </ThemedText>
-                                                    </View>
-                                                )}
-                                            </View>
+                                                {item.member_count} members
+                                            </ThemedText>
                                         </View>
                                     </View>
                                     <Pressable
                                         style={{
                                             paddingVertical: 8,
                                             paddingHorizontal: 12,
-                                            backgroundColor: item.isMember
-                                                ? Colors[colorScheme].alert_red
-                                                : Colors[colorScheme].bg_light,
+                                            backgroundColor:
+                                                item.isMember &&
+                                                item.member_status === "active"
+                                                    ? Colors[colorScheme]
+                                                          .alert_red
+                                                    : Colors[colorScheme]
+                                                          .bg_light,
                                             borderRadius: 20,
                                             borderWidth: 2,
-                                            borderColor: item.isMember
-                                                ? "transparent"
-                                                : Colors[colorScheme].tint,
+                                            borderColor:
+                                                item.isMember &&
+                                                item.member_status === "active"
+                                                    ? "transparent"
+                                                    : Colors[colorScheme].tint,
                                         }}
                                         onPress={() => {
                                             !item.isMember
@@ -497,10 +487,14 @@ export default function CommunitiesTab() {
                                             type="body_small"
                                             emphasized
                                             style={{
-                                                color: item.isMember
-                                                    ? Colors[colorScheme]
-                                                          .button_text
-                                                    : Colors[colorScheme].tint,
+                                                color:
+                                                    item.isMember &&
+                                                    item.member_status ===
+                                                        "active"
+                                                        ? Colors[colorScheme]
+                                                              .button_text
+                                                        : Colors[colorScheme]
+                                                              .tint,
 
                                                 fontWeight: "semibold",
                                             }}
@@ -585,6 +579,7 @@ const styles = StyleSheet.create({
         textAlignVertical: "center",
     },
     adminBadge: {
+        alignSelf: "flex-start",
         backgroundColor: "#1976D2",
         borderRadius: 4,
         paddingHorizontal: 6,

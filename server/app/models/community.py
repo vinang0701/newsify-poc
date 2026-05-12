@@ -54,6 +54,7 @@ class CommunityMember(BaseModel):
     user_id: uuid.UUID
     name: str
     role: str
+    status: str
 
 
 class CommunityPostRequest(BaseModel):
@@ -71,3 +72,18 @@ class CommunityPostRequest(BaseModel):
     class Config:
         from_attributes = True
         use_enum_values = True
+
+
+class InvitedUser(BaseModel):
+    invitation_id: uuid.UUID
+    community_id: uuid.UUID
+    status: str
+    invited_user_id: uuid.UUID
+    invited_user_name: str
+    invited_user_image_url: str | None = None
+    invited_by_user_id: uuid.UUID
+    created_at: datetime
+    responded_at: datetime | None = None
+
+    class Config:
+        from_attributes = True

@@ -270,6 +270,77 @@ async def create_post(
         raise e
 
 
+async def update_news_post(
+    supabase: Client,
+    user_id: str,
+    news_id: str,
+    title: str,
+    content: str,
+    status: str,
+    thumbnail: UploadFile = None,
+    content_images: List[UploadFile] = [],
+):
+    # 1. Handle Thumbnail (only if a new one is uploaded)
+    thumbnail_url = None
+    if thumbnail and thumbnail.filename:
+        try:
+            file_extension = thumbnail.filename.split(".")[-1]
+            storage_path = f"news_images/{uuid.uuid4()}.{file_extension}"
+            file_content = await thumbnail.read()
+
+            supabase.storage.from_("post_media").upload(
+                path=storage_path,
+                file=file_content,
+                file_options={"content-type": thumbnail.content_type},
+            )
+            thumbnail_url = supabase.storage.from_("post_media").get_public_url(
+                storage_path
+            )
+        except Exception as e:
+            print(f"Thumbnail update failed: {e}")
+
+    # 2. Handle Content Images & HTML Replacement
+    final_content_html = content
+    if content_images:
+        for img_file in content_images:
+            img_ext = img_file.filename.split(".")[-1]
+            img_path = f"news_body/{uuid.uuid4()}.{img_ext}"
+            img_content = await img_file.read()
+
+            supabase.storage.from_("post_media").upload(
+                path=img_path,
+                file=img_content,
+                file_options={"content-type": img_file.content_type},
+            )
+            public_url = supabase.storage.from_("post_media").get_public_url(img_path)
+            # Replace the local filename/placeholder with the new Supabase URL
+            final_content_html = final_content_html.replace(
+                img_file.filename, public_url
+            )
+
+    # 3. Update DB
+    update_data = {
+        "title": title,
+        "content": final_content_html,
+        "status": status,
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+
+    # Only update thumbnail_url if a new one was successfully uploaded
+    if thumbnail_url:
+        update_data["image_url"] = thumbnail_url
+
+    response = (
+        supabase.table("news_posts")
+        .update(update_data)
+        .eq("author", user_id)
+        .eq("id", news_id)
+        .execute()
+    )
+
+    return response.data
+
+
 async def save_draft(
     supabase: Client,
     user_id: str,
