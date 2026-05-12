@@ -1,4 +1,6 @@
 import uuid
+import csv
+import io
 from typing import Any, Optional, List, Annotated
 
 from fastapi import (
@@ -21,6 +23,7 @@ from app.core.auth import (
     get_current_app_user,
 )
 from app.models.admin import CreateUser
+
 
 router = APIRouter(
     prefix="/{inst_id}/admin/users",
@@ -188,6 +191,72 @@ async def flag_post(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+# Bulk import users via CSV
+@router.post("/import")
+async def bulk_import_users(
+    inst_id: str,
+    file: UploadFile = File(...),
+):
+    try:
+        print(f"Received file: {file.filename}")
+        contents = await file.read()
+        print(f"File contents length: {len(contents)}")
+        decoded = contents.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        users = []
+        for row in reader:
+            print(f"Row: {dict(row)}")
+            users.append({
+                "name": row.get("name", "").strip(),
+                "email": row.get("email", "").strip(),
+                "role": row.get("role", "").strip(),
+            })
+        
+        print(f"Parsed {len(users)} users")
+
+        if not users:
+            raise HTTPException(status_code=400, detail="CSV file is empty")
+
+        result = await users_service.bulk_import_users(supabase, inst_id, users)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"EXACT ERROR: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Bulk remove users via CSV
+@router.post("/remove")
+async def bulk_remove_users(
+    inst_id: str,
+    file: UploadFile = File(...),
+):
+    try:
+        contents = await file.read()
+        decoded = contents.decode("utf-8")
+        reader = csv.DictReader(io.StringIO(decoded))
+
+        emails = []
+        for row in reader:
+            email = row.get("email", "").strip()
+            if email:
+                emails.append(email)
+
+        if not emails:
+            raise HTTPException(status_code=400, detail="No emails found in CSV")
+
+        result = await users_service.bulk_remove_users(supabase, inst_id, emails)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
 
 @router.post("", status_code=201)
 async def create_user_route(
@@ -233,6 +302,19 @@ async def create_user_route(
     except HTTPException as he:
         raise he
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Remove user permanently
+@router.delete("/{user_id}")
+async def remove_user(user_id: str):
+    try:
+        result = await users_service.remove_user(supabase, user_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {"message": "User removed successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -312,5 +394,4 @@ async def update_user(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-    
+ 
