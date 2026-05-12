@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = secrets.token_urlsafe(32)
     OPENAI_API_KEY: str = secrets.token_urlsafe(32)
 
-    #stripe keys
+    # stripe keys
     STRIPE_SECRET_KEY: str = secrets.token_urlsafe(32)
     STRIPE_PUBLISHABLE_KEY: str = secrets.token_urlsafe(32)
     STRIPE_BASIC_PRICE_ID: str = ""
@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     STRIPE_PREMIUM_PRICE_ID: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
 
-    #resend keys
+    # resend keys
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
 
@@ -48,6 +48,7 @@ class Settings(BaseSettings):
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     FRONTEND_HOST: str = "http://localhost:8081"
+    WEB_FRONTEND_HOST: str = "http://localhost:5173"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
     BACKEND_CORS_ORIGINS: Annotated[list[AnyUrl] | str, BeforeValidator(parse_cors)] = (
@@ -60,7 +61,9 @@ class Settings(BaseSettings):
         origins = self.BACKEND_CORS_ORIGINS
         if isinstance(origins, str):
             origins = [origins]
-        return [str(origin).rstrip("/") for origin in origins]
+        return [str(origin).rstrip("/") for origin in origins] + [
+            self.WEB_FRONTEND_HOST
+        ]
 
     PROJECT_NAME: str
 

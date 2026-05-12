@@ -6,26 +6,12 @@ import {
 	Sidebar,
 	SidebarContent,
 	SidebarFooter,
-	SidebarGroup,
-	SidebarGroupAction,
-	SidebarGroupContent,
-	SidebarGroupLabel,
 	SidebarHeader,
 	SidebarMenu,
-	SidebarMenuBadge,
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import {
-	Award,
-	ChevronRight,
-	FileText,
-	Flag,
-	LayoutGrid,
-	Tag,
-	User2,
-	Users2,
-} from "lucide-react";
+import { LayoutGrid, Users2 } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 export function PlatformAdminSidebar() {
@@ -73,20 +59,20 @@ export function PlatformAdminSidebar() {
 				</SidebarMenu>
 			</SidebarContent>
 			<SidebarFooter>
-  				<SidebarMenu>
-    				<SidebarMenuItem className="px-2">
-      					<SidebarMenuButton
-        					className="text-base h-10 text-red-500 hover:text-red-600"
-        					onClick={async () => {
-          					await supabase.auth.signOut();
-          					navigate("/login");
-        				}}
-     				 >
-        				<LogOut size={16} />
-        				<span>Log out</span>
-      				</SidebarMenuButton>
-    				</SidebarMenuItem>
-  				</SidebarMenu>
+				<SidebarMenu>
+					<SidebarMenuItem className="px-2">
+						<SidebarMenuButton
+							className="text-base h-10 text-red-500 hover:text-red-600"
+							onClick={async () => {
+								await supabase.auth.signOut();
+								navigate("/login");
+							}}
+						>
+							<LogOut size={16} />
+							<span>Log out</span>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
 			</SidebarFooter>
 		</Sidebar>
 	);

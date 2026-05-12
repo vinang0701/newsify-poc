@@ -42,6 +42,9 @@ const CommunityRequestCard = ({ data }: CommunityRequestCardProps) => {
 					? "approved"
 					: "rejected";
 
+			console.log(data);
+			console.log(action);
+
 			// Invalidate both the requests list and the communities list
 			// because a new community might have been created
 			queryClient.invalidateQueries({
@@ -54,6 +57,7 @@ const CommunityRequestCard = ({ data }: CommunityRequestCardProps) => {
 		onError: (error: any) => {
 			const message =
 				error.response?.data?.detail || "Failed to respond to request";
+			console.log(message);
 		},
 	});
 
@@ -68,7 +72,7 @@ const CommunityRequestCard = ({ data }: CommunityRequestCardProps) => {
 		respondToRequest({
 			request_id: request_id,
 			response_status: "rejected",
-			rejection_reason: "Testing request rejection",
+			rejection_reason: reason ?? "",
 		});
 	};
 
