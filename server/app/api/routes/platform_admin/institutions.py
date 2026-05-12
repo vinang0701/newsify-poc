@@ -55,3 +55,10 @@ async def activate_institution(inst_id: str):
         return await institutions_service.activate_institution(supabase, inst_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/stats")
+async def get_platform_stats():
+    try:
+        return await institutions_service.get_platform_stats(supabase)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
