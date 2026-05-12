@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     STRIPE_PREMIUM_PRICE_ID: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
 
+    #resend keys
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+
     # Make this optional unless you really need it everywhere
     SUPABASE_JWT_URL: HttpUrl | None = None
 
