@@ -26,71 +26,67 @@ import PrivacyPolicyPage from "./PrivacyPolicyPage";
 import TermsOfServicePage from "./TermsOfServicePage";
 import FeaturesPage from "./FeaturesPage";
 
-
 const router = createBrowserRouter([
+    {
+        path: "/",
+        element: <LandingPage />,
+    },
 
-	{
-		path: "/",
-		element: <LandingPage />,
-	},
-	
-	{ path: "/about", element: <AboutPage /> },
+    { path: "/about", element: <AboutPage /> },
 
-	{ path: "/privacy-policy", element: <PrivacyPolicyPage /> },
+    { path: "/privacy-policy", element: <PrivacyPolicyPage /> },
 
-	{ path: "/terms-of-service", element: <TermsOfServicePage /> },
+    { path: "/terms-of-service", element: <TermsOfServicePage /> },
 
-	{ path: "/features", element: <FeaturesPage /> },
-	
-	{
-		path: "/login",
-		element: <LoginPage />,
-	},
-	{
-		path: "/admin",
-		element: <ProtectedRoute role="institution_admin" layout={<App />} />,
+    { path: "/features", element: <FeaturesPage /> },
 
-		children: [
-			{ index: true, element: <InstitutionAdminHomePage /> },
-			{
-				path: "users/students",
-				element: <StudentUsersMgmtPage />,
-			},
-			{ path: "users/staff", element: <StaffUsersMgmtPage /> },
+    {
+        path: "/login",
+        element: <LoginPage />,
+    },
+    {
+        path: "/admin",
+        element: <ProtectedRoute role="institution_admin" layout={<App />} />,
 
-			{ path: "users/admins", element: <AdminUsersMgmtPage /> },
+        children: [
+            { index: true, element: <InstitutionAdminHomePage /> },
+            {
+                path: "users/students",
+                element: <StudentUsersMgmtPage />,
+            },
+            { path: "users/staff", element: <StaffUsersMgmtPage /> },
 
-			{
-				path: "communities",
-				children: [
-					{ index: true, element: <CommunitiesMgmtPage /> },
-					{ path: "requests", element: <RequestsMgmtPage /> },
-					{ path: ":community_id", element: <CommunityDetailPage />}
-				],
-			},
+            { path: "users/admins", element: <AdminUsersMgmtPage /> },
 
-			{ path: "achievements", element: <AchievementsMgmtPage /> },
-			{ path: "categories", element: <CategoriesMgmtPage /> },
-			{ path: "moderation", element: <ContentModerationPage /> },
-			{ path: "billing", element: <BillingPage /> },
+            {
+                path: "communities",
+                children: [
+                    { index: true, element: <CommunitiesMgmtPage /> },
+                    { path: "requests", element: <RequestsMgmtPage /> },
+                    { path: ":community_id", element: <CommunityDetailPage /> },
+                ],
+            },
 
-		],
-	},
-	{
-		path: "/platform",
-		element: <ProtectedRoute role="platform_admin" layout={<App />} />,
-		children: [
-			{ index: true, element: <PlatformAdminDashboardPage /> },
-			{ path: "institutions", element: <InstitutionsMgmtPage /> },
-		],
-	},
-
+            { path: "achievements", element: <AchievementsMgmtPage /> },
+            { path: "categories", element: <CategoriesMgmtPage /> },
+            { path: "moderation", element: <ContentModerationPage /> },
+            { path: "billing", element: <BillingPage /> },
+        ],
+    },
+    {
+        path: "/platform",
+        element: <ProtectedRoute role="platform_admin" layout={<App />} />,
+        children: [
+            { index: true, element: <PlatformAdminDashboardPage /> },
+            { path: "institutions", element: <InstitutionsMgmtPage /> },
+        ],
+    },
 ]);
 
 createRoot(document.getElementById("root")!).render(
-	<StrictMode>
-		<AuthProvider>
-			<RouterProvider router={router} />
-		</AuthProvider>
-	</StrictMode>,
+    <StrictMode>
+        <AuthProvider>
+            <RouterProvider router={router} />
+        </AuthProvider>
+    </StrictMode>,
 );
