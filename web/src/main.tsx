@@ -6,7 +6,7 @@ import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import App from "./App";
 import InstitutionAdminHomePage from "@/institution_admin/home";
-import TempHome from "./TempHome";
+import LandingPage from "./LandingPage";
 import PlatformAdminDashboardPage from "./platform_admin/dashboard";
 import InstitutionsMgmtPage from "./platform_admin/institutions";
 import LoginPage from "./login";
@@ -21,13 +21,27 @@ import RequestsMgmtPage from "./institution_admin/communities/requests/page";
 import CommunityDetailPage from "./institution_admin/communities/community-detail";
 import AdminUsersMgmtPage from "./institution_admin/users/admin-users-page";
 import BillingPage from "./institution_admin/billing/page";
+import AboutPage from "./AboutPage";
+import PrivacyPolicyPage from "./PrivacyPolicyPage";
+import TermsOfServicePage from "./TermsOfServicePage";
+import FeaturesPage from "./FeaturesPage";
 
 
 const router = createBrowserRouter([
+
 	{
 		path: "/",
-		element: <TempHome />,
+		element: <LandingPage />,
 	},
+	
+	{ path: "/about", element: <AboutPage /> },
+
+	{ path: "/privacy-policy", element: <PrivacyPolicyPage /> },
+
+	{ path: "/terms-of-service", element: <TermsOfServicePage /> },
+
+	{ path: "/features", element: <FeaturesPage /> },
+	
 	{
 		path: "/login",
 		element: <LoginPage />,
