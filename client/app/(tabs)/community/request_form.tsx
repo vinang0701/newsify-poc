@@ -24,6 +24,7 @@ import { useRouter } from "expo-router";
 import Loading from "@/components/loading";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
+import Feather from "@expo/vector-icons/Feather";
 
 // Define the shape of your form data
 interface CommunityRequest {
@@ -41,6 +42,7 @@ const CommunityRequestForm = () => {
     const router = useRouter();
     const [nameInput, setNameInput] = useState("");
     const [descInput, setDescInput] = useState("");
+    const [isPublic, setIsPublic] = useState(true);
 
     const { user, metadata } = useAuthStore();
 
@@ -78,33 +80,25 @@ const CommunityRequestForm = () => {
             throw Error("Invalid inputs");
         }
 
-        mutate({ name: nameInput, description: descInput });
+        mutate({ name: nameInput, description: descInput, public: isPublic });
     }
 
     const { mutate, isPending } = useMutation({
         mutationFn: async (newRequest: {
             name: string;
             description: string;
+            public: boolean;
         }) => {
-            // Axios
-            try {
-                const response = await api.post(
-                    `/${metadata?.inst_id}/communities/requests`,
-                    {
-                        name: newRequest.name,
-                        description: newRequest.description,
-                        requested_by_user_id: user?.id,
-                    },
-                );
+            const response = await api.post(
+                `/${metadata?.inst_id}/communities/requests`,
+                {
+                    name: newRequest.name,
+                    description: newRequest.description,
+                    public: newRequest.public,
+                },
+            );
 
-                return response.data;
-            } catch (error) {
-                if (axios.isAxiosError(error)) {
-                    console.log(error);
-                    throw error;
-                }
-                throw new Error("An unexpected error occurred");
-            }
+            return response.data;
         },
         onSuccess: () => {
             Alert.alert("Success", "Request submitted!");
@@ -160,6 +154,7 @@ const CommunityRequestForm = () => {
                         ) : (
                             <View
                                 style={{
+                                    position: "relative",
                                     width: 84,
                                     height: 84,
                                     backgroundColor:
@@ -168,8 +163,16 @@ const CommunityRequestForm = () => {
                                     borderWidth: 1,
                                     borderStyle: "dashed",
                                     borderColor: Colors[colorScheme].caption,
+                                    alignItems: "center",
+                                    justifyContent: "center",
                                 }}
-                            />
+                            >
+                                <Feather
+                                    name="camera"
+                                    size={28}
+                                    color={Colors[colorScheme].text}
+                                />
+                            </View>
                         )}
                     </Pressable>
                     <View style={[styles.inputContainer]}>
@@ -217,6 +220,53 @@ const CommunityRequestForm = () => {
                                 },
                             ]}
                         />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <ThemedText
+                            type="body_medium"
+                            emphasized
+                            style={{ color: Colors[colorScheme].caption }}
+                        >
+                            Public or Private
+                        </ThemedText>
+                        <View style={{ flexDirection: "row", gap: 12 }}>
+                            <Pressable
+                                style={[
+                                    styles.selectionButton,
+                                    {
+                                        backgroundColor: isPublic
+                                            ? Colors[colorScheme].secondary
+                                            : Colors[colorScheme].bg_light,
+                                    },
+                                ]}
+                                onPress={() => setIsPublic(true)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Public
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.selectionButton,
+                                    {
+                                        backgroundColor: !isPublic
+                                            ? Colors[colorScheme].secondary
+                                            : Colors[colorScheme].bg_light,
+                                    },
+                                ]}
+                                onPress={() => setIsPublic(false)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={{ color: Colors[colorScheme].text }}
+                                >
+                                    Private
+                                </ThemedText>
+                            </Pressable>
+                        </View>
                     </View>
                     <View style={[styles.flexRowContainer, { marginTop: 16 }]}>
                         <Pressable
@@ -288,6 +338,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 8,
+    },
+    selectionButton: {
+        paddingVertical: 4,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderRadius: 20,
+        elevation: 2,
     },
 });
 

@@ -117,6 +117,7 @@ async def create_community_application(
                 "description": formData.description,
                 "institution_id": str(formData.inst_id),
                 "status": "pending",
+                "public": formData.public,
             }
         )
         .execute()

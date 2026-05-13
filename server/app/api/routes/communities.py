@@ -81,16 +81,19 @@ async def get_community_news(
 
 @router.post("/requests")
 async def create_community_application(
-    inst_id: uuid.UUID, reqData: CommunityApplicationReq
+    inst_id: uuid.UUID,
+    reqData: CommunityApplicationReq,
+    current_user=Depends(get_current_app_user),
 ):
     # Add JWT decode to get user id instead of feeding in to body
     # for now grab from body
 
     formData = CommunityApplication(
-        requested_by_user_id=reqData.requested_by_user_id,
+        requested_by_user_id=current_user["id"],
         inst_id=inst_id,
         name=reqData.name,
         description=reqData.description,
+        public=reqData.public,
     )
 
     data, error = await communities_service.create_community_application(

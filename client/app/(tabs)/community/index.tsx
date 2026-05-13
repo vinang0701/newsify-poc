@@ -14,6 +14,7 @@ import {
     View,
     TextInput,
     RefreshControl,
+    Modal,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Community } from "@/data/types";
@@ -31,6 +32,12 @@ const HEADER_HEIGHT = 250;
 
 const DATA = ["Joined", "Explore"];
 
+interface ConfirmationState {
+    isOpen: boolean;
+    communityId: string | null;
+    type: "leave" | "remove" | null;
+}
+
 export default function CommunitiesTab() {
     const colorScheme = useColorScheme() ?? "light";
     const [comm, setComm] = useState<Community[]>([]);
@@ -44,6 +51,13 @@ export default function CommunitiesTab() {
     const { session, metadata } = useAuthStore();
     const inst_id = metadata?.inst_id;
     const user_id = metadata?.user_id;
+
+    const [privateModalVisible, setPrivateModalVisible] = useState(false);
+    const [confirmState, setConfirmState] = useState<ConfirmationState>({
+        isOpen: false,
+        communityId: null,
+        type: null,
+    });
 
     function nameToAvatar(name: string) {
         // 1. Split by whitespace and filter out any empty strings from extra spaces
@@ -105,23 +119,32 @@ export default function CommunitiesTab() {
             !!inst_id && (searchQuery.length === 0 || searchQuery.length > 2),
     });
 
-    async function leaveCommunity(community_id: string) {
-        console.log("Leaving community");
-        try {
-            const response = await api.delete(
-                `/users/me/communities/${community_id}`,
-            );
+    const handleOpenModal = (community: Community) => {
+        const actionType =
+            community.member_status === "active" ? "leave" : "remove";
 
-            return response.data;
-        } catch (error) {
-            console.error("Failed to leave:", error);
-        }
-    }
+        setConfirmState({
+            isOpen: true,
+            communityId: community.id,
+            type: actionType,
+        });
+    };
 
     const { mutate: mu_leaveCommunity, isPending: isPendingLeave } =
         useMutation({
-            mutationFn: leaveCommunity,
+            mutationFn: async (community_id: string) => {
+                const response = await api.delete(
+                    `/users/me/communities/${community_id}`,
+                );
+
+                return response.data;
+            },
             onSuccess: () => {
+                setConfirmState({
+                    isOpen: false,
+                    communityId: null,
+                    type: null,
+                });
                 queryClient.invalidateQueries({ queryKey: ["communities"] });
             },
             onError: (error) => {
@@ -129,6 +152,41 @@ export default function CommunitiesTab() {
                 console.error(error);
             },
         });
+
+    const handleLeaveCommunity = () => {
+        const { communityId } = confirmState;
+        if (!communityId || communityId === null) {
+            return;
+        }
+
+        mu_leaveCommunity(communityId);
+    };
+
+    const handleNavigatetoComm = (community: Community) => {
+        if (community.public) {
+            router.push({
+                pathname: "/community/[communityId]",
+                params: {
+                    communityId: community.id,
+                    inst_id: inst_id,
+                },
+            });
+            return;
+        }
+
+        if (community.isMember && community.member_status === "active") {
+            router.push({
+                pathname: "/community/[communityId]",
+                params: {
+                    communityId: community.id,
+                    inst_id: inst_id,
+                },
+            });
+            return;
+        }
+
+        setPrivateModalVisible(true);
+    };
 
     const filteredCommunities = React.useMemo(() => {
         // 1. If data is still loading or undefined, return an empty array
@@ -173,7 +231,7 @@ export default function CommunitiesTab() {
 
     return (
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-            {isFetching || (isPending && <Loading />)}
+            {(isFetching || isPending || isPendingLeave) && <Loading />}
             <Header />
             <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -329,14 +387,7 @@ export default function CommunitiesTab() {
                         </View>
                     }
                     renderItem={({ item }) => (
-                        <Link
-                            href={{
-                                pathname: "/community/[communityId]",
-                                params: {
-                                    communityId: item?.id,
-                                    inst_id: inst_id,
-                                },
-                            }}
+                        <Pressable
                             style={[
                                 styles.card,
                                 {
@@ -345,16 +396,11 @@ export default function CommunitiesTab() {
                                         Colors[colorScheme].bg_light,
                                 },
                             ]}
+                            onPress={() => handleNavigatetoComm(item)}
                         >
-                            <View
-                                style={[
-                                    {
-                                        width: "100%",
-                                    },
-                                ]}
-                            >
-                                {/* Top info */}
-                                {/* Avatar | (Name, Member Count) | Join Button */}
+                            {/* Top info */}
+                            {/* Avatar | (Name, Member Count) | Join Button */}
+                            <View style={[styles.flexRowContainer, { gap: 8 }]}>
                                 <View
                                     style={[
                                         styles.flexRowContainer,
@@ -362,61 +408,70 @@ export default function CommunitiesTab() {
                                     ]}
                                 >
                                     <View
-                                        style={[
-                                            styles.flexRowContainer,
-                                            { gap: 8 },
-                                        ]}
+                                        style={{
+                                            width: 48,
+                                            height: 48,
+                                            borderRadius: 50,
+                                            backgroundColor: getAvatarColor(
+                                                item.name,
+                                            ),
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            borderWidth: 1,
+                                            borderColor: "rgba(0,0,0,0.1)", // Subtle border
+                                        }}
                                     >
-                                        <View
+                                        <ThemedText
+                                            type="body_medium"
+                                            emphasized
                                             style={{
-                                                width: 48,
-                                                height: 48,
-                                                borderRadius: 50,
-                                                backgroundColor: getAvatarColor(
-                                                    item.name,
-                                                ),
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                borderWidth: 1,
-                                                borderColor: "rgba(0,0,0,0.1)", // Subtle border
+                                                color: Colors[colorScheme]
+                                                    .button_text, // White text usually pops best on colors
                                             }}
                                         >
-                                            <ThemedText
-                                                type="body_medium"
-                                                emphasized
-                                                style={{
-                                                    color: Colors[colorScheme]
-                                                        .button_text, // White text usually pops best on colors
-                                                }}
-                                            >
-                                                {nameToAvatar(item.name)[0]}
-                                                {nameToAvatar(item.name)[1]}
-                                            </ThemedText>
-                                        </View>
+                                            {nameToAvatar(item.name)[0]}
+                                            {nameToAvatar(item.name)[1]}
+                                        </ThemedText>
+                                    </View>
 
-                                        <View style={{ flex: 1 }}>
-                                            <ThemedText type="defaultSemiBold">
-                                                {item.name}
-                                            </ThemedText>
+                                    <View style={{ flex: 1 }}>
+                                        <ThemedText type="defaultSemiBold">
+                                            {item.name}
+                                        </ThemedText>
+                                        <View
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                gap: 8,
+                                            }}
+                                        >
                                             {item.public ? (
                                                 <View
                                                     style={[
-                                                        styles.adminBadge,
+                                                        styles.publicBadge,
                                                         {
                                                             backgroundColor:
                                                                 Colors[
                                                                     colorScheme
-                                                                ].secondary,
+                                                                ].bg_light,
                                                         },
                                                     ]}
                                                 >
+                                                    <Feather
+                                                        name="user"
+                                                        size={10}
+                                                        color={
+                                                            Colors[colorScheme]
+                                                                .text
+                                                        }
+                                                    />
                                                     <ThemedText
                                                         type="caption"
                                                         emphasized
                                                         style={{
                                                             color: Colors[
                                                                 colorScheme
-                                                            ].button_text,
+                                                            ].text,
                                                         }}
                                                     >
                                                         Public
@@ -425,22 +480,30 @@ export default function CommunitiesTab() {
                                             ) : (
                                                 <View
                                                     style={[
-                                                        styles.adminBadge,
+                                                        styles.publicBadge,
                                                         {
                                                             backgroundColor:
                                                                 Colors[
                                                                     colorScheme
-                                                                ].alert_red,
+                                                                ].bg_light,
                                                         },
                                                     ]}
                                                 >
+                                                    <Feather
+                                                        name="lock"
+                                                        size={10}
+                                                        color={
+                                                            Colors[colorScheme]
+                                                                .text
+                                                        }
+                                                    />
                                                     <ThemedText
                                                         type="caption"
                                                         emphasized
                                                         style={{
                                                             color: Colors[
                                                                 colorScheme
-                                                            ].button_text,
+                                                            ].text,
                                                         }}
                                                     >
                                                         Private
@@ -448,75 +511,223 @@ export default function CommunitiesTab() {
                                                 </View>
                                             )}
                                             <ThemedText
-                                                type="caption"
+                                                type="body_small"
                                                 style={{
                                                     color: Colors[colorScheme]
-                                                        .text_light,
+                                                        .text,
                                                 }}
                                             >
                                                 {item.member_count} members
                                             </ThemedText>
                                         </View>
                                     </View>
-                                    <Pressable
+                                </View>
+                                <Pressable
+                                    style={{
+                                        paddingVertical: 8,
+                                        paddingHorizontal: 12,
+                                        backgroundColor:
+                                            item.isMember &&
+                                            item.member_status === "active"
+                                                ? Colors[colorScheme].alert_red
+                                                : Colors[colorScheme].bg_light,
+                                        borderRadius: 20,
+                                        borderWidth: 2,
+                                        borderColor:
+                                            item.isMember &&
+                                            item.member_status === "active"
+                                                ? "transparent"
+                                                : Colors[colorScheme].tint,
+                                    }}
+                                    onPress={() => {
+                                        !item.isMember
+                                            ? mutate(item.id)
+                                            : handleOpenModal(item);
+                                    }}
+                                >
+                                    <ThemedText
+                                        type="body_small"
+                                        emphasized
                                         style={{
-                                            paddingVertical: 8,
-                                            paddingHorizontal: 12,
-                                            backgroundColor:
+                                            color:
                                                 item.isMember &&
                                                 item.member_status === "active"
                                                     ? Colors[colorScheme]
-                                                          .alert_red
-                                                    : Colors[colorScheme]
-                                                          .bg_light,
-                                            borderRadius: 20,
-                                            borderWidth: 2,
-                                            borderColor:
-                                                item.isMember &&
-                                                item.member_status === "active"
-                                                    ? "transparent"
+                                                          .button_text
                                                     : Colors[colorScheme].tint,
-                                        }}
-                                        onPress={() => {
-                                            !item.isMember
-                                                ? mutate(item.id)
-                                                : mu_leaveCommunity(item.id);
+
+                                            fontWeight: "semibold",
                                         }}
                                     >
-                                        <ThemedText
-                                            type="body_small"
-                                            emphasized
-                                            style={{
-                                                color:
-                                                    item.isMember &&
-                                                    item.member_status ===
-                                                        "active"
-                                                        ? Colors[colorScheme]
-                                                              .button_text
-                                                        : Colors[colorScheme]
-                                                              .tint,
-
-                                                fontWeight: "semibold",
-                                            }}
-                                        >
-                                            {getButtonStatus(item)}
-                                        </ThemedText>
-                                    </Pressable>
-                                </View>
-                                <ThemedText
-                                    type="caption"
-                                    emphasized
-                                    style={{
-                                        color: Colors[colorScheme].caption,
-                                    }}
-                                >
-                                    {item.description}
-                                </ThemedText>
+                                        {getButtonStatus(item)}
+                                    </ThemedText>
+                                </Pressable>
                             </View>
-                        </Link>
+                            <ThemedText
+                                type="caption"
+                                emphasized
+                                style={{
+                                    color: Colors[colorScheme].caption,
+                                }}
+                            >
+                                {item.description}
+                            </ThemedText>
+                        </Pressable>
                     )}
                 />
             </ScrollView>
+            <Modal
+                animationType="slide"
+                visible={confirmState.isOpen}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() =>
+                    setConfirmState({
+                        isOpen: false,
+                        communityId: null,
+                        type: null,
+                    })
+                }
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            { backgroundColor: Colors[colorScheme].bg_light },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={styles.modalText}
+                        >
+                            {confirmState.type === "leave"
+                                ? "Leave Group?"
+                                : "Remove Request?"}
+                        </ThemedText>
+                        <View style={{ flexDirection: "row", gap: 24 }}>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() =>
+                                    setConfirmState({
+                                        isOpen: false,
+                                        communityId: null,
+                                        type: null,
+                                    })
+                                }
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].alert_red,
+                                    },
+                                ]}
+                                onPress={handleLeaveCommunity}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    {confirmState.type === "leave"
+                                        ? "Leave"
+                                        : "Remove"}
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+            <Modal
+                animationType="slide"
+                visible={privateModalVisible}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() => setPrivateModalVisible(false)}
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            { backgroundColor: Colors[colorScheme].bg_light },
+                        ]}
+                    >
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                            }}
+                        >
+                            <Feather
+                                name="x-octagon"
+                                size={20}
+                                color={Colors[colorScheme].alert_red}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{
+                                    fontWeight: "bold",
+                                    color: Colors[colorScheme].alert_red,
+                                }}
+                            >
+                                Unauthorized
+                            </ThemedText>
+                        </View>
+                        <ThemedText type="body_medium" emphasized>
+                            This is a private community. Only approved members
+                            can view and contribute.
+                        </ThemedText>
+                        <View style={{ flexDirection: "row" }}>
+                            <Pressable
+                                style={{
+                                    flex: 1,
+                                    paddingVertical: 8,
+                                    backgroundColor: Colors[colorScheme].text,
+                                    borderRadius: 4,
+                                }}
+                                onPress={() => setPrivateModalVisible(false)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Back
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -578,11 +789,54 @@ const styles = StyleSheet.create({
         fontSize: 12,
         textAlignVertical: "center",
     },
-    adminBadge: {
+    publicBadge: {
+        flexDirection: "row",
+        alignItems: "center",
         alignSelf: "flex-start",
-        backgroundColor: "#1976D2",
-        borderRadius: 4,
+        borderRadius: 20,
         paddingHorizontal: 6,
         paddingVertical: 2,
+        gap: 4,
+        borderWidth: 1,
+    },
+    modalText: {
+        fontWeight: "bold",
+    },
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    modalActionButtonCtn: {
+        flex: 0,
+        flexDirection: "row",
+        gap: 8,
+    },
+    modalView: {
+        width: "100%",
+        gap: 16,
+        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    textStyle: {
+        textAlign: "center",
+    },
+    button: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        elevation: 2,
     },
 });

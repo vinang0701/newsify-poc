@@ -33,7 +33,7 @@ class CommunityMembers(BaseModel):
 class CommunityApplicationReq(BaseModel):
     name: str
     description: str
-    requested_by_user_id: uuid.UUID
+    public: bool
 
 
 class CommunityApplication(BaseModel):
@@ -41,6 +41,7 @@ class CommunityApplication(BaseModel):
     inst_id: uuid.UUID
     name: str
     description: str
+    public: bool
 
 
 class CommunityMembership(BaseModel):

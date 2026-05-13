@@ -7,6 +7,7 @@ async def get_user_notifications(user_id: str) -> list[dict]:
         supabase.table("user_notifications_view")
         .select("*")
         .eq("recipient_user_id", user_id)
+        .order("created_at", desc=True)
         .execute()
     )
     return [NotificationItem(**item) for item in response.data]
@@ -19,6 +20,7 @@ async def get_unread_notification_count(user_id: str) -> int:
         .select("notification_id", count="exact")
         .eq("recipient_user_id", user_id)
         .eq("is_read", False)
+        .order("created_at", desc=True)
         .execute()
     )
     return response.count or 0

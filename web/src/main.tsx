@@ -6,7 +6,7 @@ import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import App from "./App";
 import InstitutionAdminHomePage from "@/institution_admin/home";
-import LandingPage from "./LandingPage";
+import LandingPage from "./Landingpage";
 import PlatformAdminDashboardPage from "./platform_admin/dashboard";
 import InstitutionsMgmtPage from "./platform_admin/institutions";
 import LoginPage from "./login";
