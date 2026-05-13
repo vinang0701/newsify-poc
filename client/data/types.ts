@@ -39,6 +39,20 @@ export interface Community {
     role: string | null;
     isMember: boolean;
     member_count: number;
+    member_status: string | null;
+    public: boolean;
+}
+
+export interface InvitedUser {
+    invitation_id: string;
+    community_id: string;
+    status: string;
+    invited_user_id: string;
+    invited_user_name: string;
+    invited_user_image_url: string | null;
+    invited_by_user_id: string;
+    created_at: string;
+    responded_at: string | null;
 }
 
 export interface ModalProps {
@@ -143,6 +157,14 @@ export interface PostData {
     is_public: boolean;
     selectedCategoryId: string;
     selectedCommunityId?: string;
+    thumbnail?: string;
+}
+
+export interface UpdatePostData {
+    news_id: string;
+    title: string;
+    description: string;
+    content: string;
     thumbnail?: string;
 }
 

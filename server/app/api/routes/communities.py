@@ -28,7 +28,6 @@ class PostToCommunityRequest(BaseModel):
     request_id: str
 
 
-# Return an array of institution news
 @router.get("")
 async def get_communities(
     inst_id: str,
@@ -121,6 +120,46 @@ async def get_community_members(inst_id: str, community_id: str):
     except Exception as e:
         print(f"Error fetching members: {e}")
         raise HTTPException(status_code=500, detail="Could not fetch community members")
+
+
+@router.get("/{community_id}/invited")
+async def get_invited_members(community_id: str):
+    try:
+        invited_members = await communities_service.get_invited_members(
+            supabase=supabase, community_id=community_id
+        )
+
+        if invited_members is None:
+            raise HTTPException(
+                status_code=404, detail="No invited members found for this community."
+            )
+        return invited_members
+    except Exception as e:
+        print(f"Error invited users: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch invited members")
+
+
+@router.delete("/{community_id}/invited/{invited_user_id}")
+async def remove_community_invite(community_id: str, invited_user_id: str):
+    try:
+        result = await communities_service.remove_community_invite(
+            supabase=supabase,
+            community_id=community_id,
+            invited_user_id=invited_user_id,
+        )
+        if not result:
+            raise HTTPException(
+                status_code=404, detail="Invite not found or already removed."
+            )
+        return {
+            "status": "success",
+            "message": "You have removed the invite for this user.",
+        }
+    except Exception as e:
+        print(f"Error deleting invite: {e}")
+        raise HTTPException(
+            status_code=500, detail="Internal server error while removing invite."
+        )
 
 
 @router.get("/{community_id}/members/me/role")

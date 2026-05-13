@@ -89,7 +89,9 @@ export function useCommunity(communityId?: string) {
             body: JSON.stringify({ community_id: communityId }),
         });
 
-        queryClient.invalidateQueries({ queryKey: ["communities"] });
+        queryClient.invalidateQueries({
+            queryKey: ["communities", communityId],
+        });
     };
 
     const leaveCommunity = async () => {
@@ -101,7 +103,9 @@ export function useCommunity(communityId?: string) {
             headers: { Authorization: `Bearer ${token}` },
         });
 
-        queryClient.invalidateQueries({ queryKey: ["communities"] });
+        queryClient.invalidateQueries({
+            queryKey: ["communities", communityId],
+        });
     };
 
     const userRole = useMemo(() => {

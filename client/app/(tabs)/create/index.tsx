@@ -231,7 +231,6 @@ export default function CreatePost() {
                 setSelectedCategoryId("");
                 setSelectedCategoryName("");
                 setSelectedCommunityId("");
-                setContentHtml("");
                 contentRef.current = "";
                 setModerationData(data);
                 setModerationModalVisible(true);

@@ -479,13 +479,18 @@ async def create_news_post(
 
 @router.patch("/users/me/news/{news_id}")
 async def edit_news_post(
-    news_id: uuid.UUID, app_user: UserPayload = Depends(get_current_app_user)
+    news_id: str,
+    title: str = Form(...),
+    description: str = Form(...),
+    content: str = Form(...),
+    thumbnail: Optional[UploadFile] = File(None),
+    content_images: list[UploadFile] = File([]),
+    app_user: UserPayload = Depends(get_current_app_user),
 ):
     # check if the user is allowed to edit this post
     # If not, early return
-    post = await news_service.get_news_post(
+    post = await news_service.get_news_post_by_id(
         supabase=supabase,
-        inst_id=app_user["inst_id"],
         news_id=str(news_id),
         user_id=app_user["id"],
     )
@@ -529,8 +534,8 @@ async def edit_news_post(
     safety_score = calculate_safety_score(all_results)
     if safety_score >= 90:
         post_status = "PUBLISHED"
-    elif 80 <= safety_score < 90:
-        post_status = "PENDING REVIEW"
+    # elif 80 <= safety_score < 90:
+    #     post_status = "PENDING REVIEW"
     else:
         post_status = "REJECTED"
 
@@ -538,16 +543,40 @@ async def edit_news_post(
         return {
             "status": post_status,
             "score": f"{safety_score}%",
-            "is_flagged": safety_score < 80,
+            "is_flagged": safety_score < 90,
             "flagged_categories": list(
                 set([c for r in all_results for c in r["categories"]])
             ),
         }
 
-    # if pass moderation, delete old thumbnail and content images
-    # insert new ones
+    # if pass moderation, update the thumbnail, title and content
+    try:
+        updated_post = await news_service.update_news_post(
+            supabase=supabase,
+            user_id=app_user["id"],
+            news_id=news_id,
+            title=title,
+            content=content,
+            status=post_status,
+            thumbnail=thumbnail,
+            content_images=content_images,
+        )
 
-    return None
+        if not updated_post:
+            raise HTTPException(status_code=500, detail="Update failed.")
+
+        return {
+            "status": "success",
+            "post_status": post_status,
+            "score": f"{safety_score}%",
+            "data": updated_post[0],
+        }
+
+    except Exception as e:
+        print(f"Error during post update: {e}")
+        raise HTTPException(
+            status_code=500, detail="An error occurred while saving your changes."
+        )
 
 
 @router.delete("/users/me/news/{post_id}")

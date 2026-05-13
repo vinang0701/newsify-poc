@@ -6,6 +6,7 @@ from app.models.community import (
     CommunityMember,
     CommunityApplication,
     CommunityPostRequest,
+    InvitedUser,
 )
 from app.core.db import supabase
 import uuid
@@ -18,11 +19,12 @@ async def get_communities(
     query = (
         supabase.table("communities")
         .select(
-            "*, member_info:community_members(role, user_id), member_count:community_members(count)"
+            "*, member_info:community_members(role, user_id, status), member_count:community_members(count)"
         )
         .eq("inst_id", inst_id)
         .eq("member_info.user_id", user_id)
         .eq("status", "active")
+        .eq("member_count.status", "active")
         .order("name", desc=False)
     )
     if search:
@@ -46,6 +48,10 @@ async def get_communities(
         comm["isMember"] = user_membership is not None
         comm["member_count"] = total_count
 
+        comm["member_status"] = (
+            user_membership.get("status") if user_membership else None
+        )
+
         formatted_communities.append(Community(**comm))
 
     return formatted_communities
@@ -57,12 +63,13 @@ async def get_community(
     response = (
         supabase.table("communities")
         .select(
-            "*, member_info:community_members(role, user_id), member_count:community_members(count)"
+            "*, member_info:community_members(role, user_id, status), member_count:community_members(count)"
         )
         .eq("inst_id", inst_id)
         .eq("id", community_id)
         .eq("member_info.user_id", user_id)
         .eq("status", "active")
+        .eq("member_count.status", "active")
         .order("name", desc=False)
         .single()
         .execute()
@@ -81,6 +88,8 @@ async def get_community(
     comm["role"] = user_membership.get("role") if user_membership else None
     comm["isMember"] = user_membership is not None
     comm["member_count"] = total_count
+
+    comm["member_status"] = user_membership.get("status") if user_membership else None
 
     return Community(**comm)
 
@@ -146,6 +155,18 @@ async def leave_community(supabase: Client, community_id: str, user_id: str):
 
 
 async def join_community(supabase: Client, community_id: str, user_id: str):
+    comm_res = (
+        supabase.table("communities")
+        .select("public")
+        .eq("id", community_id)
+        .single()
+        .execute()
+    )
+
+    if not comm_res.data:
+        return None
+    public = comm_res.data["public"]
+
     response = (
         supabase.table("community_members")
         .insert(
@@ -154,12 +175,15 @@ async def join_community(supabase: Client, community_id: str, user_id: str):
                 "user_id": user_id,
                 "joined_at": datetime.utcnow().isoformat(),
                 "role": "member",
+                "status": "active" if public is True else "pending",
             }
         )
         .execute()
     )
+    if not response.data:
+        return None
 
-    return response
+    return response.data
 
 
 async def get_members_by_community(supabase: Client, community_id: str):
@@ -169,7 +193,7 @@ async def get_members_by_community(supabase: Client, community_id: str):
     # 3. Only give me specific user fields
     response = (
         supabase.table("community_members")
-        .select("role, users(id, name)")
+        .select("role, users(id, name), status")
         .eq("community_id", community_id)
         .execute()
     )
@@ -181,12 +205,103 @@ async def get_members_by_community(supabase: Client, community_id: str):
             user_id=member["users"]["id"],
             name=member["users"]["name"],
             role=member.get("role", "member"),  # Fallback to 'member' if NULL
+            status=member["status"],
         )
         for member in response.data
         if member.get("users")
     ]
 
     return members
+
+
+async def get_invited_members(supabase: Client, community_id: str):
+    response = (
+        supabase.table("community_invitations")
+        .select("*, users!invited_user_id(name, image_url)")
+        .eq("community_id", community_id)
+        .execute()
+    )
+
+    if response.data is None:
+        return None
+
+    invited_members = []
+    for inv in response.data:
+        user_data = inv.pop("users", {}) or {}
+        inv["invited_user_name"] = user_data.get("name", "Unknown")
+        inv["invited_user_image_url"] = user_data.get("image_url", "")
+
+        invited_members.append(InvitedUser(**inv))
+
+    return invited_members
+
+
+async def remove_community_invite(
+    supabase: Client, community_id: str, invited_user_id: str
+):
+    response = (
+        supabase.table("community_invitations")
+        .delete()
+        .eq("community_id", community_id)
+        .eq("invited_user_id", invited_user_id)
+        .execute()
+    )
+
+    return response.data
+
+
+async def update_membership_status(
+    supabase: Client,
+    community_id: str,
+    user_id: str,
+    new_status: str,
+    admin_user_id: str,
+):
+    """
+    Updates the status of a community member (e.g., from 'pending' to 'active').
+    """
+    response = (
+        supabase.table("community_members")
+        .update({"status": new_status})
+        .eq("community_id", community_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+
+    if not response.data:
+        return None
+
+    # 2. Get the community name for the notification message
+    community_res = (
+        supabase.table("communities")
+        .select("name")
+        .eq("id", community_id)
+        .single()
+        .execute()
+    )
+
+    community_name = (
+        community_res.data.get("name", "a community")
+        if community_res.data
+        else "a community"
+    )
+    verb = "accepted" if new_status == "active" else "rejected"
+
+    # 3. Create the notification record
+    notification_data = {
+        "recipient_user_id": user_id,
+        "actor_user_id": admin_user_id,
+        "notification_type": "COMMUNITY_STATUS_CHANGE",
+        "reference_id": community_id,
+        "reference_table": "communities",
+        "message": f"Your request to join {community_name} has been {verb}.",
+        "is_read": False,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    supabase.table("notifications").insert(notification_data).execute()
+
+    return response.data
 
 
 async def get_community_post_requests(

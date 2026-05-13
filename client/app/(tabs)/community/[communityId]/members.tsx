@@ -21,7 +21,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import axios from "axios";
 import { Image } from "expo-image";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { act, useCallback, useMemo, useRef, useState } from "react";
 import BottomSheet, {
     BottomSheetBackdrop,
     BottomSheetModal,
@@ -30,6 +30,7 @@ import BottomSheet, {
 import api from "@/lib/axios";
 import Feather from "@expo/vector-icons/Feather";
 import { useAuthStore } from "@/utils/authStore";
+import { InvitedUser } from "@/data/types";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -41,9 +42,12 @@ interface CommunityMembers {
     user_id: string;
     name: string;
     role: string;
+    status: string;
 }
 
 type ConfirmAction = "ban" | "remove" | "promote" | "revoke" | null;
+
+const filters = ["Active", "Invited", "Pending"];
 
 const MembersPage = () => {
     const colorScheme = useColorScheme() ?? "light";
@@ -55,6 +59,7 @@ const MembersPage = () => {
         : communityIdParam;
     const queryClient = useQueryClient();
     const insets = useSafeAreaInsets();
+    const [activeFilter, setActiveFilter] = useState("Active");
 
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedMember, setSelectedMember] =
@@ -67,7 +72,21 @@ const MembersPage = () => {
             const res = await api.get(
                 `/${inst_id}/communities/${communityId}/members`,
             );
+            console.log(res.data);
             return res.data;
+        },
+    });
+
+    const { data: invited_users, isLoading: isLoadingInvited } = useQuery<
+        InvitedUser[]
+    >({
+        queryKey: ["invited_users", communityId],
+        queryFn: async () => {
+            const response = await api.get(
+                `${inst_id}/communities/${communityId}/invited`,
+            );
+            console.log(response.data);
+            return response.data;
         },
     });
 
@@ -157,6 +176,48 @@ const MembersPage = () => {
         },
     });
 
+    const { mutate: mu_removeInvite, isPending: isPendingRemoveInvite } =
+        useMutation({
+            mutationFn: async (invited_user_id: string) => {
+                const response = await api.delete(
+                    `/${inst_id}/communities/${communityId}/invited/${invited_user_id}`,
+                );
+                return response.data;
+            },
+            onSuccess: () => {
+                queryClient.invalidateQueries({
+                    queryKey: ["invited_users", communityId],
+                });
+            },
+            onError: (err) => {
+                Alert.alert("Error", err.message);
+            },
+        });
+
+    const { mutate: mu_update_membership, isPending: isPendingUpdateMem } =
+        useMutation({
+            mutationFn: async ({
+                userId,
+                status,
+            }: {
+                userId: string;
+                status: string;
+            }) => {
+                const response = await api.patch(
+                    // Ensure communityId is defined in your scope
+                    `${inst_id}/communities/${communityId}/members/${userId}/status`,
+                    { status },
+                );
+                return response.data;
+            },
+            onSuccess: () => {
+                // Invalidate the members query to refresh the list
+                queryClient.invalidateQueries({
+                    queryKey: ["community_members", communityId],
+                });
+            },
+        });
+
     // --- Bottom Sheet ---
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
@@ -238,11 +299,36 @@ const MembersPage = () => {
 
     const filteredMembers = useMemo(() => {
         if (!members) return [];
-        if (!searchQuery.trim()) return members;
-        return members.filter((m) =>
-            m.name.toLowerCase().includes(searchQuery.toLowerCase()),
-        );
-    }, [members, searchQuery]);
+
+        return members.filter((m) => {
+            // 1. Filter by Search Query
+            const matchesSearch = m.name
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase());
+
+            // 2. Filter by Active Tab (Status)
+            // Note: Assuming your 'activeFilter' string matches your database status strings
+            const matchesStatus = activeFilter
+                ? m.status?.toLowerCase() === activeFilter.toLowerCase()
+                : true;
+
+            return matchesSearch && matchesStatus;
+        });
+    }, [members, searchQuery, activeFilter]);
+
+    const filteredInvUsers = useMemo(() => {
+        if (!invited_users) return [];
+        if (!searchQuery.trim()) return invited_users;
+
+        return invited_users.filter((m) => {
+            // 1. Filter by Search Query
+            const matchesSearch = m.invited_user_name
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase());
+
+            return matchesSearch;
+        });
+    }, [invited_users, searchQuery, activeFilter]);
 
     const isAdmin = (member: CommunityMembers) =>
         member.role === "community_admin" || member.role === "admin";
@@ -348,53 +434,211 @@ const MembersPage = () => {
                     />
                 </View>
 
-                {/* Member List */}
-                <FlashList
-                    data={filteredMembers}
-                    keyExtractor={(item) => item.user_id}
-                    renderItem={({ item }) => (
-                        <View style={styles.memberRow}>
-                            <View style={styles.memberInfo}>
-                                <Image
-                                    source={require("@/assets/images/profile.png")}
-                                    style={styles.avatar}
-                                />
-                                <ThemedText type="defaultSemiBold">
-                                    {item.name}
+                {isCurrentUserAdmin && (
+                    <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                        {filters.map((filter) => (
+                            <Pressable
+                                key={filter}
+                                style={{
+                                    backgroundColor:
+                                        activeFilter === filter
+                                            ? Colors[colorScheme].tint
+                                            : Colors[colorScheme].bg_light,
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 4,
+                                    borderColor: Colors[colorScheme].border,
+                                    borderWidth: 1,
+                                    marginRight: 8,
+                                    borderRadius: 4,
+                                }}
+                                onPress={() => {
+                                    if (activeFilter === filter) {
+                                        return;
+                                    } else {
+                                        setActiveFilter(filter);
+                                    }
+                                }}
+                            >
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized={true}
+                                    style={{
+                                        color:
+                                            activeFilter === filter
+                                                ? Colors[colorScheme]
+                                                      .button_text
+                                                : Colors[colorScheme].tint,
+                                    }}
+                                >
+                                    {filter}
                                 </ThemedText>
-                                {isAdmin(item) && (
-                                    <View
-                                        style={[
-                                            styles.adminBadge,
-                                            {
-                                                backgroundColor:
-                                                    Colors[colorScheme].tint,
-                                            },
-                                        ]}
+                            </Pressable>
+                        ))}
+                    </View>
+                )}
+
+                {/* Member List */}
+
+                {activeFilter.toLocaleLowerCase() !== "invited" ? (
+                    <FlashList
+                        data={filteredMembers}
+                        keyExtractor={(item) => item.user_id}
+                        renderItem={({ item }) => (
+                            <View style={styles.memberRow}>
+                                <View style={styles.memberInfo}>
+                                    <Image
+                                        source={require("@/assets/images/profile.png")}
+                                        style={styles.avatar}
+                                    />
+                                    <ThemedText type="defaultSemiBold">
+                                        {item.name}
+                                    </ThemedText>
+                                    {isAdmin(item) && (
+                                        <View
+                                            style={[
+                                                styles.adminBadge,
+                                                {
+                                                    backgroundColor:
+                                                        Colors[colorScheme]
+                                                            .tint,
+                                                },
+                                            ]}
+                                        >
+                                            <ThemedText
+                                                type="caption"
+                                                emphasized
+                                                style={{
+                                                    color: Colors[colorScheme]
+                                                        .button_text,
+                                                }}
+                                            >
+                                                Admin
+                                            </ThemedText>
+                                        </View>
+                                    )}
+                                </View>
+                                {item.status === "active" ? (
+                                    <Pressable
+                                        onPress={() => handleExpandSheet(item)}
                                     >
-                                        <ThemedText
-                                            type="caption"
-                                            emphasized
+                                        <MaterialCommunityIcons
+                                            name="dots-vertical"
+                                            size={24}
+                                            color={Colors[colorScheme].caption}
+                                        />
+                                    </Pressable>
+                                ) : (
+                                    <View
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 8,
+                                        }}
+                                    >
+                                        <Pressable
                                             style={{
-                                                color: Colors[colorScheme]
-                                                    .button_text,
+                                                backgroundColor:
+                                                    Colors[colorScheme]
+                                                        .secondary,
+                                                padding: 4,
+                                                borderRadius: 4,
+                                                gap: 4,
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                            }}
+                                            onPress={() => {
+                                                mu_update_membership({
+                                                    userId: item.user_id,
+                                                    status: "active",
+                                                });
                                             }}
                                         >
-                                            Admin
-                                        </ThemedText>
+                                            <Feather
+                                                name="check"
+                                                size={20}
+                                                color={
+                                                    Colors[colorScheme]
+                                                        .button_text
+                                                }
+                                            />
+                                        </Pressable>
+                                        <Pressable
+                                            style={{
+                                                backgroundColor:
+                                                    Colors[colorScheme]
+                                                        .alert_red,
+                                                padding: 4,
+                                                borderRadius: 4,
+                                                gap: 4,
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                            }}
+                                            onPress={() => {
+                                                mu_update_membership({
+                                                    userId: item.user_id,
+                                                    status: "rejected",
+                                                });
+                                            }}
+                                        >
+                                            <Feather
+                                                name="x"
+                                                size={20}
+                                                color={
+                                                    Colors[colorScheme]
+                                                        .button_text
+                                                }
+                                            />
+                                        </Pressable>
                                     </View>
                                 )}
                             </View>
-                            <Pressable onPress={() => handleExpandSheet(item)}>
-                                <MaterialCommunityIcons
-                                    name="dots-vertical"
-                                    size={24}
-                                    color={Colors[colorScheme].caption}
-                                />
-                            </Pressable>
-                        </View>
-                    )}
-                />
+                        )}
+                    />
+                ) : (
+                    <FlashList
+                        data={filteredInvUsers}
+                        keyExtractor={(item) => item.invited_user_id}
+                        renderItem={({ item }) => (
+                            <View style={styles.memberRow}>
+                                <View style={styles.memberInfo}>
+                                    <Image
+                                        source={require("@/assets/images/profile.png")}
+                                        style={styles.avatar}
+                                    />
+                                    <ThemedText type="defaultSemiBold">
+                                        {item.invited_user_name}
+                                    </ThemedText>
+                                </View>
+                                <View>
+                                    <Pressable
+                                        style={{
+                                            backgroundColor:
+                                                Colors[colorScheme].alert_red,
+                                            padding: 4,
+                                            borderRadius: 4,
+                                            gap: 4,
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                        }}
+                                        onPress={() =>
+                                            mu_removeInvite(
+                                                item.invited_user_id,
+                                            )
+                                        }
+                                    >
+                                        <Feather
+                                            name="x"
+                                            size={20}
+                                            color={
+                                                Colors[colorScheme].button_text
+                                            }
+                                        />
+                                    </Pressable>
+                                </View>
+                            </View>
+                        )}
+                    />
+                )}
             </View>
 
             {/* Bottom Sheet */}

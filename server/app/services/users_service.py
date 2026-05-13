@@ -22,6 +22,7 @@ async def get_user_communities(
         .eq("inst_id", inst_id)
         .eq("community_members.user_id", user_id)
         .eq("status", "active")
+        .eq("member_info.status", "active")
         .order("name", desc=False)
     )
     if search:
@@ -162,4 +163,3 @@ async def suspend_news_post(supabase: Client, inst_id: str, user_id: str, post_i
         return True
 
     return False
-
