@@ -486,6 +486,15 @@ const ContentModerationPage = () => {
                                 className="w-full rounded-md object-cover"
                             />
                         )}
+                        <div
+                            className="prose prose-slate max-w-none 
+               text-base sm:text-base text-black 
+               leading-relaxed 
+               [&>p]:mb-6 [&>img]:my-8"
+                            dangerouslySetInnerHTML={{
+                                __html: cleanedSelectedReportPostHTML,
+                            }}
+                        />
                     </DialogContent>
                 </Dialog>
             )}
