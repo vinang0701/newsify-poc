@@ -660,9 +660,9 @@ const MembersPage = () => {
                         style={styles.sheetOption}
                         onPress={() =>
                             router.push({
-                                pathname: "/[user_id]",
+                                pathname: "/user/[user_id]",
                                 params: {
-                                    user_id: selectedMember?.user_id,
+                                    user_id: selectedMember?.user_id!,
                                     inst_id: metadata?.inst_id,
                                 },
                             })

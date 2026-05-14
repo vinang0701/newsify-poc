@@ -1,7 +1,7 @@
 import { ThemedText } from "@/components/themed-text";
 import { Colors } from "@/constants/theme";
 import { Image } from "expo-image";
-import { Link, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import * as React from "react";
 import { useEffect, useState } from "react";
 import {
@@ -30,6 +30,7 @@ import axios from "axios";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
+import { useCommunity } from "@/hooks/useCommunity";
 
 const HEADER_HEIGHT = 250;
 
@@ -41,10 +42,10 @@ export default function UserCommunitiesList() {
     const router = useRouter();
     const queryClient = useQueryClient();
 
-    const { session, metadata } = useAuthStore();
+    const { user, metadata } = useAuthStore();
     const inst_id = metadata?.inst_id;
-    const user_id = metadata?.user_id;
-    // console.log(session?.access_token);
+
+    const { user_id } = useLocalSearchParams<{ user_id: string }>();
 
     function nameToAvatar(name: string) {
         // 1. Split by whitespace and filter out any empty strings from extra spaces
@@ -93,17 +94,41 @@ export default function UserCommunitiesList() {
     const { data, error, isFetching, refetch } = useQuery<Community[]>({
         queryKey: ["communities"],
         queryFn: async (): Promise<Community[]> => {
-            const response = await api(`/users/me/communities`, {
-                params: {
-                    search: searchQuery || undefined, // Don't send empty strings
+            const response = await api(
+                `/${metadata?.inst_id}/users/${user_id}/communities`,
+                {
+                    params: {
+                        search: searchQuery || undefined,
+                    },
                 },
-            });
+            );
 
             return response.data;
         },
         enabled:
             !!inst_id && (searchQuery.length === 0 || searchQuery.length > 2),
     });
+
+    const {
+        data: myComm,
+        error: myCommError,
+        isFetching: isFetchingMyComm,
+        refetch: refetchMyComm,
+    } = useQuery<Community[]>({
+        queryKey: ["my_communities"],
+        queryFn: async (): Promise<Community[]> => {
+            const response = await api(
+                `/${metadata?.inst_id}/users/${user?.id}/communities`,
+            );
+
+            return response.data;
+        },
+        enabled: !!metadata?.inst_id && !!user?.id,
+    });
+
+    const myCommunityIds = React.useMemo(() => {
+        return myComm?.map((c) => c.id);
+    }, [myComm]);
 
     async function leaveCommunity(community_id: string) {
         console.log("Leaving community");
@@ -334,7 +359,8 @@ export default function UserCommunitiesList() {
                                                         .text_light,
                                                 }}
                                             >
-                                                {getRandomNumber()} members
+                                                {/* {getRandomNumber()} members */}
+                                                {item.member_count} members
                                             </ThemedText>
                                         </View>
                                     </View>
@@ -342,17 +368,25 @@ export default function UserCommunitiesList() {
                                         style={{
                                             paddingVertical: 8,
                                             paddingHorizontal: 12,
-                                            backgroundColor: item.isMember
-                                                ? Colors[colorScheme].alert_red
-                                                : Colors[colorScheme].bg_light,
+                                            backgroundColor:
+                                                myCommunityIds?.includes(
+                                                    item.id,
+                                                )
+                                                    ? Colors[colorScheme]
+                                                          .alert_red
+                                                    : Colors[colorScheme]
+                                                          .bg_light,
                                             borderRadius: 20,
                                             borderWidth: 2,
-                                            borderColor: item.isMember
-                                                ? "transparent"
-                                                : Colors[colorScheme].tint,
+                                            borderColor:
+                                                myCommunityIds?.includes(
+                                                    item.id,
+                                                )
+                                                    ? "transparent"
+                                                    : Colors[colorScheme].tint,
                                         }}
                                         onPress={() => {
-                                            !item.isMember
+                                            !myCommunityIds?.includes(item.id)
                                                 ? mutate(item.id)
                                                 : mu_leaveCommunity(item.id);
                                         }}
@@ -361,7 +395,9 @@ export default function UserCommunitiesList() {
                                             type="body_small"
                                             emphasized
                                             style={{
-                                                color: item.isMember
+                                                color: myCommunityIds?.includes(
+                                                    item.id,
+                                                )
                                                     ? Colors[colorScheme]
                                                           .button_text
                                                     : Colors[colorScheme].tint,
@@ -369,7 +405,9 @@ export default function UserCommunitiesList() {
                                                 fontWeight: "semibold",
                                             }}
                                         >
-                                            {item.isMember ? "Leave" : "Join"}
+                                            {myCommunityIds?.includes(item.id)
+                                                ? "Leave"
+                                                : "Join"}
                                         </ThemedText>
                                     </Pressable>
                                 </View>

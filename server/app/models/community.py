@@ -33,6 +33,7 @@ class CommunityApplicationReq(BaseModel):
     name: str
     description: str
     public: bool
+    image_url: str | None = None
 
 
 class CommunityApplication(BaseModel):
@@ -40,6 +41,7 @@ class CommunityApplication(BaseModel):
     inst_id: uuid.UUID
     name: str
     description: str
+    image_url: str | None = None
     public: bool
 
 

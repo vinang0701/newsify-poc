@@ -46,6 +46,8 @@ async def get_community_creation_requests(supbase: Client, inst_id: str) -> List
         req["requested_by_user_image_url"] = requested_by["image_url"]
 
         req["reviewed_by_user_name"] = reviewed_by.get("name", "")
+        req["community_public"] = req["public"]
+        req["community_image_url"] = req["image_url"]
         requests.append(CommunityCreationRequest(**req))
 
     return requests
@@ -94,6 +96,7 @@ async def respond_to_community_creation_request(
                     "description": request_data["description"],
                     "status": "active",
                     "public": request_data["public"],
+                    "image_url": request_data["image_url"],
                 }
             )
             .execute()

@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { NotificationItem } from "@/hooks/useNotifications";
 import { ThemedText } from "../themed-text";
+import { Image } from "expo-image";
 
 type Props = {
     data: NotificationItem[];
@@ -131,7 +132,16 @@ export default function NotificationList({
                     onPress={() => onPressItem(item)}
                     activeOpacity={0.8}
                 >
-                    <AvatarPlaceholder />
+                    {/* <AvatarPlaceholder /> */}
+                    {item.actor_avatar_url !== null ? (
+                        <Image
+                            source={{ uri: item.actor_avatar_url }}
+                            style={{ width: 48, height: 48, borderRadius: 100 }}
+                            contentFit="contain"
+                        />
+                    ) : (
+                        <AvatarPlaceholder />
+                    )}
                     {/* <View style={styles.content}>
                         <Text style={styles.messageText}>
                             <Text style={styles.boldText}>

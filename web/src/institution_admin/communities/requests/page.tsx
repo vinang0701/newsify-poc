@@ -64,13 +64,15 @@ const RequestsMgmtPage = () => {
                         <p className="text-destructive">{error.message}</p>
                     )}
                     {data && data.length > 0 ? (
-                        <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-4">
-                            {data.map((request) => (
-                                <CommunityRequestCard
-                                    key={request.request_id}
-                                    data={request}
-                                />
-                            ))}
+                        <div className="max-w-350 mx-auto w-full">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] justify-between gap-4">
+                                {data.map((request) => (
+                                    <CommunityRequestCard
+                                        key={request.request_id}
+                                        data={request}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     ) : (
                         <div className="flex flex-col h-full items-center py-10 gap-1">

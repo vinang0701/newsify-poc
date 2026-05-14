@@ -119,7 +119,7 @@ async def put_under_review(
             supabase,
             community_id,
             current_user["id"],
-            f"Your community '{comm["name"]}' has been put under review by the institution admin. Posting and communication are temporarily suspended."
+            f"Your community '{comm["name"]}' has been put under review by the institution admin. Posting and communication are temporarily suspended.",
         )
 
         return {"message": "Community put under review successfully"}
@@ -150,7 +150,7 @@ async def reactivate_community(
             supabase,
             community_id,
             current_user["id"],
-            f"Your community '{comm["name"]}' has been reactivated. Normal operations have resumed."
+            f"Your community '{comm["name"]}' has been reactivated. Normal operations have resumed.",
         )
 
         return {"message": "Community reactivated successfully"}
@@ -180,7 +180,7 @@ async def disband_community(
             supabase,
             community_id,
             current_user["id"],
-            f"Your community '{comm["name"]}' has been disbanded by the institution admin."
+            f"Your community '{comm["name"]}' has been disbanded by the institution admin.",
         )
 
         return {"message": "Community disbanded successfully"}
@@ -210,9 +210,7 @@ async def promote_to_admin(community_id: str, user_id: str):
 @router.patch("/{community_id}/members/{user_id}/revoke")
 async def revoke_admin(community_id: str, user_id: str):
     try:
-        result = await communities_service.revoke_admin(
-            supabase, community_id, user_id
-        )
+        result = await communities_service.revoke_admin(supabase, community_id, user_id)
         if not result:
             raise HTTPException(status_code=404, detail="Member not found")
         return {"message": "Admin rights revoked successfully"}
@@ -220,5 +218,3 @@ async def revoke_admin(community_id: str, user_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-

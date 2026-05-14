@@ -601,7 +601,7 @@ async def get_news_post_by_id(supabase: Client, news_id: str, user_id: str) -> N
         title=post["title"],
         description=post["description"] or "",
         image_url=post["image_url"] or "",
-        content=post["content"] or {},
+        content=post["content"] or "",
         likes_count=likes,
         comments_count=comments,
         has_liked=has_liked,
@@ -784,87 +784,3 @@ async def get_categories(supabase: Client, inst_id: str):
     except Exception as e:
         # Log the error here
         raise HTTPException(status_code=500, detail="Database retrieval failed")
-
-
-'''
-async def get_personalised_news(
-    supabase: Client, inst_id: str, user_id: str
-) -> List[dict]:
-
-    # Step 1: Get this user's preferred category_ids from user_preferences table
-    prefs_response = (
-        supabase.table("user_preferences")
-        .select("category_id")
-        .eq("user_id", user_id)
-        .execute()
-    )
-
-    # Turn the list of dicts into a flat list of ids
-    # e.g. [{"category_id": "abc"}] → ["abc"]
-    preferred_ids = [row["category_id"] for row in prefs_response.data]
-
-    # If user has no preferences, return the normal feed so screen isnt empty
-    if not preferred_ids:
-        return await get_institution_news(supabase, str(inst_id), user_id)
-
-    # Step 2: Fetch posts where category_id matches user's preferences
-    # category_id is now directly on news_posts so no joining needed!
-    response = (
-        supabase.table("news_posts")
-        .select("""
-            id,
-            created_at,
-            author,
-            title, 
-            description, 
-            image_url,
-            content,
-            users!news_posts_author_fkey!inner(name, image_url),
-            likes_count:post_likes(count),
-            comments_count:post_comments(count),
-            user_saved:saved_post(count),
-            user_liked:post_likes(count)
-            """)
-        .eq("inst_id", inst_id)
-        .in_("category_id", preferred_ids)
-        .eq("status", "PUBLISHED")
-        .eq("user_liked.user_id", user_id)
-        .eq(
-            "user_saved.user_id", user_id
-        )  # <- show only published posts. no suspended posts
-        .order("created_at", desc=True)
-        .execute()
-    )
-
-    if not response.data:
-        return []
-
-    posts = []
-    for post in response.data:
-        # 2. Extract counts (Supabase returns them as a list: [{'count': 5}])
-        likes = post.get("likes_count", [{}])[0].get("count", 0)
-        comments = post.get("comments_count", [{}])[0].get("count", 0)
-
-        # 3. Boolean check: if count > 0, the user has interacted with it
-        has_liked = post.get("user_liked", [{}])[0].get("count", 0) > 0
-        has_saved = post.get("user_saved", [{}])[0].get("count", 0) > 0
-
-        posts.append(
-            NewsPost(
-                id=post["id"],
-                created_at=post["created_at"],
-                author_id=post["author"],
-                author=post["users"]["name"],
-                title=post["title"],
-                description=post["description"] or "",
-                image_url=post["image_url"] or "",
-                content=post["content"] or {},
-                likes_count=likes,
-                comments_count=comments,
-                has_liked=has_liked,
-                has_saved=has_saved,
-            )
-        )
-
-    return posts
-'''

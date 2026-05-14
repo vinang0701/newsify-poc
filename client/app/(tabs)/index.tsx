@@ -33,7 +33,7 @@ import BottomSheet, {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useNavigation, useRouter } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image } from "expo-image";
+import { Image, ImageBackground } from "expo-image";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { usePreferences } from "@/hooks/usePreferences";
@@ -62,7 +62,9 @@ export default function HomeScreen() {
     const [activeFilter, setActiveFilter] = useState("Recent");
     const insets = useSafeAreaInsets();
     // Pull categories from the hook — we reuse this for both steps of the modal
-    const { categories, preferences, loading, error } = usePreferences();
+    const { categories, preferences, savePreferences, loading, error } =
+        usePreferences();
+
     const [refreshing, setRefreshing] = React.useState(false);
     const {
         loading: loadingFollow,
@@ -160,39 +162,24 @@ export default function HomeScreen() {
     }, [preferences]);
 
     const handleSavePreferences = async () => {
-        if (!user?.id) return;
-
-        try {
-            setSavingPrefs(true);
-
-            // Build rows for include and exclude
-            const includeRows = includeIds.map((id) => ({
-                category_id: id,
-                preference_type: "include",
-            }));
-
-            const excludeRows = excludeIds.map((id) => ({
-                category_id: id,
-                preference_type: "exclude",
-            }));
-
-            const combinedPreferences = [...includeRows, ...excludeRows];
-
-            const response = await api.post(
-                `/${inst_id}/users/me/preferences`,
-                {
-                    preferences: combinedPreferences,
-                },
-            );
-
-            // Close the modal
-            setShowPrefsModal(false);
-            return response.data;
-        } catch (err) {
-            Alert.alert("Error", "Something went wrong. Please try again.");
-        } finally {
-            setSavingPrefs(false);
+        if (!user || !metadata) {
+            console.error("No user data found.");
+            return;
         }
+
+        savePreferences(includeIds, {
+            onSuccess: () => {
+                queryClient.invalidateQueries({
+                    queryKey: ["user_preferences"],
+                });
+                Alert.alert("Success", "Your preferences have been updated.");
+                setShowPrefsModal(false);
+            },
+            onError: (err: any) => {
+                console.log("Failed to save preferences: " + err.detail);
+                Alert.alert("Error", "Failed to save preferences.");
+            },
+        });
     };
 
     const filteredNews = useMemo(() => {
@@ -281,18 +268,23 @@ export default function HomeScreen() {
         bottomSheetRef.current?.dismiss();
     };
 
-    if (
-        isFetchingPersonalised ||
-        !personalisedData ||
-        savingPrefs ||
-        isPendingSuspendPost ||
-        !user.id ||
-        !metadata.inst_id ||
-        loading ||
-        loadingFollow
-    ) {
-        return <Loading />;
-    }
+    // if (
+    //     isFetchingPersonalised ||
+    //     !personalisedData ||
+    //     savingPrefs ||
+    //     isPendingSuspendPost ||
+    //     !user.id ||
+    //     !metadata.inst_id ||
+    //     loading ||
+    //     loadingFollow
+    // ) {
+    //     return <Loading />;
+    // }
+
+    const hasPreferences = preferences && preferences.length > 0;
+    useEffect(() => {
+        if (preferences && preferences.length === 0) setShowPrefsModal(true);
+    }, [preferences]);
 
     return (
         <SafeAreaView
@@ -517,248 +509,119 @@ export default function HomeScreen() {
                 {/* Dark overlay behind the modal */}
                 <View style={styles.modalOverlay}>
                     {/* White card that contains the content */}
-                    <View
-                        style={[
-                            styles.modalCard,
-                            {
-                                backgroundColor: Colors[colorScheme].bg_light,
-                            },
-                        ]}
+                    <ImageBackground
+                        source={require("@/assets/images/gradient-bg-2.png")}
+                        style={{
+                            borderTopLeftRadius: 20,
+                            borderTopRightRadius: 20,
+                            padding: 24,
+                            height: "100%",
+                            gap: 12,
+                            backgroundColor: Colors[colorScheme].bg_light,
+                            justifyContent: "center",
+                            alignItems: "center",
+                        }}
                     >
-                        {modalStep === "include" ? (
-                            // ── STEP 1 ── Pick Your Interests
-                            <>
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={styles.modalTitle}
-                                >
-                                    Pick Your Interests
-                                </ThemedText>
-                                <ThemedText style={styles.modalSubtitle}>
-                                    Choose what will appear on your news feed!
-                                </ThemedText>
+                        <ThemedText
+                            type="heading"
+                            style={[
+                                styles.modalTitle,
+                                {
+                                    color: Colors["light"].button_text,
+                                    marginTop: "30%",
+                                },
+                            ]}
+                        >
+                            Pick Your Interests
+                        </ThemedText>
+                        <ThemedText
+                            type="default"
+                            style={{ color: Colors["light"].button_text }}
+                        >
+                            Pick at least 3 categories you wish to see on your
+                            news
+                        </ThemedText>
 
-                                {/* Category chips */}
-                                <ScrollView
-                                    contentContainerStyle={styles.modalGrid}
-                                >
-                                    <View style={styles.grid}>
-                                        {categories?.map((cat) => (
-                                            <TouchableOpacity
-                                                key={cat.category_id}
-                                                style={[
-                                                    styles.chip,
-                                                    {
-                                                        borderColor:
-                                                            Colors[colorScheme]
-                                                                .tint,
-                                                        backgroundColor:
-                                                            includeIds.includes(
-                                                                cat.category_id,
-                                                            )
-                                                                ? Colors[
-                                                                      colorScheme
-                                                                  ].tint
-                                                                : "transparent",
-                                                    },
-                                                ]}
-                                                onPress={() => {
-                                                    // Toggle include selection
-                                                    setIncludeIds((prev) =>
-                                                        prev.includes(
-                                                            cat.category_id,
-                                                        )
-                                                            ? prev.filter(
-                                                                  (c) =>
-                                                                      c !==
-                                                                      cat.category_id,
-                                                              )
-                                                            : [
-                                                                  ...prev,
-                                                                  cat.category_id,
-                                                              ],
-                                                    );
-                                                }}
-                                            >
-                                                <ThemedText
-                                                    style={{
-                                                        color: includeIds.includes(
-                                                            cat.category_id,
-                                                        )
-                                                            ? Colors[
-                                                                  colorScheme
-                                                              ].button_text
-                                                            : Colors[
-                                                                  colorScheme
-                                                              ].text,
-                                                    }}
-                                                >
-                                                    {cat.category_name}
-                                                </ThemedText>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </ScrollView>
-
-                                {/* Next button — goes to Step 2 */}
-                                <Pressable
-                                    style={[
-                                        styles.modalBtn,
-                                        {
-                                            backgroundColor:
-                                                Colors[colorScheme].tint,
-                                        },
-                                    ]}
-                                    onPress={() => setModalStep("exclude")} // move to step 2
-                                    disabled={includeIds.length === 0} // must select at least one
-                                >
-                                    <ThemedText
-                                        style={{
-                                            color: Colors[colorScheme]
-                                                .button_text,
+                        {/* Category chips */}
+                        <ScrollView contentContainerStyle={styles.modalGrid}>
+                            <View style={styles.grid}>
+                                {categories?.map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat.category_id}
+                                        style={[
+                                            styles.chip,
+                                            {
+                                                borderColor:
+                                                    Colors["light"].bg_light,
+                                                backgroundColor:
+                                                    includeIds.includes(
+                                                        cat.category_id,
+                                                    )
+                                                        ? Colors["light"]
+                                                              .bg_light
+                                                        : "transparent",
+                                            },
+                                        ]}
+                                        onPress={() => {
+                                            // Toggle include selection
+                                            setIncludeIds((prev) =>
+                                                prev.includes(cat.category_id)
+                                                    ? prev.filter(
+                                                          (c) =>
+                                                              c !==
+                                                              cat.category_id,
+                                                      )
+                                                    : [
+                                                          ...prev,
+                                                          cat.category_id,
+                                                      ],
+                                            );
                                         }}
                                     >
-                                        Next
-                                    </ThemedText>
-                                </Pressable>
-                            </>
-                        ) : (
-                            // ── STEP 2 ── What You Don't Want To See
-                            <>
-                                <ThemedText
-                                    type="defaultSemiBold"
-                                    style={styles.modalTitle}
-                                >
-                                    What You Don't Want To See
-                                </ThemedText>
-                                <ThemedText style={styles.modalSubtitle}>
-                                    Choose what you do not want to appear on
-                                    your news feed!
-                                </ThemedText>
-
-                                {/* Category chips — excluded ones are grey with strikethrough */}
-                                <ScrollView
-                                    contentContainerStyle={styles.modalGrid}
-                                >
-                                    <View style={styles.grid}>
-                                        {categories?.map((cat) => {
-                                            const isExcluded =
-                                                excludeIds.includes(
+                                        <ThemedText
+                                            style={{
+                                                color: includeIds.includes(
                                                     cat.category_id,
-                                                );
-                                            return (
-                                                <TouchableOpacity
-                                                    key={cat.category_id}
-                                                    style={[
-                                                        styles.chip,
-                                                        {
-                                                            borderColor:
-                                                                isExcluded
-                                                                    ? "#888"
-                                                                    : Colors[
-                                                                          colorScheme
-                                                                      ].tint,
-                                                            backgroundColor:
-                                                                isExcluded
-                                                                    ? "#888"
-                                                                    : "transparent",
-                                                        },
-                                                    ]}
-                                                    onPress={() => {
-                                                        // Toggle exclude selection
-                                                        setExcludeIds((prev) =>
-                                                            prev.includes(
-                                                                cat.category_id,
-                                                            )
-                                                                ? prev.filter(
-                                                                      (c) =>
-                                                                          c !==
-                                                                          cat.category_id,
-                                                                  )
-                                                                : [
-                                                                      ...prev,
-                                                                      cat.category_id,
-                                                                  ],
-                                                        );
-                                                    }}
-                                                >
-                                                    <ThemedText
-                                                        style={{
-                                                            color: isExcluded
-                                                                ? "#fff"
-                                                                : Colors[
-                                                                      colorScheme
-                                                                  ].text,
-                                                            textDecorationLine:
-                                                                isExcluded
-                                                                    ? "line-through"
-                                                                    : "none",
-                                                        }}
-                                                    >
-                                                        {cat.category_name}
-                                                    </ThemedText>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                </ScrollView>
-
-                                <View
-                                    style={{
-                                        flexDirection: "row",
-                                        gap: 12,
-                                        width: "100%",
-                                    }}
-                                >
-                                    {/* Back button — goes back to Step 1 */}
-                                    <Pressable
-                                        style={[
-                                            styles.modalBtn,
-                                            {
-                                                flex: 1,
-                                                backgroundColor:
-                                                    Colors[colorScheme].text,
-                                            },
-                                        ]}
-                                        onPress={() => setModalStep("include")}
-                                    >
-                                        <ThemedText
-                                            style={{
-                                                color: Colors[colorScheme]
-                                                    .button_text,
+                                                )
+                                                    ? Colors[colorScheme].text
+                                                    : Colors[colorScheme]
+                                                          .button_text,
                                             }}
                                         >
-                                            Back
+                                            {cat.category_name}
                                         </ThemedText>
-                                    </Pressable>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
 
-                                    {/* Save button — saves everything and closes modal */}
-                                    <Pressable
-                                        style={[
-                                            styles.modalBtn,
-                                            {
-                                                flex: 1,
-                                                backgroundColor: savingPrefs
-                                                    ? "#ccc"
-                                                    : Colors[colorScheme].tint,
-                                            },
-                                        ]}
-                                        onPress={handleSavePreferences}
-                                        disabled={savingPrefs}
-                                    >
-                                        <ThemedText
-                                            style={{
-                                                color: Colors[colorScheme]
-                                                    .button_text,
-                                            }}
-                                        >
-                                            {savingPrefs ? "Saving..." : "Save"}
-                                        </ThemedText>
-                                    </Pressable>
-                                </View>
-                            </>
-                        )}
-                    </View>
+                        <Pressable
+                            style={[
+                                styles.modalBtn,
+                                {
+                                    width: "100%",
+                                    backgroundColor:
+                                        includeIds.length < 3
+                                            ? Colors[colorScheme].bg_dark
+                                            : Colors[colorScheme].tint,
+                                    elevation: 12,
+                                    borderRadius: 30,
+                                    marginBottom: 24,
+                                },
+                            ]}
+                            onPress={handleSavePreferences}
+                            disabled={savingPrefs || includeIds.length < 3}
+                        >
+                            <ThemedText
+                                type="sub_heading"
+                                style={{
+                                    color: Colors[colorScheme].button_text,
+                                }}
+                            >
+                                Save
+                            </ThemedText>
+                        </Pressable>
+                    </ImageBackground>
                 </View>
             </Modal>
         </SafeAreaView>
@@ -813,7 +676,7 @@ const styles = StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.5)", // dark transparent background
-        justifyContent: "flex-end", // card sticks to bottom like a bottom sheet
+        // justifyContent: "flex-end", // card sticks to bottom like a bottom sheet
     },
 
     modalCard: {
@@ -824,8 +687,8 @@ const styles = StyleSheet.create({
         gap: 12,
     },
 
-    modalTitle: { fontSize: 22, fontWeight: "bold" },
-    modalSubtitle: { fontSize: 14, opacity: 0.6 },
+    modalTitle: { fontWeight: "bold" },
+    modalSubtitle: { fontSize: 14 },
     modalGrid: { paddingVertical: 8 },
     modalBtn: {
         padding: 14,
@@ -838,7 +701,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 20, // pill shape
-        borderWidth: 1.5,
+        borderWidth: 2,
     },
 
     grid: {

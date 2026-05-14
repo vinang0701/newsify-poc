@@ -12,11 +12,12 @@ const CommunityCard = ({ data }: CommunityCardProps) => {
     const navigate = useNavigate();
 
     // Status badge color
-    const statusColor = {
-        active: "bg-green-100 text-green-700",
-        under_review: "bg-orange-100 text-orange-700",
-        disbanded: "bg-red-100 text-red-700",
-    }[data.status] ?? "bg-gray-100 text-gray-700";
+    const statusColor =
+        {
+            active: "bg-green-100 text-green-700",
+            under_review: "bg-orange-100 text-orange-700",
+            disbanded: "bg-red-100 text-red-700",
+        }[data.status] ?? "bg-gray-100 text-gray-700";
 
     return (
         <div className="flex flex-col min-w-69 w-full items-center gap-3 p-4 bg-card shadow-md rounded-md">
@@ -24,7 +25,7 @@ const CommunityCard = ({ data }: CommunityCardProps) => {
                 <img
                     src={data.image_url}
                     alt={`${data.name} image`}
-                    className="size-[114]"
+                    className="size-28.5 bg-muted-foreground/20 rounded-full items-center flex"
                 />
             ) : (
                 <div className="size-28.5 bg-muted-foreground/20 rounded-full items-center justify-center flex">
@@ -36,12 +37,14 @@ const CommunityCard = ({ data }: CommunityCardProps) => {
                 <div className="font-semibold">{data.name}</div>
                 <Separator className="max-w-15" />
                 {/* Status badge + Member count  one ontop of the other*/}
-				<span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}>
-					{data.status.replace("_", " ").toUpperCase()}
-				</span>
-				<span className="text-xs text-muted-foreground">
-					{data.member_count ?? 0} members
-				</span>
+                <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor}`}
+                >
+                    {data.status.replace("_", " ").toUpperCase()}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    {data.member_count ?? 0} members
+                </span>
             </div>
             <div className="w-full px-3 py-2 bg-muted-foreground/30 rounded-md h-29 wrap-break-word overflow-scroll">
                 <p className="text-sm">{data.description}</p>

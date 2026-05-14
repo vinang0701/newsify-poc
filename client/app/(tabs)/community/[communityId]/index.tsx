@@ -3,7 +3,6 @@ import {
     Pressable,
     StyleSheet,
     useColorScheme,
-    Image,
     View,
     ScrollView,
     Modal,
@@ -15,13 +14,7 @@ import {
     BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { Colors } from "@/constants/theme";
 import {
     Link,
@@ -45,9 +38,10 @@ import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
 import { useCommunity } from "@/hooks/useCommunity";
 import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
+import { Image } from "expo-image";
 
 export default function CommunityPage() {
-    const { user, metadata } = useAuthStore();
+    const { user } = useAuthStore();
     const queryClient = useQueryClient();
     const colorScheme = useColorScheme() ?? "light";
     const params = useLocalSearchParams<{
@@ -304,39 +298,42 @@ export default function CommunityPage() {
                         ]}
                     >
                         <View style={styles.flexRowContainer}>
-                            {/* <Image
-                                source={require("@/assets/images/icon.png")}
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderWidth: 1,
-                                    borderColor: Colors[colorScheme].border,
-                                    borderRadius: 100,
-                                }}
-                            /> */}
-                            <View
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 20,
-                                    backgroundColor: "hsl(54, 81%, 43%)",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    borderWidth: 1,
-                                    borderColor: "rgba(0,0,0,0.1)", // Subtle border
-                                }}
-                            >
-                                <ThemedText
-                                    type="body_medium"
-                                    emphasized
+                            {community.image_url !== null ? (
+                                <Image
+                                    source={{ uri: community.image_url }}
                                     style={{
-                                        color: Colors[colorScheme].button_text, // White text usually pops best on colors
+                                        width: 48,
+                                        height: 48,
+                                        borderRadius: 50,
+                                    }}
+                                    contentFit="contain"
+                                />
+                            ) : (
+                                <View
+                                    style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 20,
+                                        backgroundColor: "hsl(54, 81%, 43%)",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        borderWidth: 1,
+                                        borderColor: "rgba(0,0,0,0.1)", // Subtle border
                                     }}
                                 >
-                                    {nameToAvatar(community?.name ?? "")[0]}
-                                    {nameToAvatar(community?.name ?? "")[1]}
-                                </ThemedText>
-                            </View>
+                                    <ThemedText
+                                        type="body_medium"
+                                        emphasized
+                                        style={{
+                                            color: Colors[colorScheme]
+                                                .button_text, // White text usually pops best on colors
+                                        }}
+                                    >
+                                        {nameToAvatar(community?.name ?? "")[0]}
+                                        {nameToAvatar(community?.name ?? "")[1]}
+                                    </ThemedText>
+                                </View>
+                            )}
                             {/* Community name and Member Count */}
 
                             <Pressable onPress={handleViewMembers}>

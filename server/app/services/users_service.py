@@ -55,13 +55,16 @@ async def get_user_communities(
 async def get_user_profile(supabase: Client, inst_id: str, user_id: str) -> List[dict]:
     response = (
         supabase.table("users")
-        .select("id, name, description")
+        .select("id, name, description, image_url")
         .eq("id", user_id)
         .execute()
     )
     return [
         UserProfileDetails(
-            id=user["id"], name=user["name"], description=user["description"]
+            id=user["id"],
+            name=user["name"],
+            description=user["description"],
+            image_url=user["image_url"],
         )
         for user in response.data
     ]

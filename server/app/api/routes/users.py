@@ -807,6 +807,16 @@ async def get_user_news(inst_id: str, user_id: str):
     return my_news
 
 
+@router.get("/{inst_id}/users/{user_id}/communities")
+async def get_user_communities(
+    inst_id: str, user_id: str, search: Optional[str] = None
+):
+    user_communities = await users_service.get_user_communities(
+        supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+    )
+    return user_communities
+
+
 @router.get("/{inst_id}/users/{user_id}/following")
 async def get_user_following(inst_id: str, user_id: str):
     user_following = await users_service.get_user_following(supabase, inst_id, user_id)

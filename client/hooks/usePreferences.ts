@@ -1,6 +1,4 @@
-//useState stores data that can change nd re-renders the screen when it does
-//useEffect runs code when the component first load (empty[] means run once)
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -8,11 +6,10 @@ import { Category, UserPreference } from "@/data/types";
 
 export function usePreferences() {
     const { user, session, metadata } = useAuthStore();
-    if (!user || !metadata || !session) {
-        throw new Error("Error occurred while retrieving user data.");
-    }
-    const inst_id = metadata.inst_id;
-    const userId = user.id;
+    const isReady = !!user && !!session && !!metadata;
+    const inst_id = metadata?.inst_id;
+    const userId = user?.id;
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
     const categoriesQuery = useQuery<Category[]>({
         queryKey: ["categories", inst_id],
@@ -33,10 +30,19 @@ export function usePreferences() {
             setSelectedIds(preferenceIds);
             return response.data;
         },
-        enabled: !!inst_id && !!userId,
+        enabled: isReady,
     });
 
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const isLoadingPreferences = preferencesQuery.isLoading;
+
+    useEffect(() => {
+        if (preferencesQuery.data) {
+            const ids = preferencesQuery.data.map(
+                (p) => p.category.category_id,
+            );
+            setSelectedIds(ids);
+        }
+    }, [preferencesQuery.data]);
 
     //called when user saves preferences
     //deletes old preferences, inserts new ones

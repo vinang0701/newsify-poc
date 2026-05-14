@@ -98,6 +98,8 @@ export interface CommunityCreationRequest {
     requested_by_user_name: string;
     requested_by_user_image_url: string | null;
     community_name: string;
+    community_image_url: string | null;
+    community_public: boolean;
     description: string;
     status: string;
     created_at: string;

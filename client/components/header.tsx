@@ -43,7 +43,7 @@ export function Header() {
                 },
             ]}
         >
-            <TouchableOpacity onPress = {() => router.push ('/notifications')}>
+            <TouchableOpacity onPress={() => router.push("/notifications")}>
                 <Feather
                     name="bell"
                     size={24}
@@ -54,7 +54,11 @@ export function Header() {
 
             <Image
                 source={require("@/assets/images/icon_light.png")}
-                style={{ width: 42, height: 20, resizeMode: "contain" }}
+                style={{
+                    width: 42,
+                    height: 20,
+                }}
+                contentFit="contain"
             />
 
             <Link href="/search" push asChild>

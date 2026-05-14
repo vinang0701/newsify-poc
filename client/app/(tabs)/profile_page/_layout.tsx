@@ -17,14 +17,14 @@ export default function UserProfileTabLayout() {
                     name="communities"
                     options={{ headerShown: false }}
                 />
-                <Stack.Screen
+                {/* <Stack.Screen
                     name="following"
                     options={{ headerShown: false }}
-                />
-                <Stack.Screen
+                /> */}
+                {/* <Stack.Screen
                     name="followers"
                     options={{ headerShown: false }}
-                />
+                /> */}
                 <Stack.Screen
                     name="bookmarks"
                     options={{ headerShown: false }}

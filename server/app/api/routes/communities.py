@@ -1,9 +1,7 @@
-""" """
-
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from app.services import communities_service, news_service
 from app.core.config import settings
 from app.core.db import supabase
@@ -82,27 +80,25 @@ async def get_community_news(
 @router.post("/requests")
 async def create_community_application(
     inst_id: uuid.UUID,
-    reqData: CommunityApplicationReq,
+    name: str = Form(...),
+    description: str = Form(...),
+    public: bool = Form(...),
+    image: Optional[UploadFile] = File(None),
     current_user=Depends(get_current_app_user),
 ):
-    # Add JWT decode to get user id instead of feeding in to body
-    # for now grab from body
-
-    formData = CommunityApplication(
-        requested_by_user_id=current_user["id"],
-        inst_id=inst_id,
-        name=reqData.name,
-        description=reqData.description,
-        public=reqData.public,
-    )
-
     data, error = await communities_service.create_community_application(
-        supabase, formData
+        supabase=supabase,
+        requested_by_user_id=current_user["id"],
+        inst_id=str(inst_id),
+        name=name,
+        description=description,
+        public=public,
+        image=image,
     )
 
     if error:
         raise HTTPException(
-            status_code=400, detail=f"Failed to create community: {error.message}"
+            status_code=400, detail=f"Failed to create community: {error}"
         )
 
     return {

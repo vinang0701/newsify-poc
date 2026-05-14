@@ -170,7 +170,6 @@ export default function CreatePost() {
         const uri = await pickMedia();
         if (uri) {
             ref.current?.setImage(uri, 360, 200);
-            setImages((prev) => [...prev, uri]);
         }
     };
     const pickThumbnail = async () => {
@@ -535,7 +534,6 @@ export default function CreatePost() {
                                 <EnrichedTextInput
                                     ref={ref}
                                     onChangeText={(e) => {
-                                        setInputValue(e.nativeEvent.value);
                                         setDescriptionValue(
                                             e.nativeEvent.value,
                                         );
@@ -679,7 +677,7 @@ export default function CreatePost() {
                             setSelectedCategoryName={setSelectedCategoryName}
                             selectedCommunityId={selectedCommunityId}
                             setSelectedCommunityId={setSelectedCommunityId}
-                            categories={categories}
+                            categories={categories ?? []}
                             communities={myCommunities}
                             onBack={() => {
                                 setActiveFilter("new");

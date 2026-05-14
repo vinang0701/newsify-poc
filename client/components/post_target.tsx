@@ -13,7 +13,7 @@ import Checkbox from "expo-checkbox";
 import { Colors } from "@/constants/theme";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { FlashList } from "@shopify/flash-list";
-import { Community, PostDestination } from "@/data/types";
+import { Category, Community, PostDestination } from "@/data/types";
 import Feather from "@expo/vector-icons/Feather";
 
 interface PostTargetProps {
@@ -25,10 +25,11 @@ interface PostTargetProps {
     setSelectedCategoryId: Dispatch<SetStateAction<string>>;
     selectedCategoryName: string;
     setSelectedCategoryName: Dispatch<SetStateAction<string>>;
-    categories: {
-        category_id: string;
-        category_name: string;
-    }[];
+    // categories: {
+    //     category_id: string;
+    //     category_name: string;
+    // }[];
+    categories: Category[];
     communities: Community[] | undefined;
     onBack: () => void;
     onSubmit: () => void;

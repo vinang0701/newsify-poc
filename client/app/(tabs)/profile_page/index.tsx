@@ -21,7 +21,7 @@ import {
 import { ThemedText } from "@/components/themed-text";
 import Feather from "@expo/vector-icons/Feather";
 import { useQuery } from "@tanstack/react-query";
-import { News, UserProfileDetails } from "@/data/types";
+import { Community, News, UserProfileDetails } from "@/data/types";
 import axios from "axios";
 import { FlashList } from "@shopify/flash-list";
 import NewsPostCard from "@/components/news_post_card";
@@ -151,22 +151,39 @@ export default function Profile() {
         }
     }
 
+    const {
+        data: myComm,
+        error: myCommError,
+        isFetching: isFetchingMyComm,
+        refetch: refetchMyComm,
+    } = useQuery<Community[]>({
+        queryKey: ["communities"],
+        queryFn: async (): Promise<Community[]> => {
+            const response = await api(`/users/me/communities`);
+
+            return response.data;
+        },
+        enabled: !!inst_id && !!user?.id,
+    });
+
     function goToFollowing(targetUserId: string) {
         router.push({
-            pathname: "/(tabs)/profile_page/following",
+            // pathname: "/(tabs)/profile_page/following",
+            pathname: "/user/following",
             params: { user_id: targetUserId, inst_id: inst_id },
         });
     }
 
     function goToFollowers(targetUserId: string) {
         router.push({
-            pathname: "/(tabs)/profile_page/followers",
+            // pathname: "/(tabs)/profile_page/followers",
+            pathname: "/user/followers",
             params: { user_id: targetUserId, inst_id: inst_id },
         });
     }
     function goToCommunities(targetUserId: string) {
         router.push({
-            pathname: "/(tabs)/profile_page/communities",
+            pathname: "/user/communities",
             params: { user_id: targetUserId, inst_id: inst_id },
         });
     }
@@ -291,7 +308,8 @@ export default function Profile() {
 
                 <Image
                     source={require("@/assets/images/icon_light.png")}
-                    style={{ width: 42, height: 20, resizeMode: "contain" }}
+                    style={{ width: 42, height: 20 }}
+                    contentFit="contain"
                 />
 
                 <Link href="/search" push asChild>
@@ -325,10 +343,22 @@ export default function Profile() {
                 >
                     <View style={styles.flexRowContainer}>
                         <View style={[styles.flexRowContainer, { gap: 20 }]}>
-                            <Image
-                                source={require("@/assets/images/profile.png")}
-                                style={{ width: 68, height: 68 }}
-                            />
+                            {profileData?.image_url ? (
+                                <Image
+                                    source={{ uri: profileData?.image_url }}
+                                    style={{
+                                        width: 68,
+                                        height: 68,
+                                        borderRadius: 1000,
+                                    }}
+                                    contentFit="cover"
+                                />
+                            ) : (
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 68, height: 68 }}
+                                />
+                            )}
                             <View>
                                 <ThemedText type="defaultSemiBold">
                                     {profileData?.name}
@@ -394,7 +424,7 @@ export default function Profile() {
                                 style={styles.statsInfoContainer}
                             >
                                 <ThemedText type="defaultSemiBold">
-                                    4
+                                    {myComm?.length}
                                 </ThemedText>
                                 <ThemedText
                                     type="caption"

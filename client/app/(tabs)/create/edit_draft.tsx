@@ -1,7 +1,9 @@
 import {
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -13,7 +15,10 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { DraftData, ServerReponse } from "@/data/types";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+    SafeAreaView,
+    useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Feather from "@expo/vector-icons/Feather";
 import { Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/themed-text";
@@ -28,21 +33,36 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as ImagePicker from "expo-image-picker";
 import Loading from "@/components/loading";
 import useDrafts from "@/hooks/useDrafts";
+import { usePreferences } from "@/hooks/usePreferences";
+import useCreatePost from "@/hooks/useCreatePost";
+import { ModerationData } from "@/components/moderation_modal";
 
 const EditDraftTab = () => {
     const { draft_id } = useLocalSearchParams<{ draft_id: string }>();
     const colorScheme = useColorScheme() ?? "light";
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     // Rich text editor ref
     const ref = useRef<EnrichedTextInputInstance>(null);
     const [stylesState, setStylesState] = useState<OnChangeStateEvent | null>();
     // fetch draft
     const [titleInputValue, setTitleInputValue] = useState("");
     const [thumbnail, setThumbnail] = useState<string>("");
-    const [images, setImages] = useState<string[]>([]);
+
+    const [step, setStep] = useState("draft");
+
+    // content html to handle navigate back and forth
+    const [contentHtml, setContentHtml] = useState("");
+    const contentRef = useRef("");
 
     // custom hook
     const { queryClient, mu_saveDraft, isPendingSaveDraft } = useDrafts();
+    const { categories } = usePreferences();
+    const { mutate, isPending } = useCreatePost();
+    const [moderationData, setModerationData] = useState<ModerationData | null>(
+        null,
+    );
+    const [moderationModalVisible, setModerationModalVisible] = useState(false);
 
     const { data, error } = useQuery<DraftData>({
         queryKey: ["draft", draft_id],
@@ -86,7 +106,6 @@ const EditDraftTab = () => {
         const uri = await pickMedia();
         if (uri) {
             ref.current?.setImage(uri, 360, 200);
-            setImages((prev) => [...prev, uri]);
         }
     };
     const pickThumbnail = async () => {
@@ -94,6 +113,23 @@ const EditDraftTab = () => {
         if (uri) {
             setThumbnail(uri);
         }
+    };
+
+    const handleNavigateToTarget = async () => {
+        if (!titleInputValue.trim()) {
+            Alert.alert("Error", "Please include a title.");
+            return;
+        }
+
+        const content = await ref.current?.getHTML();
+
+        if (!content || !content.trim()) {
+            Alert.alert("Error", "Please include a body.");
+            return;
+        }
+        contentRef.current = content;
+        setContentHtml(content);
+        setStep("target");
     };
 
     // hande save draft
@@ -126,254 +162,270 @@ const EditDraftTab = () => {
     }
 
     return (
-        <SafeAreaView style={{ flex: 1 }}>
-            {/* Header */}
-            <View
-                style={[
-                    styles.headerContainer,
-                    { backgroundColor: Colors[colorScheme].tint },
-                ]}
-            >
-                <Pressable onPress={() => router.back()}>
-                    <Feather
-                        name="arrow-left"
-                        size={24}
-                        color={Colors[colorScheme].button_text}
-                    />
-                </Pressable>
-            </View>
+        <KeyboardAvoidingView
+            behavior="height"
+            style={{ flex: 1 }}
+            keyboardVerticalOffset={0}
+        >
             {/* Editor Card */}
-            <View
-                style={[
-                    styles.cardContainer,
-                    {
-                        backgroundColor: Colors[colorScheme].bg,
-                        // borderColor: Colors[colorScheme].border,
-                    },
-                ]}
+            <ScrollView
+            // contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
             >
-                {thumbnail ? (
-                    <View style={{ width: "100%" }}>
-                        <Pressable
-                            style={{
-                                alignSelf: "flex-start",
-                                borderRadius: 50,
-                                backgroundColor: "hsla(0, 0%, 0%, 0.7)",
-                                position: "absolute",
-                                zIndex: 10,
-                                top: 8,
-                                left: 8,
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: 30,
-                                height: 30,
-                            }}
-                            onPress={() => setThumbnail("")}
-                        >
+                <SafeAreaView>
+                    {/* Header */}
+                    <View
+                        style={[
+                            styles.headerContainer,
+                            { backgroundColor: Colors[colorScheme].tint },
+                        ]}
+                    >
+                        <Pressable onPress={() => router.back()}>
                             <Feather
-                                name="x"
+                                name="arrow-left"
                                 size={24}
                                 color={Colors[colorScheme].button_text}
                             />
                         </Pressable>
-                        <Image
-                            source={thumbnail}
-                            style={{
-                                height: 200,
-                                width: "100%",
-                                borderRadius: 8,
-                            }}
-                        />
                     </View>
-                ) : (
-                    <Pressable
+                </SafeAreaView>
+                <View
+                    style={[
+                        styles.cardContainer,
+                        {
+                            backgroundColor: Colors[colorScheme].bg,
+                            // borderColor: Colors[colorScheme].border,
+                        },
+                    ]}
+                >
+                    {thumbnail ? (
+                        <View style={{ width: "100%" }}>
+                            <Pressable
+                                style={{
+                                    alignSelf: "flex-start",
+                                    borderRadius: 50,
+                                    backgroundColor: "hsla(0, 0%, 0%, 0.7)",
+                                    position: "absolute",
+                                    zIndex: 10,
+                                    top: 8,
+                                    left: 8,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 30,
+                                    height: 30,
+                                }}
+                                onPress={() => setThumbnail("")}
+                            >
+                                <Feather
+                                    name="x"
+                                    size={24}
+                                    color={Colors[colorScheme].button_text}
+                                />
+                            </Pressable>
+                            <Image
+                                source={thumbnail}
+                                style={{
+                                    height: 200,
+                                    width: "100%",
+                                    borderRadius: 8,
+                                }}
+                            />
+                        </View>
+                    ) : (
+                        <Pressable
+                            style={{
+                                width: "100%",
+                                height: 140,
+                                backgroundColor: Colors[colorScheme].bg_light,
+                                borderStyle: "dashed",
+                                borderWidth: 1,
+                                borderColor: Colors[colorScheme].border,
+                                borderRadius: 8,
+                                justifyContent: "center",
+                                alignItems: "center",
+                                alignSelf: "center",
+                            }}
+                            onPress={pickThumbnail}
+                        >
+                            <MaterialCommunityIcons
+                                name="upload-outline"
+                                size={24}
+                            />
+                            <ThemedText
+                                type="body_medium"
+                                style={{
+                                    color: Colors[colorScheme].text_light,
+                                }}
+                            >
+                                Upload thumbnail
+                            </ThemedText>
+                        </Pressable>
+                    )}
+                    <TextInput
+                        placeholder="Write an interesting headline..."
+                        editable
+                        multiline
+                        value={titleInputValue}
+                        onChangeText={setTitleInputValue}
+                        numberOfLines={4}
+                        placeholderTextColor={Colors[colorScheme].caption}
                         style={{
                             width: "100%",
-                            height: 140,
-                            backgroundColor: Colors[colorScheme].bg_light,
-                            borderStyle: "dashed",
-                            borderWidth: 1,
-                            borderColor: Colors[colorScheme].border,
                             borderRadius: 8,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            alignSelf: "center",
+                            padding: 12,
+                            fontSize: 22,
+                            fontWeight: 600,
+                            textAlignVertical: "top",
+                            backgroundColor: Colors[colorScheme].bg_light,
                         }}
-                        onPress={pickThumbnail}
-                    >
-                        <MaterialCommunityIcons
-                            name="upload-outline"
-                            size={24}
+                    />
+                    <View style={{ flex: 1, width: "100%" }}>
+                        <EditorToolbar
+                            style={[
+                                styles.toolbar,
+                                {
+                                    backgroundColor:
+                                        Colors[colorScheme].bg_light,
+                                    borderColor: Colors[colorScheme].border,
+                                },
+                            ]}
+                            actions={{
+                                onBold: () => ref?.current?.toggleBold(),
+                                onItalic: () => ref.current?.toggleItalic(),
+                                onUnderline: () =>
+                                    ref.current?.toggleUnderline(),
+                                onImage: pickImage,
+                                onLink: () => ref.current?.setLink, // if supported
+                                onBulletList: () =>
+                                    ref.current?.toggleUnorderedList(), // if supported
+                                onOrderedList: () =>
+                                    ref.current?.toggleOrderedList(), // if supported
+                            }}
+                            activeStyles={{
+                                bold: stylesState?.bold.isActive,
+                                italic: stylesState?.italic.isActive,
+                                underline: stylesState?.underline.isActive,
+                            }}
                         />
-                        <ThemedText
-                            type="body_medium"
-                            style={{
-                                color: Colors[colorScheme].text_light,
+                        <EnrichedTextInput
+                            scrollEnabled
+                            ref={ref}
+                            placeholder="What's on your mind?"
+                            onChangeState={(e) => setStylesState(e.nativeEvent)}
+                            style={styles.input}
+                            htmlStyle={{
+                                h2: { bold: true, fontSize: 20 },
+                                h3: { bold: true, fontSize: 18 },
                             }}
+                            onBlur={ref.current?.blur}
+                            onPasteImages={(e) => {
+                                const img = e.nativeEvent.images[0];
+                                ref.current?.setImage(
+                                    img.uri,
+                                    img.width,
+                                    img.height,
+                                );
+                            }}
+                        />
+                        <View style={styles.paragraphStyles}>
+                            <Pressable
+                                style={[
+                                    styles.paraButton,
+                                    {
+                                        backgroundColor: stylesState?.h2
+                                            ?.isActive
+                                            ? Colors[colorScheme].tint
+                                            : Colors[colorScheme].bg_light,
+                                    },
+                                ]}
+                                onPress={() => {
+                                    ref.current?.toggleH2();
+                                }}
+                            >
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized
+                                    style={{
+                                        color: stylesState?.h2?.isActive
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].text,
+                                    }}
+                                >
+                                    H2
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.paraButton,
+                                    {
+                                        backgroundColor: stylesState?.h3
+                                            ?.isActive
+                                            ? Colors[colorScheme].tint
+                                            : Colors[colorScheme].bg_light,
+                                    },
+                                ]}
+                                onPress={() => {
+                                    ref.current?.toggleH3();
+                                }}
+                            >
+                                <ThemedText
+                                    type="body_small"
+                                    emphasized
+                                    style={{
+                                        color: stylesState?.h3?.isActive
+                                            ? Colors[colorScheme].button_text
+                                            : Colors[colorScheme].text,
+                                    }}
+                                >
+                                    H3
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+
+                    <View style={styles.actionButtonsContainer}>
+                        <Pressable
+                            // disabled={isPendingSaveDraft}
+                            style={[
+                                styles.actionButton,
+                                {
+                                    backgroundColor: Colors[colorScheme].text,
+                                },
+                            ]}
+                            onPress={handleSaveDraft}
                         >
-                            Upload thumbnail
-                        </ThemedText>
-                    </Pressable>
-                )}
-                <TextInput
-                    placeholder="Write an interesting headline..."
-                    editable
-                    multiline
-                    value={titleInputValue}
-                    onChangeText={setTitleInputValue}
-                    numberOfLines={4}
-                    placeholderTextColor={Colors[colorScheme].caption}
-                    style={{
-                        width: "100%",
-                        borderRadius: 8,
-                        padding: 12,
-                        fontSize: 22,
-                        fontWeight: 600,
-                        textAlignVertical: "top",
-                        backgroundColor: Colors[colorScheme].bg_light,
-                    }}
-                />
-                <View style={{ flex: 1, width: "100%" }}>
-                    <EditorToolbar
-                        style={[
-                            styles.toolbar,
-                            {
-                                backgroundColor: Colors[colorScheme].bg_light,
-                                borderColor: Colors[colorScheme].border,
-                            },
-                        ]}
-                        actions={{
-                            onBold: () => ref?.current?.toggleBold(),
-                            onItalic: () => ref.current?.toggleItalic(),
-                            onUnderline: () => ref.current?.toggleUnderline(),
-                            onImage: pickImage,
-                            onLink: () => ref.current?.setLink, // if supported
-                            onBulletList: () =>
-                                ref.current?.toggleUnorderedList(), // if supported
-                            onOrderedList: () =>
-                                ref.current?.toggleOrderedList(), // if supported
-                        }}
-                        activeStyles={{
-                            bold: stylesState?.bold.isActive,
-                            italic: stylesState?.italic.isActive,
-                            underline: stylesState?.underline.isActive,
-                        }}
-                    />
-                    <EnrichedTextInput
-                        ref={ref}
-                        placeholder="What's on your mind?"
-                        onChangeState={(e) => setStylesState(e.nativeEvent)}
-                        style={styles.input}
-                        htmlStyle={{
-                            h2: { bold: true, fontSize: 20 },
-                            h3: { bold: true, fontSize: 18 },
-                        }}
-                        onBlur={ref.current?.blur}
-                        onPasteImages={(e) => {
-                            const img = e.nativeEvent.images[0];
-                            ref.current?.setImage(
-                                img.uri,
-                                img.width,
-                                img.height,
-                            );
-                        }}
-                    />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{
+                                    color: Colors[colorScheme].button_text,
+                                    textAlign: "center",
+                                }}
+                            >
+                                {isPendingSaveDraft ? "Saving..." : "Save"}
+                            </ThemedText>
+                        </Pressable>
+                        <Pressable
+                            style={[
+                                styles.actionButton,
+                                {
+                                    backgroundColor: Colors[colorScheme].tint,
+                                },
+                            ]}
+                            onPress={() => handleNavigateToTarget()}
+                        >
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{
+                                    color: Colors[colorScheme].button_text,
+                                    textAlign: "center",
+                                }}
+                            >
+                                Next
+                            </ThemedText>
+                        </Pressable>
+                    </View>
                 </View>
-                <View style={styles.paragraphStyles}>
-                    <Pressable
-                        style={[
-                            styles.paraButton,
-                            {
-                                backgroundColor: stylesState?.h2?.isActive
-                                    ? Colors[colorScheme].tint
-                                    : Colors[colorScheme].bg_light,
-                            },
-                        ]}
-                        onPress={() => {
-                            ref.current?.toggleH2();
-                        }}
-                    >
-                        <ThemedText
-                            type="body_small"
-                            emphasized
-                            style={{
-                                color: stylesState?.h2?.isActive
-                                    ? Colors[colorScheme].button_text
-                                    : Colors[colorScheme].text,
-                            }}
-                        >
-                            H2
-                        </ThemedText>
-                    </Pressable>
-                    <Pressable
-                        style={[
-                            styles.paraButton,
-                            {
-                                backgroundColor: stylesState?.h3?.isActive
-                                    ? Colors[colorScheme].tint
-                                    : Colors[colorScheme].bg_light,
-                            },
-                        ]}
-                        onPress={() => {
-                            ref.current?.toggleH3();
-                        }}
-                    >
-                        <ThemedText
-                            type="body_small"
-                            emphasized
-                            style={{
-                                color: stylesState?.h3?.isActive
-                                    ? Colors[colorScheme].button_text
-                                    : Colors[colorScheme].text,
-                            }}
-                        >
-                            H3
-                        </ThemedText>
-                    </Pressable>
-                </View>
-                <View style={styles.actionButtonsContainer}>
-                    <Pressable
-                        // disabled={isPendingSaveDraft}
-                        style={[
-                            styles.actionButton,
-                            {
-                                backgroundColor: Colors[colorScheme].text,
-                            },
-                        ]}
-                        onPress={handleSaveDraft}
-                    >
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{
-                                color: Colors[colorScheme].button_text,
-                                textAlign: "center",
-                            }}
-                        >
-                            {isPendingSaveDraft ? "Saving..." : "Save"}
-                        </ThemedText>
-                    </Pressable>
-                    <Pressable
-                        style={[
-                            styles.actionButton,
-                            {
-                                backgroundColor: Colors[colorScheme].tint,
-                            },
-                        ]}
-                        // onPress={() => handleNavigateToTarget()}
-                    >
-                        <ThemedText
-                            type="defaultSemiBold"
-                            style={{
-                                color: Colors[colorScheme].button_text,
-                                textAlign: "center",
-                            }}
-                        >
-                            Next
-                        </ThemedText>
-                    </Pressable>
-                </View>
-            </View>
-        </SafeAreaView>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 };
 
@@ -393,9 +445,12 @@ const styles = StyleSheet.create({
         gap: 16,
         alignItems: "flex-start",
         justifyContent: "space-between",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
     input: {
         minHeight: 300,
+        height: 320,
         width: "100%",
         fontSize: 16,
         borderRadius: 8,
@@ -426,6 +481,7 @@ const styles = StyleSheet.create({
         width: "100%",
         flexDirection: "row",
         gap: 4,
+        marginTop: 8,
     },
     paraButton: {
         paddingVertical: 2,

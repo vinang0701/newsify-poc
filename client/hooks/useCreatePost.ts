@@ -26,7 +26,11 @@ const extractImageUris = (html: string): string[] => {
 /**
  * Helper to format React Native files for FormData
  */
-const appendFileToFormData = (formData: FormData, uri: string, key: string) => {
+export const appendFileToFormData = (
+    formData: FormData,
+    uri: string,
+    key: string,
+) => {
     const filename = uri.split("/").pop() || "image.jpg";
     const match = /\.(\w+)$/.exec(filename);
     const type = match ? `image/${match[1]}` : `image/jpeg`;
@@ -71,7 +75,7 @@ export default function useCreatePost() {
             });
 
             // 1. Append Text Fields
-            formData.append("title", data.title);
+            formData.append("title", data.title.trim());
             formData.append(
                 "description",
                 data.description.trim().slice(0, 250),

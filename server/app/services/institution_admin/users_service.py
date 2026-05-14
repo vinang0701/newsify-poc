@@ -483,7 +483,7 @@ async def bulk_import_users(
             ).execute()
 
             # Send welcome email
-            await send_welcome_email(email, name, password, role)
+            # await send_welcome_email(email, name, password, role)
 
             results["success"].append(
                 {

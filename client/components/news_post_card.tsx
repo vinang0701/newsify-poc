@@ -130,8 +130,8 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
     function handleNavigate(user_id: string) {
         console.log(user_id);
         router.push({
-            // pathname: "/(tabs)/profile_page/[user_id]",
-            pathname: "/[user_id]",
+            // pathname: "/(tabs)/profile_page/user/[user_id]",
+            pathname: "/user/[user_id]",
             params: { user_id: user_id, inst_id: metadata?.inst_id },
         });
     }
@@ -301,9 +301,10 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                             style={{
                                 width: "100%",
                                 height: 200,
-                                resizeMode: "cover",
+                                // resizeMode: "cover",
                                 marginBottom: 12,
                             }}
+                            contentFit="cover"
                         />
                     )}
 

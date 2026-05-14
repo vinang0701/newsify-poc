@@ -34,7 +34,7 @@ export default function PreferencesScreen() {
 
     useEffect(() => {
         if (!loading && preferences) {
-            const ids = preferences.map((p) => p);
+            const ids = preferences.map((p) => p.category.category_id);
             setSelectedCategoryIds(ids);
         }
     }, [loading, preferences]);
@@ -51,29 +51,11 @@ export default function PreferencesScreen() {
         return JSON.stringify(initial) === JSON.stringify(current);
     }, [preferences, selectedCategoryIds]);
 
-    // Runs when user taps "Save Preferences"
-    const handleNext = () => {
-        //don't save yet - just pass the selected include ids to the next screen
-        //router.push passes data to the next screen via params
-        router.push({
-            pathname: "/(tabs)/profile_page/exclude_preferences",
-            params: {
-                //json.stringify turns the array into a string so it can be passed as a parameter
-                //e.g. ["uuid-1", "uuid-2"] → '["uuid-1","uuid-2"]'
-                includeIds: JSON.stringify(preferences),
-            },
-        });
-    };
     const handleSavePreferences = async () => {
         if (!user || !metadata) {
             console.error("No user data found.");
             return;
         }
-        // Build rows for include and exclude
-        // const includeRows = selectedCategoryIds.map((category_id) => ({
-        //     category_id: category_id,
-        //     preference_type: "include",
-        // }));
 
         savePreferences(selectedCategoryIds, {
             onSuccess: () => {

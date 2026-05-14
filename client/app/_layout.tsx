@@ -18,8 +18,6 @@ import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Loading from "@/components/loading";
 
-import { usePushNotifications } from "@/hooks/usePushNotifications";
-
 export const unstable_settings = {
     anchor: "(tabs)",
 };
@@ -27,25 +25,21 @@ const queryClient = new QueryClient();
 
 export default function RootLayout() {
     const { session, isVerified, initialized } = useAuthStore();
+
     const colorScheme = useColorScheme() || "light";
     const [loaded, error] = useFonts({
         Roboto: require("@/assets/fonts/Roboto-Regular.ttf"),
     });
     // usePushNotifications();
 
-    // Create a client
     useEffect(() => {
         if (loaded || error) {
             SplashScreen.hideAsync();
         }
     }, [loaded, error]);
 
-    if (!initialized) {
+    if ((!loaded && !error) || !initialized) {
         return <Loading />;
-    }
-
-    if (!loaded && !error) {
-        return null;
     }
 
     return (
@@ -94,8 +88,9 @@ export default function RootLayout() {
                                             headerShown: false,
                                         }}
                                     />
+
                                     <Stack.Screen
-                                        name="[user_id]"
+                                        name="user"
                                         options={{
                                             headerShown: false,
                                         }}
@@ -120,11 +115,7 @@ export default function RootLayout() {
                                     />
                                 </Stack.Protected>
                                 <Stack.Protected
-                                    guard={
-                                        !session ||
-                                        session === null ||
-                                        !isVerified
-                                    }
+                                    guard={!session || !isVerified}
                                 >
                                     <Stack.Screen
                                         name="login"
@@ -146,6 +137,7 @@ export default function RootLayout() {
                                     />
                                 </Stack.Protected>
                             </Stack>
+
                             <StatusBar style="auto" />
                         </ThemeProvider>
                     </SafeAreaProvider>

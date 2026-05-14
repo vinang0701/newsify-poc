@@ -12,12 +12,14 @@ class RegisteredUser(BaseModel):
     email: EmailStr
     role: str
     status: str
+    image_url: str | None = None
 
 
 class UserProfileDetails(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None = None
+    image_url: str | None = None
 
     class Config:
         from_attributes = True

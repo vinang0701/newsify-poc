@@ -71,6 +71,7 @@ export interface UserProfileDetails {
     id: string;
     name: string;
     description: string;
+    image_url: string | null;
 }
 
 export interface Users {

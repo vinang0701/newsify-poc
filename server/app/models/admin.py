@@ -57,6 +57,8 @@ class CommunityCreationRequest(BaseModel):
     requested_by_user_name: str
     requested_by_user_image_url: str | None = None
     community_name: str
+    community_image_url: str | None = None
+    community_public: bool
     description: str
     status: str
     created_at: str

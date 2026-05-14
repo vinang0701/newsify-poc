@@ -16,8 +16,7 @@ import { FlashList } from "@shopify/flash-list";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import api from "@/lib/axios";
-
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
+import { useAuthStore } from "@/utils/authStore";
 
 interface PostResult {
     id: string;
@@ -39,6 +38,7 @@ export default function Search() {
     const colorScheme = useColorScheme() || "light";
     const [isActive, setIsActive] = useState<"posts" | "users">("posts");
     const [searchQuery, setSearchQuery] = useState("");
+    const { metadata } = useAuthStore();
 
     // -----------------------------------------------------------------------
     // Posts search
@@ -49,9 +49,12 @@ export default function Search() {
         queryKey: ["search_posts", searchQuery],
         queryFn: async () => {
             if (!searchQuery || searchQuery.length < 2) return [];
-            const response = await api.get(`/${inst_id}/search/posts`, {
-                params: { q: searchQuery },
-            });
+            const response = await api.get(
+                `/${metadata?.inst_id}/search/posts`,
+                {
+                    params: { q: searchQuery },
+                },
+            );
             return response.data;
         },
         enabled: isActive === "posts" && searchQuery.length >= 2,
@@ -66,9 +69,12 @@ export default function Search() {
         queryKey: ["search_users", searchQuery],
         queryFn: async () => {
             if (!searchQuery || searchQuery.length < 2) return [];
-            const response = await api.get(`/${inst_id}/search/users`, {
-                params: { q: searchQuery },
-            });
+            const response = await api.get(
+                `/${metadata?.inst_id}/search/users`,
+                {
+                    params: { q: searchQuery },
+                },
+            );
             return response.data;
         },
         enabled: isActive === "users" && searchQuery.length >= 2,
@@ -262,7 +268,13 @@ export default function Search() {
                         <Pressable
                             style={styles.userRow}
                             onPress={() =>
-                                router.push(`/(tabs)/profile_page/${item.id}`)
+                                router.push({
+                                    pathname: "/user/[user_id]",
+                                    params: {
+                                        user_id: item.id,
+                                        inst_id: metadata?.inst_id,
+                                    },
+                                })
                             }
                         >
                             <Image

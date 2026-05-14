@@ -407,32 +407,44 @@ export default function CommunitiesTab() {
                                         { gap: 8 },
                                     ]}
                                 >
-                                    <View
-                                        style={{
-                                            width: 48,
-                                            height: 48,
-                                            borderRadius: 50,
-                                            backgroundColor: getAvatarColor(
-                                                item.name,
-                                            ),
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            borderWidth: 1,
-                                            borderColor: "rgba(0,0,0,0.1)", // Subtle border
-                                        }}
-                                    >
-                                        <ThemedText
-                                            type="body_medium"
-                                            emphasized
+                                    {item.image_url !== null ? (
+                                        <Image
+                                            source={{ uri: item.image_url }}
                                             style={{
-                                                color: Colors[colorScheme]
-                                                    .button_text, // White text usually pops best on colors
+                                                width: 48,
+                                                height: 48,
+                                                borderRadius: 50,
+                                            }}
+                                            contentFit="contain"
+                                        />
+                                    ) : (
+                                        <View
+                                            style={{
+                                                width: 48,
+                                                height: 48,
+                                                borderRadius: 50,
+                                                backgroundColor: getAvatarColor(
+                                                    item.name,
+                                                ),
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                borderWidth: 1,
+                                                borderColor: "rgba(0,0,0,0.1)", // Subtle border
                                             }}
                                         >
-                                            {nameToAvatar(item.name)[0]}
-                                            {nameToAvatar(item.name)[1]}
-                                        </ThemedText>
-                                    </View>
+                                            <ThemedText
+                                                type="body_medium"
+                                                emphasized
+                                                style={{
+                                                    color: Colors[colorScheme]
+                                                        .button_text, // White text usually pops best on colors
+                                                }}
+                                            >
+                                                {nameToAvatar(item.name)[0]}
+                                                {nameToAvatar(item.name)[1]}
+                                            </ThemedText>
+                                        </View>
+                                    )}
 
                                     <View style={{ flex: 1 }}>
                                         <ThemedText type="defaultSemiBold">

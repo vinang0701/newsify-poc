@@ -25,13 +25,14 @@ import Loading from "@/components/loading";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import Feather from "@expo/vector-icons/Feather";
+import { appendFileToFormData } from "@/hooks/useCreatePost";
 
 // Define the shape of your form data
-interface CommunityRequest {
+interface CommunityRequestData {
     name: string;
     description: string;
-    image_url: string;
-    request_by_user_id: string;
+    image: string | null;
+    public: boolean;
 }
 
 const CommunityRequestForm = () => {
@@ -43,6 +44,7 @@ const CommunityRequestForm = () => {
     const [nameInput, setNameInput] = useState("");
     const [descInput, setDescInput] = useState("");
     const [isPublic, setIsPublic] = useState(true);
+    const canSubmit = nameInput.trim() && descInput.trim();
 
     const { user, metadata } = useAuthStore();
 
@@ -70,31 +72,21 @@ const CommunityRequestForm = () => {
         }
     };
 
-    // HTTP API Request to BE
-    // Remember to add support for image upload to BE
-    // Remember to add zod form valdiaton
-    // Remember to add JWT token for user_id
-    async function handleFormSubmit() {
-        // Check if input is empty
-        if (!nameInput.trim() || !descInput.trim()) {
-            throw Error("Invalid inputs");
-        }
-
-        mutate({ name: nameInput, description: descInput, public: isPublic });
-    }
-
     const { mutate, isPending } = useMutation({
-        mutationFn: async (newRequest: {
-            name: string;
-            description: string;
-            public: boolean;
-        }) => {
+        mutationFn: async (data: CommunityRequestData) => {
+            const formData = new FormData();
+            formData.append("name", data.name.trim());
+            formData.append("description", data.description.trim());
+            formData.append("public", data.public ? "True" : "False");
+
+            if (data.image !== null) {
+                appendFileToFormData(formData, data.image, "image");
+            }
             const response = await api.post(
                 `/${metadata?.inst_id}/communities/requests`,
+                formData,
                 {
-                    name: newRequest.name,
-                    description: newRequest.description,
-                    public: newRequest.public,
+                    headers: { "Content-Type": "multipart/form-data" },
                 },
             );
 
@@ -104,13 +96,30 @@ const CommunityRequestForm = () => {
             Alert.alert("Success", "Request submitted!");
             setNameInput("");
             setDescInput("");
-            router.navigate("/(tabs)");
+            setImage(null);
+            setIsPublic(true);
+            router.dismissAll();
+            router.replace("/(tabs)");
         },
         onError: (error) => {
             Alert.alert("Error", "Something went wrong.");
             console.error(error);
         },
     });
+
+    async function handleFormSubmit() {
+        // Check if input is empty
+        if (!nameInput.trim() || !descInput.trim()) {
+            return;
+        }
+
+        mutate({
+            name: nameInput,
+            description: descInput,
+            public: isPublic,
+            image: image,
+        });
+    }
 
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
@@ -234,8 +243,9 @@ const CommunityRequestForm = () => {
                                 style={[
                                     styles.selectionButton,
                                     {
+                                        borderColor: Colors[colorScheme].border,
                                         backgroundColor: isPublic
-                                            ? Colors[colorScheme].secondary
+                                            ? "#92f8b6"
                                             : Colors[colorScheme].bg_light,
                                     },
                                 ]}
@@ -252,8 +262,9 @@ const CommunityRequestForm = () => {
                                 style={[
                                     styles.selectionButton,
                                     {
+                                        borderColor: Colors[colorScheme].border,
                                         backgroundColor: !isPublic
-                                            ? Colors[colorScheme].secondary
+                                            ? "#92f8b6"
                                             : Colors[colorScheme].bg_light,
                                     },
                                 ]}
@@ -288,7 +299,11 @@ const CommunityRequestForm = () => {
                         <Pressable
                             style={[
                                 styles.button,
-                                { backgroundColor: Colors[colorScheme].tint },
+                                {
+                                    backgroundColor: canSubmit
+                                        ? Colors[colorScheme].tint
+                                        : Colors[colorScheme].bg_dark,
+                                },
                             ]}
                             onPress={handleFormSubmit}
                             disabled={isPending}
@@ -299,7 +314,7 @@ const CommunityRequestForm = () => {
                                     color: Colors[colorScheme].button_text,
                                 }}
                             >
-                                Apply
+                                {isPending ? <ActivityIndicator /> : "Apply"}
                             </ThemedText>
                         </Pressable>
                     </View>
@@ -344,7 +359,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         borderWidth: 1,
         borderRadius: 20,
-        elevation: 2,
     },
 });
 

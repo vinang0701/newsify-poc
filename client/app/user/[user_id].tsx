@@ -21,7 +21,12 @@ import {
 import { ThemedText } from "@/components/themed-text";
 import Feather from "@expo/vector-icons/Feather";
 import { useQuery } from "@tanstack/react-query";
-import { News, UserFollowing, UserProfileDetails } from "@/data/types";
+import {
+    Community,
+    News,
+    UserFollowing,
+    UserProfileDetails,
+} from "@/data/types";
 import axios from "axios";
 import { FlashList } from "@shopify/flash-list";
 import NewsPostCard from "@/components/news_post_card";
@@ -34,8 +39,6 @@ import { useAuthStore } from "@/utils/authStore";
 import api from "@/lib/axios";
 import { useUserFollowing } from "@/hooks/useUserFollowing";
 import Loading from "@/components/loading";
-
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
 
 export default function OtherUserProfileStack() {
     const router = useRouter();
@@ -51,7 +54,6 @@ export default function OtherUserProfileStack() {
     }>();
 
     const target_user_id = params.user_id ?? "";
-    const target_inst_id = params.inst_id ?? "";
 
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -62,7 +64,7 @@ export default function OtherUserProfileStack() {
         profileRefetch();
         followingCountRefetch();
         followerCountRefetch();
-
+        userCommuntiesRefetch();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
@@ -79,7 +81,7 @@ export default function OtherUserProfileStack() {
     async function fetchUserNews(): Promise<News[]> {
         try {
             const response = await api.get<News[]>(
-                `/${target_inst_id}/users/${target_user_id}/news`,
+                `/${metadata?.inst_id}/users/${target_user_id}/news`,
             );
 
             return response.data;
@@ -95,7 +97,7 @@ export default function OtherUserProfileStack() {
     async function fetchUserProfile(): Promise<UserProfileDetails> {
         try {
             const response = await api.get<UserProfileDetails[]>(
-                `/${target_inst_id}/users/${target_user_id}`,
+                `/${metadata?.inst_id}/users/${target_user_id}`,
             );
 
             return response.data[0];
@@ -110,15 +112,23 @@ export default function OtherUserProfileStack() {
 
     function goToFollowing(targetUserId: string) {
         router.push({
-            pathname: "/(tabs)/profile_page/following",
-            params: { user_id: targetUserId, inst_id: target_inst_id },
+            // pathname: "/(tabs)/profile_page/following",
+            pathname: "/user/following",
+            params: { user_id: targetUserId, inst_id: metadata?.inst_id },
         });
     }
 
     function goToFollowers(targetUserId: string) {
         router.push({
-            pathname: "/(tabs)/profile_page/followers",
-            params: { user_id: targetUserId, inst_id: target_inst_id },
+            // pathname: "/(tabs)/profile_page/followers",
+            pathname: "/user/followers",
+            params: { user_id: targetUserId, inst_id: metadata?.inst_id },
+        });
+    }
+    function goToCommunities(targetUserId: string) {
+        router.push({
+            pathname: "/user/communities",
+            params: { user_id: targetUserId, inst_id: metadata?.inst_id },
         });
     }
 
@@ -130,7 +140,7 @@ export default function OtherUserProfileStack() {
         queryKey: ["following_count", target_user_id],
         queryFn: async () => {
             const res = await api.get(
-                `${BASE_URL}/${target_inst_id}/users/${target_user_id}/following_count`,
+                `/${metadata?.inst_id}/users/${target_user_id}/following_count`,
             );
             return res.data.count;
         },
@@ -145,11 +155,27 @@ export default function OtherUserProfileStack() {
         queryKey: ["follower_count", target_user_id],
         queryFn: async () => {
             const res = await api.get(
-                `${BASE_URL}/${target_inst_id}/users/${target_user_id}/follower_count`,
+                `/${metadata?.inst_id}/users/${target_user_id}/follower_count`,
             );
             return res.data.count;
         },
         enabled: !!target_user_id,
+    });
+
+    const {
+        data: user_communties,
+        isLoading: load_userCommunties,
+        refetch: userCommuntiesRefetch,
+    } = useQuery<Community[]>({
+        queryKey: ["communities"],
+        queryFn: async (): Promise<Community[]> => {
+            const response = await api(
+                `/${metadata?.inst_id}/users/${target_user_id}/communities`,
+            );
+
+            return response.data;
+        },
+        enabled: !!metadata.inst_id && !!target_user_id,
     });
 
     const {
@@ -171,7 +197,9 @@ export default function OtherUserProfileStack() {
 
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
-            {loading && <Loading />}
+            {loading ||
+                load_userCommunties ||
+                (load_followerCount && <Loading />)}
             <View
                 style={[
                     styles.headerContainer,
@@ -314,8 +342,13 @@ export default function OtherUserProfileStack() {
                             </ThemedText>
                         </View>
 
-                        <View style={styles.statsInfoContainer}>
-                            <ThemedText type="defaultSemiBold">4</ThemedText>
+                        <Pressable
+                            style={styles.statsInfoContainer}
+                            onPress={() => goToCommunities(target_user_id)}
+                        >
+                            <ThemedText type="defaultSemiBold">
+                                {user_communties?.length}
+                            </ThemedText>
                             <ThemedText
                                 type="caption"
                                 style={{
@@ -325,7 +358,7 @@ export default function OtherUserProfileStack() {
                             >
                                 Communities
                             </ThemedText>
-                        </View>
+                        </Pressable>
 
                         <View style={styles.statsInfoContainer}>
                             <Pressable

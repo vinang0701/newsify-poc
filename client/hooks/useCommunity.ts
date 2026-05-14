@@ -8,6 +8,7 @@ import { useAuthStore } from "@/utils/authStore";
 import {
     useMutation,
     useQueries,
+    useQuery,
     useQueryClient,
     useSuspenseQueries,
 } from "@tanstack/react-query";
@@ -28,12 +29,12 @@ export type CommunityDetails = {
 
 export function useCommunity(communityId?: string) {
     const queryClient = useQueryClient();
-    const [myCommunities, setMyCommunities] = useState<UserCommunities[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-    const [members, setMembers] = useState<UserCommunities[]>([]);
+    // const [myCommunities, setMyCommunities] = useState<UserCommunities[]>([]);
+    // const [loading, setLoading] = useState(true);
+    // const [refreshing, setRefreshing] = useState(false);
+    // const [error, setError] = useState<string | null>(null);
+    // const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    // const [members, setMembers] = useState<UserCommunities[]>([]);
 
     const getAccessToken = async () => {
         const { data, error } = await supabase.auth.getSession();
@@ -41,7 +42,7 @@ export function useCommunity(communityId?: string) {
         return data.session?.access_token ?? null;
     };
 
-    const { metadata } = useAuthStore();
+    const { user, metadata } = useAuthStore();
     const inst_id = metadata?.inst_id;
 
     const fetchCommunityData = async (): Promise<Community> => {
@@ -107,25 +108,21 @@ export function useCommunity(communityId?: string) {
         });
     };
 
-    const userRole = useMemo(() => {
-        if (!communityId || myCommunities.length === 0) return null;
+    // const userRole = useMemo(() => {
+    //     if (!communityId || myCommunities.length === 0) return null;
 
-        const community = myCommunities.find(
-            (c) => c.community_id === communityId,
-        );
-        return community?.role ?? null;
-    }, [communityId, myCommunities]);
+    //     const community = myCommunities.find(
+    //         (c) => c.community_id === communityId,
+    //     );
+    //     return community?.role ?? null;
+    // }, [communityId, myCommunities]);
 
-    const myCommunityIds = useMemo(() => {
-        return new Set(myCommunities.map((c) => c.community_id));
-    }, [myCommunities]);
+    // const isMember = useMemo(() => {
+    //     if (loading) return false;
+    //     return myCommunityIds.has(communityId ?? "");
+    // }, [loading, myCommunityIds, communityId]);
 
-    const isMember = useMemo(() => {
-        if (loading) return false;
-        return myCommunityIds.has(communityId ?? "");
-    }, [loading, myCommunityIds, communityId]);
-
-    const memberCount = useMemo(() => members.length, [members]);
+    // const memberCount = useMemo(() => members.length, [members]);
 
     useEffect(() => {
         if (communityId) fetchCommunityData();
@@ -134,18 +131,18 @@ export function useCommunity(communityId?: string) {
     return {
         community,
         news,
-        memberCount,
-        myCommunities,
-        myCommunityIds,
-        isMember,
-        userRole,
-        loading: communityResult.isLoading || newsResult.isLoading || loading,
+        // memberCount,
+        // myCommunities,
+
+        // isMember,
+        // userRole,
+        loading: communityResult.isLoading || newsResult.isLoading,
         // refreshing,
-        error,
+        error: communityResult.error || newsResult.error,
         // refresh,
         refetch: communityResult.refetch || newsResult.refetch,
         joinCommunity,
         leaveCommunity,
-        currentUserId,
+        // currentUserId,
     };
 }

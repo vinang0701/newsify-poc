@@ -40,7 +40,6 @@ export default function FollowersPage() {
 
     const {
         followers,
-        myFollowers,
         followingUserIds,
         loading,
         refreshing,
@@ -198,9 +197,13 @@ export default function FollowersPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(
-                                                        `/(tabs)/profile_page/${item.follower_user_id}`,
-                                                    );
+                                                    router.push({
+                                                        pathname: `/user/[user_id]`,
+                                                        params: {
+                                                            user_id:
+                                                                item.follower_user_id,
+                                                        },
+                                                    });
                                                 }}
                                             >
                                                 <Image
@@ -290,9 +293,16 @@ export default function FollowersPage() {
                                                     gap: 8,
                                                 }}
                                                 onPress={() => {
-                                                    router.push(
-                                                        `/(tabs)/profile_page/${item.follower_user_id}`,
-                                                    );
+                                                    // router.push(
+                                                    //     `/(tabs)/profile_page/${item.follower_user_id}`,
+                                                    // );
+                                                    router.push({
+                                                        pathname: `/user/[user_id]`,
+                                                        params: {
+                                                            user_id:
+                                                                item.follower_user_id,
+                                                        },
+                                                    });
                                                 }}
                                             >
                                                 <Image

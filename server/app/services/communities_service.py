@@ -11,6 +11,7 @@ from app.models.community import (
 from app.core.db import supabase
 import uuid
 from datetime import datetime
+from fastapi import UploadFile
 
 
 async def get_communities(
@@ -106,18 +107,52 @@ async def get_community(
 # Need to insert new record into community_memberships too
 # For now, insert in both communities_requests table and communities table
 async def create_community_application(
-    supabase: Client, formData: CommunityApplication
+    supabase: Client,
+    requested_by_user_id: str,
+    inst_id: str,
+    name: str,
+    description: str,
+    image: UploadFile | None,
+    public: bool,
 ):
+    community_image_url = None
+    if image and image.filename:
+        try:
+            # 1. Generate a clean filename
+            # We use a UUID to prevent collisions if two people upload "MyCommunity.png"
+            file_extension = image.filename.split(".")[-1]
+            clean_name = "".join(e for e in name if e.isalnum())
+            file_path = (
+                f"community_images/{clean_name}_{uuid.uuid4().hex}.{file_extension}"
+            )
+
+            # 2. Upload to Supabase Storage
+            file_content = await image.read()
+            storage_res = supabase.storage.from_("community_media").upload(
+                path=file_path,
+                file=file_content,
+                file_options={"content-type": image.content_type},
+            )
+
+            # 3. Get the Public URL
+            community_image_url = supabase.storage.from_(
+                "community_media"
+            ).get_public_url(file_path)
+        except Exception as e:
+            print(f"Storage Upload Error: {e}")
+            return None, "Failed to upload image"
+
     req_res = (
         supabase.table("community_creation_requests")
         .insert(
             {
-                "requested_by_user_id": str(formData.requested_by_user_id),
-                "community_name": formData.name,
-                "description": formData.description,
-                "institution_id": str(formData.inst_id),
+                "requested_by_user_id": requested_by_user_id,
+                "community_name": name,
+                "description": description,
+                "institution_id": inst_id,
                 "status": "pending",
-                "public": formData.public,
+                "public": public,
+                "image_url": community_image_url,
             }
         )
         .execute()
