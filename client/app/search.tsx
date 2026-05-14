@@ -203,8 +203,8 @@ export default function Search() {
                             ]}
                             onPress={() =>
                                 router.push({
-                                    pathname: "/comment",
-                                    params: { postId: item.id },
+                                    pathname: "/view_news_post",
+                                    params: { news_id: item.id },
                                 })
                             }
                         >
@@ -230,16 +230,16 @@ export default function Search() {
 
                             {/* Title & description */}
                             <ThemedText
-                                type="defaultSemiBold"
-                                style={{ marginTop: 8 }}
+                                type="sub_heading"
+                                style={{ marginTop: 8, fontSize: 20 }}
                             >
                                 {item.title}
                             </ThemedText>
                             {item.description ? (
                                 <ThemedText
-                                    type="caption"
+                                    type="body_medium"
                                     style={{
-                                        color: Colors[colorScheme].caption,
+                                        color: Colors[colorScheme].text,
                                         marginTop: 4,
                                     }}
                                     numberOfLines={2}
@@ -315,6 +315,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         padding: 12,
         marginBottom: 12,
+        elevation: 2,
     },
     authorRow: {
         flexDirection: "row",

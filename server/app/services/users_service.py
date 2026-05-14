@@ -45,6 +45,8 @@ async def get_user_communities(
         comm["isMember"] = True  # Implicitly true because of !inner join
         comm["member_count"] = total_count
 
+        comm["member_status"] = user_info.get("status")
+
         formatted_communities.append(Community(**comm))
 
     return formatted_communities

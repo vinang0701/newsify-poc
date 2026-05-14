@@ -20,7 +20,6 @@ export type UserCommunities = {
 
 export type CommunityDetails = {
     id: string;
-    created_by_user_id: string;
     name: string;
     description: string;
     status: string;

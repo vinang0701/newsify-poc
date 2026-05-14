@@ -13,17 +13,16 @@ async def search_posts(supabase: Client, inst_id: str, query: str) -> List[dict]
 
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             author,
             title,
             description,
             image_url,
             content,
+            created_at,
             users!news_posts_author_fkey!inner(name, image_url)
-            """
-        )
+            """)
         .eq("inst_id", inst_id)
         .eq("status", "PUBLISHED")
         .ilike("title", f"%{query}%")  # case-insensitive search on title
@@ -42,7 +41,8 @@ async def search_posts(supabase: Client, inst_id: str, query: str) -> List[dict]
             title=post["title"],
             description=post["description"] or "",
             image_url=post["image_url"] or "",
-            content=post["content"] or {},
+            content=post["content"] or "",
+            created_at=post["created_at"] or "",
         )
         for post in response.data
     ]

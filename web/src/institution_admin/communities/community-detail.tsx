@@ -14,7 +14,13 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Shield, ShieldOff, ShieldAlert, ShieldX } from "lucide-react";
+import {
+    ArrowLeft,
+    Shield,
+    ShieldOff,
+    ShieldAlert,
+    ShieldX,
+} from "lucide-react";
 import type { CommunityDetail } from "@/types";
 
 const CommunityDetailPage = () => {
@@ -26,7 +32,7 @@ const CommunityDetailPage = () => {
 
     // Confirmation dialog state
     const [confirmAction, setConfirmAction] = useState<
-    "review" | "reactivate" | "disband" | null
+        "review" | "reactivate" | "disband" | null
     >(null);
 
     // Member action state
@@ -40,7 +46,7 @@ const CommunityDetailPage = () => {
         queryKey: ["communityDetail", community_id],
         queryFn: async () => {
             const response = await api.get(
-                `/${user?.inst_id}/admin/communities/${community_id}/details`
+                `/${user?.inst_id}/admin/communities/${community_id}/details`,
             );
             return response.data;
         },
@@ -56,9 +62,11 @@ const CommunityDetailPage = () => {
         setLoading(true);
         try {
             await api.patch(
-                `/${user?.inst_id}/admin/communities/${community_id}/${confirmAction}`
+                `/${user?.inst_id}/admin/communities/${community_id}/${confirmAction}`,
             );
-            queryClient.invalidateQueries({ queryKey: ["communityDetail", community_id] });
+            queryClient.invalidateQueries({
+                queryKey: ["communityDetail", community_id],
+            });
             queryClient.invalidateQueries({ queryKey: ["communities_admin"] });
             setConfirmAction(null);
         } catch (err) {
@@ -74,9 +82,11 @@ const CommunityDetailPage = () => {
         setLoading(true);
         try {
             await api.patch(
-                `/${user?.inst_id}/admin/communities/${community_id}/members/${memberAction.userId}/${memberAction.type}`
+                `/${user?.inst_id}/admin/communities/${community_id}/members/${memberAction.userId}/${memberAction.type}`,
             );
-            queryClient.invalidateQueries({ queryKey: ["communityDetail", community_id] });
+            queryClient.invalidateQueries({
+                queryKey: ["communityDetail", community_id],
+            });
             setMemberAction(null);
         } catch (err) {
             console.error("Member action failed:", err);
@@ -111,20 +121,26 @@ const CommunityDetailPage = () => {
     };
 
     // Status badge
-    const statusColor = {
-        active: "bg-green-100 text-green-700",
-        under_review: "bg-orange-100 text-orange-700",
-        disbanded: "bg-red-100 text-red-700",
-    }[community.status] ?? "bg-gray-100 text-gray-700";
+    const statusColor =
+        {
+            active: "bg-green-100 text-green-700",
+            under_review: "bg-orange-100 text-orange-700",
+            disbanded: "bg-red-100 text-red-700",
+        }[community.status] ?? "bg-gray-100 text-gray-700";
 
     return (
         <div className="flex flex-col gap-6">
             {/* Status Action Confirmation Dialog */}
             {confirmAction && (
-                <Dialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+                <Dialog
+                    open={!!confirmAction}
+                    onOpenChange={() => setConfirmAction(null)}
+                >
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>{actionConfig[confirmAction].label}</DialogTitle>
+                            <DialogTitle>
+                                {actionConfig[confirmAction].label}
+                            </DialogTitle>
                             <DialogDescription>
                                 {actionConfig[confirmAction].description}
                             </DialogDescription>
@@ -134,11 +150,15 @@ const CommunityDetailPage = () => {
                                 <Button variant="outline">Cancel</Button>
                             </DialogClose>
                             <Button
-                                className={actionConfig[confirmAction].buttonClass}
+                                className={
+                                    actionConfig[confirmAction].buttonClass
+                                }
                                 onClick={handleStatusAction}
                                 disabled={loading}
                             >
-                                {loading ? "Processing..." : actionConfig[confirmAction].label}
+                                {loading
+                                    ? "Processing..."
+                                    : actionConfig[confirmAction].label}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -147,11 +167,16 @@ const CommunityDetailPage = () => {
 
             {/* Member Action Confirmation Dialog */}
             {memberAction && (
-                <Dialog open={!!memberAction} onOpenChange={() => setMemberAction(null)}>
+                <Dialog
+                    open={!!memberAction}
+                    onOpenChange={() => setMemberAction(null)}
+                >
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>
-                                {memberAction.type === "promote" ? "Promote to Admin" : "Revoke Admin Rights"}
+                                {memberAction.type === "promote"
+                                    ? "Promote to Admin"
+                                    : "Revoke Admin Rights"}
                             </DialogTitle>
                             <DialogDescription>
                                 {memberAction.type === "promote"
@@ -172,7 +197,11 @@ const CommunityDetailPage = () => {
                                 onClick={handleMemberAction}
                                 disabled={loading}
                             >
-                                {loading ? "Processing..." : memberAction.type === "promote" ? "Promote" : "Revoke"}
+                                {loading
+                                    ? "Processing..."
+                                    : memberAction.type === "promote"
+                                      ? "Promote"
+                                      : "Revoke"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -208,15 +237,20 @@ const CommunityDetailPage = () => {
                                 </div>
                             )}
                             <div className="flex flex-col gap-1">
-                                <p className="text-xl font-bold">{community.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Created by {community.users?.name} ({community.users?.email})
+                                <p className="text-xl font-bold">
+                                    {community.name}
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    {new Date(community.created_at).toLocaleDateString()}
+                                    {new Date(
+                                        community.created_at,
+                                    ).toLocaleDateString()}
                                 </p>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${statusColor}`}>
-                                    {community.status.replace("_", " ").toUpperCase()}
+                                <span
+                                    className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${statusColor}`}
+                                >
+                                    {community.status
+                                        .replace("_", " ")
+                                        .toUpperCase()}
                                 </span>
                             </div>
                         </div>
@@ -236,14 +270,18 @@ const CommunityDetailPage = () => {
                                 <>
                                     <Button
                                         className="bg-green-600 hover:bg-green-700 text-white"
-                                        onClick={() => setConfirmAction("reactivate")}
+                                        onClick={() =>
+                                            setConfirmAction("reactivate")
+                                        }
                                     >
                                         <Shield size={16} />
                                         Reactivate
                                     </Button>
                                     <Button
                                         className="bg-destructive hover:bg-destructive/80 text-white"
-                                        onClick={() => setConfirmAction("disband")}
+                                        onClick={() =>
+                                            setConfirmAction("disband")
+                                        }
                                     >
                                         <ShieldX size={16} />
                                         Disband
@@ -253,7 +291,9 @@ const CommunityDetailPage = () => {
                             {isDisbanded && (
                                 <Button
                                     className="bg-green-600 hover:bg-green-700 text-white"
-                                    onClick={() => setConfirmAction("reactivate")}
+                                    onClick={() =>
+                                        setConfirmAction("reactivate")
+                                    }
                                 >
                                     <Shield size={16} />
                                     Reactivate
@@ -285,13 +325,19 @@ const CommunityDetailPage = () => {
                                     className="flex flex-row justify-between items-center p-4 border border-border rounded-lg bg-card"
                                 >
                                     <div className="flex flex-col gap-1">
-                                        <p className="font-medium">{member.users?.name}</p>
-                                        <p className="text-sm text-muted-foreground">{member.users?.email}</p>
-                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${
-                                            member.role === "admin"
-                                                ? "bg-blue-100 text-blue-700"
-                                                : "bg-gray-100 text-gray-700"
-                                        }`}>
+                                        <p className="font-medium">
+                                            {member.users?.name}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {member.users?.email}
+                                        </p>
+                                        <span
+                                            className={`text-xs px-2 py-0.5 rounded-full font-medium w-fit ${
+                                                member.role === "admin"
+                                                    ? "bg-blue-100 text-blue-700"
+                                                    : "bg-gray-100 text-gray-700"
+                                            }`}
+                                        >
                                             {member.role.toUpperCase()}
                                         </span>
                                     </div>
@@ -302,11 +348,15 @@ const CommunityDetailPage = () => {
                                             {member.role === "member" ? (
                                                 <Button
                                                     className="bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                                                    onClick={() => setMemberAction({
-                                                        type: "promote",
-                                                        userId: member.user_id,
-                                                        userName: member.users?.name,
-                                                    })}
+                                                    onClick={() =>
+                                                        setMemberAction({
+                                                            type: "promote",
+                                                            userId: member.user_id,
+                                                            userName:
+                                                                member.users
+                                                                    ?.name,
+                                                        })
+                                                    }
                                                 >
                                                     <Shield size={14} />
                                                     Promote to Admin
@@ -314,11 +364,15 @@ const CommunityDetailPage = () => {
                                             ) : (
                                                 <Button
                                                     className="bg-destructive hover:bg-destructive/80 text-white text-xs"
-                                                    onClick={() => setMemberAction({
-                                                        type: "revoke",
-                                                        userId: member.user_id,
-                                                        userName: member.users?.name,
-                                                    })}
+                                                    onClick={() =>
+                                                        setMemberAction({
+                                                            type: "revoke",
+                                                            userId: member.user_id,
+                                                            userName:
+                                                                member.users
+                                                                    ?.name,
+                                                        })
+                                                    }
                                                 >
                                                     <ShieldOff size={14} />
                                                     Revoke Admin

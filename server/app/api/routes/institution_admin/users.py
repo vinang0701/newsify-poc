@@ -24,7 +24,6 @@ from app.core.auth import (
 )
 from app.models.admin import CreateUser
 
-
 router = APIRouter(
     prefix="/{inst_id}/admin/users",
     tags=["admin_users"],
@@ -37,15 +36,15 @@ async def get_student_users(inst_id: str):
     try:
         student_users = await users_service.get_student_users(supabase, inst_id)
         if student_users is None or len(student_users) == 0:
-            print("here?")
-            raise HTTPException(status_code=404, detail="No users found")
+            return []
         return student_users
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
+
 @router.get("/staff")
 async def get_staff_users(inst_id: str):
     try:
@@ -58,20 +57,21 @@ async def get_staff_users(inst_id: str):
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 @router.get("/admins")
 async def get_admin_users(inst_id: str):
     try:
         admin_users = await users_service.get_admin_users(supabase, inst_id)
         if admin_users is None or len(admin_users) == 0:
-            raise HTTPException(status_code=404, detail="No admins found")
+            return []
         return admin_users
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Get all flagged posts for this institution
 @router.get("/moderation")
@@ -82,6 +82,7 @@ async def get_flagged_posts(inst_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Get all published posts for admin to review
 @router.get("/moderation/published")
 async def get_published_posts(inst_id: str):
@@ -90,7 +91,7 @@ async def get_published_posts(inst_id: str):
         return posts
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 # Get all reported posts for this institution
 @router.get("/moderation/reports")
@@ -111,7 +112,9 @@ async def dismiss_report(
 ):
     try:
         admin_id = current_user["id"]
-        result = await users_service.dismiss_report(supabase, report_id, reason, admin_id)
+        result = await users_service.dismiss_report(
+            supabase, report_id, reason, admin_id
+        )
         if not result:
             raise HTTPException(status_code=404, detail="Report not found")
         return {"message": "Report dismissed successfully"}
@@ -169,7 +172,7 @@ async def reject_post(post_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 # Manually flag a published post with a reason
 @router.patch("/moderation/{post_id}/flag")
@@ -191,7 +194,7 @@ async def flag_post(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 # Bulk import users via CSV
 @router.post("/import")
@@ -209,12 +212,14 @@ async def bulk_import_users(
         users = []
         for row in reader:
             print(f"Row: {dict(row)}")
-            users.append({
-                "name": row.get("name", "").strip(),
-                "email": row.get("email", "").strip(),
-                "role": row.get("role", "").strip(),
-            })
-        
+            users.append(
+                {
+                    "name": row.get("name", "").strip(),
+                    "email": row.get("email", "").strip(),
+                    "role": row.get("role", "").strip(),
+                }
+            )
+
         print(f"Parsed {len(users)} users")
 
         if not users:
@@ -255,7 +260,6 @@ async def bulk_remove_users(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
 
 
 @router.post("", status_code=201)
@@ -305,6 +309,7 @@ async def create_user_route(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # Remove user permanently
 @router.delete("/{user_id}")
 async def remove_user(user_id: str):
@@ -317,6 +322,7 @@ async def remove_user(user_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Ban a user
 @router.patch("/{user_id}/ban")
@@ -383,9 +389,7 @@ async def update_user(
     role: str = Form(...),
 ):
     try:
-        result = await users_service.update_user(
-            supabase, user_id, name, email, role
-        )
+        result = await users_service.update_user(supabase, user_id, name, email, role)
         if not result:
             raise HTTPException(status_code=404, detail="User not found")
         return {"message": "User updated successfully", "data": result}
@@ -393,5 +397,3 @@ async def update_user(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
- 

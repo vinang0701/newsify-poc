@@ -26,7 +26,7 @@ async def get_members_by_community(supabase: Client, community_id: str):
     ]
 
     # Admins first, then alphabetically by name
-    members.sort(key=lambda m: (0 if m["role"] == "community_admin" else 1, m["name"]))
+    members.sort(key=lambda m: (0 if m["role"] == "admin" else 1, m["name"]))
 
     return members
 

@@ -48,7 +48,11 @@ const createUserSchema = z.object({
 });
 
 type FilterStatus = "all" | "active" | "suspended" | "banned";
-type FilterRole = "all_roles" | "community_admin" | "institution_admin" | "platform_admin";
+type FilterRole =
+    | "all_roles"
+    | "community_admin"
+    | "institution_admin"
+    | "platform_admin";
 
 const AdminUsersMgmtPage = () => {
     const { user } = useAuth();
@@ -91,7 +95,9 @@ const AdminUsersMgmtPage = () => {
 
     async function fetchAdminUsers(): Promise<User[]> {
         try {
-            const response = await api.get<User[]>(`/${inst_id}/admin/users/admins`);
+            const response = await api.get<User[]>(
+                `/${inst_id}/admin/users/admins`,
+            );
             return response.data;
         } catch (error) {
             if (axios.isAxiosError(error)) throw error;
@@ -104,15 +110,23 @@ const AdminUsersMgmtPage = () => {
         queryFn: fetchAdminUsers,
     });
 
-    const filteredData = data?.filter((user) => {
-        const matchesSearch = searchQuery.trim() === ""
-            ? true
-            : user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              user.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = sortStatus === "all" ? true : user.status === sortStatus;
-        const matchesRole = sortRole === "all_roles" ? true : user.role === sortRole;
-        return matchesSearch && matchesStatus && matchesRole;
-    }) ?? [];
+    const filteredData =
+        data?.filter((user) => {
+            const matchesSearch =
+                searchQuery.trim() === ""
+                    ? true
+                    : user.name
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase()) ||
+                      user.email
+                          .toLowerCase()
+                          .includes(searchQuery.toLowerCase());
+            const matchesStatus =
+                sortStatus === "all" ? true : user.status === sortStatus;
+            const matchesRole =
+                sortRole === "all_roles" ? true : user.role === sortRole;
+            return matchesSearch && matchesStatus && matchesRole;
+        }) ?? [];
 
     const onSubmit = async (data: z.infer<typeof createUserSchema>) => {
         try {
@@ -125,7 +139,11 @@ const AdminUsersMgmtPage = () => {
             const response = await api.post(
                 `${user?.inst_id}/admin/users`,
                 formData,
-                { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+                {
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                },
             );
 
             if (response.status === 201) {
@@ -170,21 +188,33 @@ const AdminUsersMgmtPage = () => {
                         <Dialog
                             open={dialogOpen}
                             onOpenChange={() => {
-                                dialogOpen ? handleDialogClose() : setDialogOpen(true);
+                                dialogOpen
+                                    ? handleDialogClose()
+                                    : setDialogOpen(true);
                             }}
                         >
-                            <form id="create-admin-form" onSubmit={form.handleSubmit(onSubmit)}>
+                            <form
+                                id="create-admin-form"
+                                onSubmit={form.handleSubmit(onSubmit)}
+                            >
                                 <DialogTrigger asChild>
-                                    <Button className="rounded-sm font-semibold border border-border" type="button">
+                                    <Button
+                                        className="rounded-sm font-semibold border border-border"
+                                        type="button"
+                                    >
                                         Add
                                         <Plus strokeWidth={3} />
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent className="py-6 px-8">
                                     <DialogHeader>
-                                        <DialogTitle className="text-2xl">Add Admin</DialogTitle>
+                                        <DialogTitle className="text-2xl">
+                                            Add Admin
+                                        </DialogTitle>
                                         <DialogDescription>
-                                            Please fill in admin account details and click add to create a new account.
+                                            Please fill in admin account details
+                                            and click add to create a new
+                                            account.
                                         </DialogDescription>
                                     </DialogHeader>
                                     <FieldGroup>
@@ -192,20 +222,39 @@ const AdminUsersMgmtPage = () => {
                                             name="name"
                                             control={form.control}
                                             render={({ field, fieldState }) => (
-                                                <Field data-invalid={fieldState.invalid} className="flex flex-col items-center">
-                                                    <Label htmlFor="name-3" className="w-xs">
-                                                        Name <span className="text-destructive">*</span>
+                                                <Field
+                                                    data-invalid={
+                                                        fieldState.invalid
+                                                    }
+                                                    className="flex flex-col items-center"
+                                                >
+                                                    <Label
+                                                        htmlFor="name-3"
+                                                        className="w-xs"
+                                                    >
+                                                        Name{" "}
+                                                        <span className="text-destructive">
+                                                            *
+                                                        </span>
                                                     </Label>
                                                     <Input
                                                         required
                                                         {...field}
-                                                        aria-invalid={fieldState.invalid}
+                                                        aria-invalid={
+                                                            fieldState.invalid
+                                                        }
                                                         type="text"
                                                         id="name-3"
                                                         placeholder="Enter a name"
                                                         autoComplete="off"
                                                     />
-                                                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                                                    {fieldState.invalid && (
+                                                        <FieldError
+                                                            errors={[
+                                                                fieldState.error,
+                                                            ]}
+                                                        />
+                                                    )}
                                                 </Field>
                                             )}
                                         />
@@ -214,19 +263,33 @@ const AdminUsersMgmtPage = () => {
                                             control={form.control}
                                             render={({ field, fieldState }) => (
                                                 <Field className="flex flex-col items-center">
-                                                    <Label htmlFor="email-3" className="w-xs">
-                                                        Email <span className="text-destructive">*</span>
+                                                    <Label
+                                                        htmlFor="email-3"
+                                                        className="w-xs"
+                                                    >
+                                                        Email{" "}
+                                                        <span className="text-destructive">
+                                                            *
+                                                        </span>
                                                     </Label>
                                                     <Input
                                                         {...field}
                                                         required
-                                                        aria-invalid={fieldState.invalid}
+                                                        aria-invalid={
+                                                            fieldState.invalid
+                                                        }
                                                         type="text"
                                                         id="email-3"
                                                         placeholder="Enter an email"
                                                         autoComplete="off"
                                                     />
-                                                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                                                    {fieldState.invalid && (
+                                                        <FieldError
+                                                            errors={[
+                                                                fieldState.error,
+                                                            ]}
+                                                        />
+                                                    )}
                                                 </Field>
                                             )}
                                         />
@@ -234,28 +297,52 @@ const AdminUsersMgmtPage = () => {
                                             name="password"
                                             control={form.control}
                                             render={({ field, fieldState }) => (
-                                                <Field data-invalid={fieldState.invalid} className="flex flex-col items-center">
-                                                    <Label htmlFor="password-3" className="w-xs">
-                                                        Password <span className="text-destructive">*</span>
+                                                <Field
+                                                    data-invalid={
+                                                        fieldState.invalid
+                                                    }
+                                                    className="flex flex-col items-center"
+                                                >
+                                                    <Label
+                                                        htmlFor="password-3"
+                                                        className="w-xs"
+                                                    >
+                                                        Password{" "}
+                                                        <span className="text-destructive">
+                                                            *
+                                                        </span>
                                                     </Label>
                                                     <div className="flex flex-row items-center gap-2">
                                                         <div className="relative">
                                                             <Input
                                                                 {...field}
-                                                                type={showPassword ? "text" : "password"}
+                                                                type={
+                                                                    showPassword
+                                                                        ? "text"
+                                                                        : "password"
+                                                                }
                                                                 id="password-3"
                                                                 autoComplete="off"
                                                                 className="pr-10"
                                                                 placeholder="Enter a strong password"
                                                                 required
-                                                                aria-invalid={fieldState.invalid}
+                                                                aria-invalid={
+                                                                    fieldState.invalid
+                                                                }
                                                             />
                                                             <Button
                                                                 type="button"
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                                onClick={() => setShowPassword((prev) => !prev)}
+                                                                onClick={() =>
+                                                                    setShowPassword(
+                                                                        (
+                                                                            prev,
+                                                                        ) =>
+                                                                            !prev,
+                                                                    )
+                                                                }
                                                             >
                                                                 {showPassword ? (
                                                                     <EyeOffIcon className="h-4 w-4 text-muted-foreground" />
@@ -268,17 +355,28 @@ const AdminUsersMgmtPage = () => {
                                                             variant="ghost"
                                                             className="cursor-pointer font-normal"
                                                             onClick={() => {
-                                                                const newPassword = generateStrongPassword();
-                                                                form.setValue("password", newPassword, {
-                                                                    shouldValidate: true,
-                                                                    shouldDirty: true,
-                                                                });
+                                                                const newPassword =
+                                                                    generateStrongPassword();
+                                                                form.setValue(
+                                                                    "password",
+                                                                    newPassword,
+                                                                    {
+                                                                        shouldValidate: true,
+                                                                        shouldDirty: true,
+                                                                    },
+                                                                );
                                                             }}
                                                         >
                                                             Generate
                                                         </Button>
                                                     </div>
-                                                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                                                    {fieldState.invalid && (
+                                                        <FieldError
+                                                            errors={[
+                                                                fieldState.error,
+                                                            ]}
+                                                        />
+                                                    )}
                                                 </Field>
                                             )}
                                         />
@@ -286,18 +384,46 @@ const AdminUsersMgmtPage = () => {
                                             name="role"
                                             control={form.control}
                                             render={({ field, fieldState }) => (
-                                                <Field data-invalid={fieldState.invalid} className="flex flex-col items-center">
-                                                    <Label htmlFor="role-3" className="w-xs">
-                                                        Role <span className="text-destructive">*</span>
+                                                <Field
+                                                    data-invalid={
+                                                        fieldState.invalid
+                                                    }
+                                                    className="flex flex-col items-center"
+                                                >
+                                                    <Label
+                                                        htmlFor="role-3"
+                                                        className="w-xs"
+                                                    >
+                                                        Role{" "}
+                                                        <span className="text-destructive">
+                                                            *
+                                                        </span>
                                                     </Label>
-                                                    <Select required value={field.value} onValueChange={field.onChange}>
-                                                        <SelectTrigger className="w-full grow-2" aria-invalid={fieldState.invalid}>
+                                                    <Select
+                                                        required
+                                                        value={field.value}
+                                                        onValueChange={
+                                                            field.onChange
+                                                        }
+                                                    >
+                                                        <SelectTrigger
+                                                            className="w-full grow-2"
+                                                            aria-invalid={
+                                                                fieldState.invalid
+                                                            }
+                                                        >
                                                             <SelectValue placeholder="Select a role" />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             <SelectGroup>
-                                                                <SelectItem value="institution_admin">Institution Admin</SelectItem>
-                                                                <SelectItem value="platform_admin">Platform Admin</SelectItem>
+                                                                <SelectItem value="institution_admin">
+                                                                    Institution
+                                                                    Admin
+                                                                </SelectItem>
+                                                                <SelectItem value="platform_admin">
+                                                                    Platform
+                                                                    Admin
+                                                                </SelectItem>
                                                             </SelectGroup>
                                                         </SelectContent>
                                                     </Select>
@@ -306,17 +432,31 @@ const AdminUsersMgmtPage = () => {
                                         />
                                         {form.formState.errors.root && (
                                             <p className="text-sm text-destructive">
-                                                {form.formState.errors.root.message}
+                                                {
+                                                    form.formState.errors.root
+                                                        .message
+                                                }
                                             </p>
                                         )}
                                     </FieldGroup>
                                     <DialogFooter className="bg-transparent border-0">
-                                        <DialogClose asChild onClick={() => handleDialogClose()}>
-                                            <Button variant="default" className="bg-foreground rounded-sm justify-self-end">
+                                        <DialogClose
+                                            asChild
+                                            onClick={() => handleDialogClose()}
+                                        >
+                                            <Button
+                                                variant="default"
+                                                className="bg-foreground rounded-sm justify-self-end"
+                                            >
                                                 Cancel
                                             </Button>
                                         </DialogClose>
-                                        <Button variant="outline" type="submit" form="create-admin-form" className="rounded-sm justify-self-end">
+                                        <Button
+                                            variant="outline"
+                                            type="submit"
+                                            form="create-admin-form"
+                                            className="rounded-sm justify-self-end"
+                                        >
                                             Add
                                         </Button>
                                     </DialogFooter>
@@ -327,8 +467,12 @@ const AdminUsersMgmtPage = () => {
 
                     {/* Filter by status */}
                     <div className="flex flex-row gap-2 items-center flex-wrap">
-                        <span className="text-sm text-muted-foreground">Status:</span>
-                        {(["all", "active", "suspended", "banned"] as const).map((status) => (
+                        <span className="text-sm text-muted-foreground">
+                            Status:
+                        </span>
+                        {(
+                            ["all", "active", "suspended", "banned"] as const
+                        ).map((status) => (
                             <Button
                                 key={status}
                                 variant="outline"
@@ -339,20 +483,30 @@ const AdminUsersMgmtPage = () => {
                                 }`}
                                 onClick={() => setSortStatus(status)}
                             >
-                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                                {status.charAt(0).toUpperCase() +
+                                    status.slice(1)}
                             </Button>
                         ))}
                     </div>
 
                     {/* Filter by role */}
                     <div className="flex flex-row gap-2 items-center flex-wrap">
-                        <span className="text-sm text-muted-foreground">Role:</span>
-                        {([
-                            { value: "all_roles", label: "All" },
-                            { value: "community_admin", label: "Community Admin" },
-                            { value: "institution_admin", label: "Institution Admin" },
-                            { value: "platform_admin", label: "Platform Admin" },
-                        ] as const).map(({ value, label }) => (
+                        <span className="text-sm text-muted-foreground">
+                            Role:
+                        </span>
+                        {(
+                            [
+                                { value: "all_roles", label: "All" },
+                                {
+                                    value: "community_admin",
+                                    label: "Community Admin",
+                                },
+                                {
+                                    value: "institution_admin",
+                                    label: "Institution Admin",
+                                },
+                            ] as const
+                        ).map(({ value, label }) => (
                             <Button
                                 key={value}
                                 variant="outline"

@@ -5,16 +5,14 @@ import uuid
 from app.models.admin import User, CreateUser
 from app.core.db import supabase
 from datetime import datetime, timezone
-from app.services.email_service import send_removal_email
-
+from app.services.email_service import send_removal_email, send_welcome_email
+import secrets
+import string
 
 
 async def get_student_users(supabase: Client, inst_id: str) -> List[dict]:
 
-    response = (
-        supabase.table("users")
-        .select(
-            """
+    response = supabase.table("users").select("""
             id,
             inst_id,
             name,
@@ -23,21 +21,13 @@ async def get_student_users(supabase: Client, inst_id: str) -> List[dict]:
             status,
             created_at,
             updated_at
-        """
-        )
-        .eq("inst_id", inst_id)
-        .eq("role", "student")
-        .execute()
-    )
+        """).eq("inst_id", inst_id).eq("role", "student").execute()
 
     return [User(**user) for user in response.data]
 
 
 async def get_staff_users(supabase: Client, inst_id: str) -> List[dict]:
-    response = (
-        supabase.table("users")
-        .select(
-            """
+    response = supabase.table("users").select("""
             id,
             inst_id,
             name,
@@ -46,54 +36,43 @@ async def get_staff_users(supabase: Client, inst_id: str) -> List[dict]:
             status,
             created_at,
             updated_at
-        """
-        )
-        .eq("inst_id", inst_id)
-        .eq("role", "staff")  # only staff
-        .execute()
-    )
+        """).eq("inst_id", inst_id).eq("role", "staff").execute()  # only staff
     return [User(**user) for user in response.data]
 
 
 async def get_admin_users(supabase: Client, inst_id: str) -> List[dict]:
+    unique_admins = {}
     # Fetch institution and platform admins from users table
     response = (
         supabase.table("users")
         .select("id, inst_id, name, email, role, status, created_at, updated_at")
         .eq("inst_id", inst_id)
-        .in_("role", ["institution_admin", "platform_admin"])
+        .eq("role", "institution_admin")
         .execute()
     )
-    admins = [User(**user) for user in response.data]
+    for user_data in response.data:
+        # Store as User model; key is the ID to prevent duplicates
+        unique_admins[user_data["id"]] = User(**user_data)
 
     # Fetch community admins from community_admins table
-    comm_admin_response = (
-        supabase.table("community_admins")
-        .select(
-            """
+    comm_admin_response = supabase.table("community_members").select("""
             user_id,
-            users!community_admins_user_id_fkey(
+            users!user_id!inner(
                 id, inst_id, name, email, role, status, created_at, updated_at
-            ),
-            communities!community_admins_community_id_fkey(inst_id)
-            """
-        )
-        .execute()
-    )
+            )
+        """).eq("users.inst_id", inst_id).eq("role", "admin").execute()
 
     # Filter by inst_id and add community_admin role label
     for row in comm_admin_response.data:
-        if (
-            row.get("communities") and
-            row["communities"].get("inst_id") == inst_id and
-            row.get("users")
-        ):
-            user_data = row["users"]
-            # Override role to show as community_admin
-            user_data["role"] = "community_admin"
-            admins.append(User(**user_data))
+        user_data = row.get("users")
+        if user_data:
+            user_id = user_data["id"]
 
-    return admins
+            if user_id not in unique_admins:
+                user_data["role"] = "community_admin"
+                unique_admins[user_id] = User(**user_data)
+
+    return list(unique_admins.values())
 
 
 async def create_new_user(
@@ -104,10 +83,6 @@ async def create_new_user(
     password: str,
     role: str,
 ):
-    
-    from app.services.email_service import send_welcome_email
-
-    print("i reached here")
     auth_response = supabase.auth.admin.create_user(
         {
             "email": new_user_email,
@@ -138,29 +113,26 @@ async def create_new_user(
     )
 
     # Send welcome email with the password
-    await send_welcome_email(new_user_email, new_user_name, password, role)
+    # await send_welcome_email(new_user_email, new_user_name, password, role)
 
     return db_response.data
+
 
 async def ban_user(supabase: Client, user_id: str) -> dict:
     # Set status to "banned" — user cannot login anymore
     response = (
-        supabase.table("users")
-        .update({"status": "banned"})
-        .eq("id", user_id)
-        .execute()
+        supabase.table("users").update({"status": "banned"}).eq("id", user_id).execute()
     )
     return response.data
+
 
 async def lift_ban(supabase: Client, user_id: str) -> dict:
     # Set status back to "active" — user can login again
     response = (
-        supabase.table("users")
-        .update({"status": "active"})
-        .eq("id", user_id)
-        .execute()
+        supabase.table("users").update({"status": "active"}).eq("id", user_id).execute()
     )
     return response.data
+
 
 async def suspend_user(supabase: Client, user_id: str) -> dict:
     # Set status to "suspended" — user cannot login
@@ -172,6 +144,7 @@ async def suspend_user(supabase: Client, user_id: str) -> dict:
     )
     return response.data
 
+
 async def update_user(
     supabase: Client,
     user_id: str,
@@ -182,22 +155,24 @@ async def update_user(
     # Update user details in the users table
     response = (
         supabase.table("users")
-        .update({
-            "name": name,
-            "email": email,
-            "role": role,
-        })
+        .update(
+            {
+                "name": name,
+                "email": email,
+                "role": role,
+            }
+        )
         .eq("id", user_id)
         .execute()
     )
     return response.data
 
+
 async def get_flagged_posts(supabase: Client, inst_id: str) -> List[dict]:
     # Fetch all posts with FLAGGED status for this institution
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             title,
             description,
@@ -205,11 +180,10 @@ async def get_flagged_posts(supabase: Client, inst_id: str) -> List[dict]:
             image_url,
             status,
             created_at,
-            users!news_posts_author_fkey!inner(name)
-            """
-        )
+            users!news_posts_author_fkey!inner(name, email)
+            """)
         .eq("inst_id", inst_id)
-        .eq("status", "FLAGGED")   # only flagged posts
+        .eq("status", "FLAGGED")  # only flagged posts
         .order("created_at", desc=True)
         .execute()
     )
@@ -237,12 +211,12 @@ async def reject_post(supabase: Client, post_id: str) -> dict:
     )
     return response.data
 
+
 async def get_published_posts(supabase: Client, inst_id: str) -> List[dict]:
     # Fetch all published posts for this institution for admin review
     response = (
         supabase.table("news_posts")
-        .select(
-            """
+        .select("""
             id,
             title,
             description,
@@ -250,9 +224,9 @@ async def get_published_posts(supabase: Client, inst_id: str) -> List[dict]:
             status,
             created_at,
             author,
+            content,
             users!news_posts_author_fkey!inner(name, email)
-            """
-        )
+            """)
         .eq("inst_id", inst_id)
         .eq("status", "PUBLISHED")
         .order("created_at", desc=True)
@@ -284,21 +258,23 @@ async def flag_post(
     post_title = post_response.data["title"]
 
     # Step 2: Update post status to FLAGGED
-    supabase.table("news_posts").update(
-        {"status": "FLAGGED"}
-    ).eq("id", post_id).execute()
+    supabase.table("news_posts").update({"status": "FLAGGED"}).eq(
+        "id", post_id
+    ).execute()
 
     # Step 3: Send notification to the post author with the reason
-    supabase.table("notifications").insert({
-        "actor_user_id": admin_id,          # the admin who flagged
-        "notification_type": "POST_FLAGGED",
-        "reference_id": post_id,
-        "reference_table": "news_posts",
-        # Include reason in the message so author knows why
-        "message": f"Your post '{post_title}' has been flagged for review. Reason: {reason}",
-        "is_read": False,
-        "recipient_user_id": author_id,    # notify the post author
-    }).execute()
+    supabase.table("notifications").insert(
+        {
+            "actor_user_id": admin_id,  # the admin who flagged
+            "notification_type": "POST_FLAGGED",
+            "reference_id": post_id,
+            "reference_table": "news_posts",
+            # Include reason in the message so author knows why
+            "message": f"Your post '{post_title}' has been flagged for review. Reason: {reason}",
+            "is_read": False,
+            "recipient_user_id": author_id,  # notify the post author
+        }
+    ).execute()
 
     return {"status": "flagged"}
 
@@ -306,19 +282,16 @@ async def flag_post(
 async def lift_suspension(supabase: Client, user_id: str) -> dict:
     # Set status back to "active" — user can login again
     response = (
-        supabase.table("users")
-        .update({"status": "active"})
-        .eq("id", user_id)
-        .execute()
+        supabase.table("users").update({"status": "active"}).eq("id", user_id).execute()
     )
     return response.data
+
 
 async def get_reported_posts(supabase: Client, inst_id: str) -> List[dict]:
     # Fetch all pending reports for posts in this institution
     response = (
         supabase.table("post_reports")
-        .select(
-            """
+        .select("""
             report_id,
             reason,
             description,
@@ -329,15 +302,15 @@ async def get_reported_posts(supabase: Client, inst_id: str) -> List[dict]:
                 id,
                 title,
                 description,
+                content,
                 image_url,
                 inst_id,
                 users!news_posts_author_fkey!inner(name, email)
             ),
             users!post_reports_reported_by_user_id_fkey!inner(name, email)
-            """
-        )
-        .eq("news_posts.inst_id", inst_id)   # only this institution's posts
-        .eq("status", "pending")              # only pending reports
+            """)
+        .eq("news_posts.inst_id", inst_id)  # only this institution's posts
+        .eq("status", "pending")  # only pending reports
         .order("created_at", desc=True)
         .execute()
     )
@@ -354,12 +327,14 @@ async def dismiss_report(
     try:
         response = (
             supabase.table("post_reports")
-            .update({
-                "status": "dismissed",
-                "description": reason,
-                "reviewed_by_user_id": admin_id,
-                "reviewed_at": datetime.now(timezone.utc).isoformat(),
-            })
+            .update(
+                {
+                    "status": "dismissed",
+                    "description": reason,
+                    "reviewed_by_user_id": admin_id,
+                    "reviewed_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
             .eq("report_id", report_id)
             .execute()
         )
@@ -377,7 +352,9 @@ async def flag_reported_post(
     reason: str,
     admin_id: str,
 ) -> dict:
-    print(f"Flagging report: {report_id}, post: {post_id}, reason: {reason}, admin: {admin_id}")
+    print(
+        f"Flagging report: {report_id}, post: {post_id}, reason: {reason}, admin: {admin_id}"
+    )
     try:
         # Step 1: Get post details to notify author
         post_response = (
@@ -395,28 +372,32 @@ async def flag_reported_post(
         post_title = post_response.data["title"]
 
         # Step 2: Update report status to flagged
-        supabase.table("post_reports").update({
-            "status": "flagged",
-            "description": reason,
-            "reviewed_by_user_id": admin_id,
-            "reviewed_at": datetime.now(timezone.utc).isoformat(),
-        }).eq("report_id", report_id).execute()
+        supabase.table("post_reports").update(
+            {
+                "status": "flagged",
+                "description": reason,
+                "reviewed_by_user_id": admin_id,
+                "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).eq("report_id", report_id).execute()
 
         # Step 3: Flag the actual post
-        supabase.table("news_posts").update({
-            "status": "FLAGGED"
-        }).eq("id", post_id).execute()
+        supabase.table("news_posts").update({"status": "FLAGGED"}).eq(
+            "id", post_id
+        ).execute()
 
         # Step 4: Notify the post author
-        supabase.table("notifications").insert({
-            "actor_user_id": admin_id,
-            "notification_type": "POST_FLAGGED",
-            "reference_id": post_id,
-            "reference_table": "news_posts",
-            "message": f"Your post '{post_title}' has been flagged after a report. Reason: {reason}",
-            "is_read": False,
-            "recipient_user_id": author_id,
-        }).execute()
+        supabase.table("notifications").insert(
+            {
+                "actor_user_id": admin_id,
+                "notification_type": "POST_FLAGGED",
+                "reference_id": post_id,
+                "reference_table": "news_posts",
+                "message": f"Your post '{post_title}' has been flagged after a report. Reason: {reason}",
+                "is_read": False,
+                "recipient_user_id": author_id,
+            }
+        ).execute()
 
         return {"status": "flagged"}
     except Exception as e:
@@ -430,9 +411,6 @@ async def bulk_import_users(
     users: list[dict],
 ) -> dict:
     print(f"Importing {len(users)} users for inst_id: {inst_id}")
-    from app.services.email_service import send_welcome_email
-    import secrets
-    import string
 
     results = {
         "success": [],
@@ -454,10 +432,12 @@ async def bulk_import_users(
             errors.append("Role must be 'student' or 'staff'")
 
         if errors:
-            results["failed"].append({
-                "row": user,
-                "errors": errors,
-            })
+            results["failed"].append(
+                {
+                    "row": user,
+                    "errors": errors,
+                }
+            )
             continue
 
         # Generate a strong password
@@ -466,51 +446,61 @@ async def bulk_import_users(
 
         try:
             # Create user in Supabase Auth
-            auth_response = supabase.auth.admin.create_user({
-                "email": email,
-                "password": password,
-                "email_confirm": True,
-                "user_metadata": {
-                    "name": name,
-                    "role": role,
-                    "inst_id": inst_id,
-                },
-            })
+            auth_response = supabase.auth.admin.create_user(
+                {
+                    "email": email,
+                    "password": password,
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "name": name,
+                        "role": role,
+                        "inst_id": inst_id,
+                    },
+                }
+            )
 
             if not auth_response.user:
-                results["failed"].append({
-                    "row": user,
-                    "errors": ["Failed to create auth user"],
-                })
+                results["failed"].append(
+                    {
+                        "row": user,
+                        "errors": ["Failed to create auth user"],
+                    }
+                )
                 continue
 
             user_id = auth_response.user.id
 
             # Insert into users table
-            supabase.table("users").insert({
-                "id": user_id,
-                "inst_id": inst_id,
-                "name": name,
-                "email": email,
-                "role": role,
-                "status": "active",
-            }).execute()
+            supabase.table("users").insert(
+                {
+                    "id": user_id,
+                    "inst_id": inst_id,
+                    "name": name,
+                    "email": email,
+                    "role": role,
+                    "status": "active",
+                }
+            ).execute()
 
             # Send welcome email
             await send_welcome_email(email, name, password, role)
 
-            results["success"].append({
-                "name": name,
-                "email": email,
-                "role": role,
-                "password": password,  # show in summary
-            })
+            results["success"].append(
+                {
+                    "name": name,
+                    "email": email,
+                    "role": role,
+                    "password": password,  # show in summary
+                }
+            )
 
         except Exception as e:
-            results["failed"].append({
-                "row": user,
-                "errors": [str(e)],
-            })
+            results["failed"].append(
+                {
+                    "row": user,
+                    "errors": [str(e)],
+                }
+            )
 
     return results
 
@@ -528,10 +518,12 @@ async def bulk_remove_users(
     for email in emails:
         email = email.strip()
         if not email or "@" not in email:
-            results["failed"].append({
-                "email": email,
-                "errors": ["Invalid email"],
-            })
+            results["failed"].append(
+                {
+                    "email": email,
+                    "errors": ["Invalid email"],
+                }
+            )
             continue
 
         try:
@@ -546,10 +538,12 @@ async def bulk_remove_users(
             )
 
             if not user_response.data:
-                results["failed"].append({
-                    "email": email,
-                    "errors": ["User not found in this institution"],
-                })
+                results["failed"].append(
+                    {
+                        "email": email,
+                        "errors": ["User not found in this institution"],
+                    }
+                )
                 continue
 
             user_id = user_response.data["id"]
@@ -568,12 +562,15 @@ async def bulk_remove_users(
             results["success"].append({"email": email})
 
         except Exception as e:
-            results["failed"].append({
-                "email": email,
-                "errors": [str(e)],
-            })
+            results["failed"].append(
+                {
+                    "email": email,
+                    "errors": [str(e)],
+                }
+            )
 
     return results
+
 
 async def remove_user(supabase: Client, user_id: str) -> dict:
 
@@ -610,9 +607,9 @@ async def remove_user(supabase: Client, user_id: str) -> dict:
         supabase.table("users").delete().eq("id", user_id).execute()
 
         # Send removal email
-        await send_removal_email(email, name)
+        # await send_removal_email(email, name)
         return {"removed": True}
-    
+
     except Exception as e:
         print(f"EXACT ERROR: {e}")
         raise

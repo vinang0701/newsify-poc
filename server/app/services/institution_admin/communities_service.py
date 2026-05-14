@@ -13,9 +13,7 @@ from app.core.db import supabase
 async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
     response = (
         supabase.table("communities")
-        .select(
-            "*, created_by:created_by_user_id(name, image_url), community_members(count)"
-        )
+        .select("*, community_members(count)")
         .eq("inst_id", inst_id)
         .order("created_at", desc=True)
         .execute()
@@ -23,9 +21,6 @@ async def get_communities(supabase: Client, inst_id: str) -> List[dict]:
 
     communities = []
     for comm in response.data:
-        created_by = comm.get("created_by") or {}
-        comm["created_by_user_name"] = created_by.get("name", "Unknown User")
-        comm["created_by_user_image_url"] = created_by.get("image_url", "")
         # Extract member count from nested result
         comm["member_count"] = comm.get("community_members", [{}])[0].get("count", 0)
         communities.append(Community(**comm))
@@ -97,7 +92,6 @@ async def respond_to_community_creation_request(
                     "inst_id": inst_id,
                     "name": request_data["community_name"],
                     "description": request_data["description"],
-                    "created_by_user_id": request_data["requested_by_user_id"],
                     "status": "active",
                     "public": request_data["public"],
                 }
@@ -288,8 +282,7 @@ async def get_community_with_members(
             description,
             status,
             image_url,
-            created_at,
-            users!communities_created_by_user_id_fkey(name, email)
+            created_at
             """).eq("id", community_id).single().execute()
 
     if not comm_response.data:

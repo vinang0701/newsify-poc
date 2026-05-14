@@ -143,6 +143,11 @@ export default function UserCommunitiesList() {
         }, 2000);
     }, []);
 
+    // temp
+    const getRandomNumber = (): number => {
+        return Math.floor(Math.random() * (800 - 200 + 1)) + 200;
+    };
+
     return (
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
             {isFetching && <Loading />}
@@ -329,7 +334,7 @@ export default function UserCommunitiesList() {
                                                         .text_light,
                                                 }}
                                             >
-                                                20 members
+                                                {getRandomNumber()} members
                                             </ThemedText>
                                         </View>
                                     </View>

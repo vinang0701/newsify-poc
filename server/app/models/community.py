@@ -7,7 +7,6 @@ from datetime import datetime
 class Community(BaseModel):
     id: uuid.UUID
     inst_id: uuid.UUID
-    created_by_user_id: uuid.UUID
     name: str
     description: str
     status: str

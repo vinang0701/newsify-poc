@@ -616,7 +616,7 @@ async def get_personalised_news(
         "get_user_feed",
         {
             "p_user_id": str(user_id),
-            "p_inst_id": str(inst_id),  # added
+            "p_inst_id": str(inst_id),
             "p_limit": limit,
             "p_offset": offset,
         },

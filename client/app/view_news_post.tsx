@@ -33,6 +33,35 @@ const ViewNewsPostScreen = () => {
 
     const { postData: news, isLoading } = usePosts(news_id);
 
+    const formatDate = (date: string | undefined): string => {
+        if (!date) {
+            return "No date provided";
+        }
+
+        const newDate = new Date(date);
+
+        if (isNaN(newDate.getTime())) {
+            console.error("Invalid date string received:", date);
+            return "Invalid Date";
+        }
+
+        const datePart = new Intl.DateTimeFormat("en-GB", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        }).format(newDate);
+        const timePart = new Intl.DateTimeFormat("en-GB", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+        })
+            .format(newDate)
+            .toLowerCase();
+
+        return `${datePart} · ${timePart}`;
+    };
+
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
             {/* {loading && <Loading />} */}
@@ -110,21 +139,7 @@ const ViewNewsPostScreen = () => {
                         </Pressable>
                     )}
 
-                    <ThemedText
-                        type="caption"
-                        style={{
-                            color: Colors[colorScheme].text,
-                        }}
-                    >
-                        {/* {timeAgo(news.created_at)} */}
-                    </ThemedText>
-                    <Pressable
-                        style={{ marginLeft: "auto" }}
-
-                        // onPress={() =>
-                        //     handleSheetExpand(news.id, news.author_id)
-                        // }
-                    >
+                    <Pressable style={{ marginLeft: "auto" }}>
                         <Feather
                             name="more-vertical"
                             size={24}
@@ -132,7 +147,7 @@ const ViewNewsPostScreen = () => {
                         />
                     </Pressable>
                 </View>
-                <View style={{ gap: 12 }}>
+                <View style={{ gap: 10 }}>
                     <ThemedText
                         type="sub_heading"
                         style={{
@@ -140,6 +155,13 @@ const ViewNewsPostScreen = () => {
                         }}
                     >
                         {news?.title}
+                    </ThemedText>
+                    <ThemedText
+                        type="body_small"
+                        emphasized
+                        style={{ color: Colors[colorScheme].text_light }}
+                    >
+                        {formatDate(news?.created_at ?? "")}
                     </ThemedText>
                     {news?.image_url && (
                         <Image
@@ -155,13 +177,6 @@ const ViewNewsPostScreen = () => {
                             }}
                         />
                     )}
-                    <ThemedText
-                        type="caption"
-                        emphasized
-                        style={{ color: Colors[colorScheme].text_light }}
-                    >
-                        {news?.created_at}
-                    </ThemedText>
                 </View>
                 <View style={styles.iconsContainer}>
                     {/* Interaction */}
@@ -244,7 +259,13 @@ const ViewNewsPostScreen = () => {
                     </Pressable>
                 </View>
                 <View style={{ flexGrow: 1 }}>
-                    <EnrichedText style={{ color: Colors[colorScheme].text }}>
+                    <EnrichedText
+                        style={{
+                            color: Colors[colorScheme].text,
+                            fontSize: 16,
+                            lineHeight: 24,
+                        }}
+                    >
                         {news?.content as any}
                     </EnrichedText>
                 </View>

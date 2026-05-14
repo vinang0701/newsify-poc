@@ -37,9 +37,6 @@ class Community(BaseModel):
     id: uuid.UUID
     name: str
     description: str
-    created_by_user_id: uuid.UUID
-    created_by_user_name: str
-    created_by_user_image_url: str | None = None
     image_url: str | None = None
     status: str
     created_at: str

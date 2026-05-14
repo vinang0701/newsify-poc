@@ -29,7 +29,6 @@ export interface News {
 export interface Community {
     id: string;
     inst_id: string;
-    created_by_user_id: string;
     name: string;
     description: string;
     status: string;

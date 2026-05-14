@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
     Dialog,
     DialogContent,
@@ -24,6 +24,7 @@ interface Post {
     id: string;
     title: string;
     description: string;
+    content: string;
     image_url: string;
     status: string;
     created_at: string;
@@ -42,6 +43,7 @@ interface Report {
         id: string;
         title: string;
         description: string;
+        content: string;
         image_url: string;
         users: { name: string; email: string };
     };
@@ -77,7 +79,9 @@ const ContentModerationPage = () => {
     const [reportReason, setReportReason] = useState("");
 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-    const [selectedReportPost, setSelectedReportPost] = useState<Report | null>(null);
+    const [selectedReportPost, setSelectedReportPost] = useState<Report | null>(
+        null,
+    );
 
     const [searchParams, setSearchParams] = useSearchParams();
     const activeTab = searchParams.get("tab") ?? "reported";
@@ -85,23 +89,33 @@ const ContentModerationPage = () => {
     const { data: flaggedPosts, isLoading: loadingFlagged } = useQuery<Post[]>({
         queryKey: ["flaggedPosts", inst_id],
         queryFn: async () => {
-            const response = await api.get(`/${inst_id}/admin/users/moderation`);
+            const response = await api.get(
+                `/${inst_id}/admin/users/moderation`,
+            );
             return response.data;
         },
     });
 
-    const { data: publishedPosts, isLoading: loadingPublished } = useQuery<Post[]>({
+    const { data: publishedPosts, isLoading: loadingPublished } = useQuery<
+        Post[]
+    >({
         queryKey: ["publishedPosts", inst_id],
         queryFn: async () => {
-            const response = await api.get(`/${inst_id}/admin/users/moderation/published`);
+            const response = await api.get(
+                `/${inst_id}/admin/users/moderation/published`,
+            );
             return response.data;
         },
     });
 
-    const { data: reportedPosts, isLoading: loadingReports } = useQuery<Report[]>({
+    const { data: reportedPosts, isLoading: loadingReports } = useQuery<
+        Report[]
+    >({
         queryKey: ["reportedPosts", inst_id],
         queryFn: async () => {
-            const response = await api.get(`/${inst_id}/admin/users/moderation/reports`);
+            const response = await api.get(
+                `/${inst_id}/admin/users/moderation/reports`,
+            );
             return response.data;
         },
     });
@@ -111,7 +125,7 @@ const ContentModerationPage = () => {
         setLoading(true);
         try {
             await api.patch(
-                `/${inst_id}/admin/users/moderation/${confirmAction.postId}/${confirmAction.type}`
+                `/${inst_id}/admin/users/moderation/${confirmAction.postId}/${confirmAction.type}`,
             );
             queryClient.invalidateQueries({ queryKey: ["flaggedPosts"] });
             queryClient.invalidateQueries({ queryKey: ["publishedPosts"] });
@@ -132,7 +146,11 @@ const ContentModerationPage = () => {
             await api.patch(
                 `/${inst_id}/admin/users/moderation/${flagAction.postId}/flag`,
                 formData,
-                { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+                {
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                },
             );
             queryClient.invalidateQueries({ queryKey: ["flaggedPosts"] });
             queryClient.invalidateQueries({ queryKey: ["publishedPosts"] });
@@ -155,13 +173,21 @@ const ContentModerationPage = () => {
                 await api.patch(
                     `/${inst_id}/admin/users/moderation/reports/${reportAction.reportId}/flag?post_id=${reportAction.postId}`,
                     formData,
-                    { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+                    {
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                    },
                 );
             } else {
                 await api.patch(
                     `/${inst_id}/admin/users/moderation/reports/${reportAction.reportId}/dismiss`,
                     formData,
-                    { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+                    {
+                        headers: {
+                            "Content-Type": "application/x-www-form-urlencoded",
+                        },
+                    },
                 );
             }
             queryClient.invalidateQueries({ queryKey: ["reportedPosts"] });
@@ -176,23 +202,79 @@ const ContentModerationPage = () => {
         }
     };
 
-    if (loadingFlagged || loadingPublished || loadingReports) return <Loading />;
+    const formatNewsContent = (
+        htmlString: string | null | undefined,
+    ): string => {
+        if (!htmlString) return "";
+
+        let rawContent = htmlString;
+
+        // 1. Unescape literal characters
+        try {
+            rawContent = rawContent
+                .replace(/\\"/g, '"') // Fixes \" -> "
+                .replace(/\\n/g, " ") // Fixes literal \n characters
+                .replace(/\n/g, " "); // Fixes actual newline control characters
+        } catch (e) {
+            console.error("Error unescaping content", e);
+        }
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawContent, "text/html");
+
+        // 2. Inject responsive styling into images
+        const imgTags = doc.querySelectorAll("img");
+        imgTags.forEach((img) => {
+            img.removeAttribute("width");
+            img.removeAttribute("height");
+
+            const currentSrc = img.getAttribute("src");
+            if (currentSrc) {
+                img.setAttribute("src", currentSrc.trim());
+            }
+
+            img.className =
+                "w-full h-auto object-cover my-6 rounded-lg block shadow-md";
+        });
+
+        return doc.body.innerHTML;
+    };
+
+    const cleanedSelectedPostHTML = useMemo(
+        () => formatNewsContent(selectedPost?.content),
+        [selectedPost?.content],
+    );
+
+    const cleanedSelectedReportPostHTML = useMemo(
+        () => formatNewsContent(selectedReportPost?.news_posts.content),
+        [selectedPost?.content],
+    );
 
     const filteredPublishedPosts = publishedPosts?.filter((post) =>
         searchEmail.trim() === ""
             ? true
-            : post.users?.email?.toLowerCase().includes(searchEmail.toLowerCase())
+            : post.users?.email
+                  ?.toLowerCase()
+                  .includes(searchEmail.toLowerCase()),
     );
+
+    if (loadingFlagged || loadingPublished || loadingReports)
+        return <Loading />;
 
     return (
         <div>
             {/* Approve/Reject Dialog */}
             {confirmAction && (
-                <Dialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+                <Dialog
+                    open={!!confirmAction}
+                    onOpenChange={() => setConfirmAction(null)}
+                >
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>
-                                {confirmAction.type === "approve" ? "Approve Post" : "Reject Post"}
+                                {confirmAction.type === "approve"
+                                    ? "Approve Post"
+                                    : "Reject Post"}
                             </DialogTitle>
                             <DialogDescription>
                                 {confirmAction.type === "approve"
@@ -213,7 +295,11 @@ const ContentModerationPage = () => {
                                 onClick={handleConfirm}
                                 disabled={loading}
                             >
-                                {loading ? "Processing..." : confirmAction.type === "approve" ? "Approve" : "Reject"}
+                                {loading
+                                    ? "Processing..."
+                                    : confirmAction.type === "approve"
+                                      ? "Approve"
+                                      : "Reject"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -222,28 +308,44 @@ const ContentModerationPage = () => {
 
             {/* Flag Dialog */}
             {flagAction && (
-                <Dialog open={!!flagAction} onOpenChange={() => { setFlagAction(null); setFlagReason(""); }}>
+                <Dialog
+                    open={!!flagAction}
+                    onOpenChange={() => {
+                        setFlagAction(null);
+                        setFlagReason("");
+                    }}
+                >
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Flag Post</DialogTitle>
                             <DialogDescription>
-                                You are flagging "{flagAction.postTitle}". The post will be removed from the feed and the author will be notified.
+                                You are flagging "{flagAction.postTitle}". The
+                                post will be removed from the feed and the
+                                author will be notified.
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium">
-                                Reason <span className="text-destructive">*</span>
+                                Reason{" "}
+                                <span className="text-destructive">*</span>
                             </label>
                             <Textarea
                                 placeholder="Enter reason for flagging this post..."
                                 value={flagReason}
-                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFlagReason(e.target.value)}
+                                onChange={(
+                                    e: React.ChangeEvent<HTMLTextAreaElement>,
+                                ) => setFlagReason(e.target.value)}
                                 rows={3}
                             />
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
-                                <Button variant="outline" onClick={() => setFlagReason("")}>Cancel</Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setFlagReason("")}
+                                >
+                                    Cancel
+                                </Button>
                             </DialogClose>
                             <Button
                                 className="bg-orange-500 hover:bg-orange-600 text-white"
@@ -259,11 +361,19 @@ const ContentModerationPage = () => {
 
             {/* Report Action Dialog */}
             {reportAction && (
-                <Dialog open={!!reportAction} onOpenChange={() => { setReportAction(null); setReportReason(""); }}>
+                <Dialog
+                    open={!!reportAction}
+                    onOpenChange={() => {
+                        setReportAction(null);
+                        setReportReason("");
+                    }}
+                >
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>
-                                {reportAction.type === "dismiss" ? "Dismiss Report" : "Flag Post"}
+                                {reportAction.type === "dismiss"
+                                    ? "Dismiss Report"
+                                    : "Flag Post"}
                             </DialogTitle>
                             <DialogDescription>
                                 {reportAction.type === "dismiss"
@@ -273,18 +383,26 @@ const ContentModerationPage = () => {
                         </DialogHeader>
                         <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium">
-                                Reason <span className="text-destructive">*</span>
+                                Reason{" "}
+                                <span className="text-destructive">*</span>
                             </label>
                             <Textarea
                                 placeholder="Enter reason..."
                                 value={reportReason}
-                                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReportReason(e.target.value)}
+                                onChange={(
+                                    e: React.ChangeEvent<HTMLTextAreaElement>,
+                                ) => setReportReason(e.target.value)}
                                 rows={3}
                             />
                         </div>
                         <DialogFooter>
                             <DialogClose asChild>
-                                <Button variant="outline" onClick={() => setReportReason("")}>Cancel</Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setReportReason("")}
+                                >
+                                    Cancel
+                                </Button>
                             </DialogClose>
                             <Button
                                 className={
@@ -295,7 +413,11 @@ const ContentModerationPage = () => {
                                 onClick={handleReportAction}
                                 disabled={loading || !reportReason.trim()}
                             >
-                                {loading ? "Processing..." : reportAction.type === "dismiss" ? "Dismiss Report" : "Flag Post"}
+                                {loading
+                                    ? "Processing..."
+                                    : reportAction.type === "dismiss"
+                                      ? "Dismiss Report"
+                                      : "Flag Post"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -304,13 +426,21 @@ const ContentModerationPage = () => {
 
             {/* Post Detail Dialog */}
             {selectedPost && (
-                <Dialog open={!!selectedPost} onOpenChange={() => setSelectedPost(null)}>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <Dialog
+                    open={!!selectedPost}
+                    onOpenChange={() => setSelectedPost(null)}
+                >
+                    <DialogContent className="min-w-[30vw] sm:w-full max-w-4xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle className="text-xl">{selectedPost.title}</DialogTitle>
+                            <DialogTitle className="text-xl">
+                                {selectedPost.title}
+                            </DialogTitle>
                             <DialogDescription>
-                                By {selectedPost.users?.name} ({selectedPost.users?.email}) •{" "}
-                                {new Date(selectedPost.created_at).toLocaleDateString()}
+                                By {selectedPost.users?.name} (
+                                {selectedPost.users?.email}) •{" "}
+                                {new Date(
+                                    selectedPost.created_at,
+                                ).toLocaleDateString()}
                             </DialogDescription>
                         </DialogHeader>
                         {selectedPost.image_url && (
@@ -320,21 +450,33 @@ const ContentModerationPage = () => {
                                 className="w-full rounded-md object-cover"
                             />
                         )}
-                        <p className="text-sm text-foreground whitespace-pre-wrap">
-                            {selectedPost.description}
-                        </p>
+                        <div
+                            className="prose prose-slate max-w-none 
+               text-base sm:text-base text-black 
+               leading-relaxed 
+               [&>p]:mb-6 [&>img]:my-8"
+                            dangerouslySetInnerHTML={{
+                                __html: cleanedSelectedPostHTML,
+                            }}
+                        />
                     </DialogContent>
                 </Dialog>
             )}
 
             {/* Report Post Detail Dialog */}
             {selectedReportPost && (
-                <Dialog open={!!selectedReportPost} onOpenChange={() => setSelectedReportPost(null)}>
+                <Dialog
+                    open={!!selectedReportPost}
+                    onOpenChange={() => setSelectedReportPost(null)}
+                >
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle className="text-xl">{selectedReportPost.news_posts?.title}</DialogTitle>
+                            <DialogTitle className="text-xl">
+                                {selectedReportPost.news_posts?.title}
+                            </DialogTitle>
                             <DialogDescription>
-                                By {selectedReportPost.news_posts?.users?.name} ({selectedReportPost.news_posts?.users?.email})
+                                By {selectedReportPost.news_posts?.users?.name}{" "}
+                                ({selectedReportPost.news_posts?.users?.email})
                             </DialogDescription>
                         </DialogHeader>
                         {selectedReportPost.news_posts?.image_url && (
@@ -344,9 +486,6 @@ const ContentModerationPage = () => {
                                 className="w-full rounded-md object-cover"
                             />
                         )}
-                        <p className="text-sm text-foreground whitespace-pre-wrap">
-                            {selectedReportPost.news_posts?.description}
-                        </p>
                     </DialogContent>
                 </Dialog>
             )}
@@ -357,7 +496,10 @@ const ContentModerationPage = () => {
                 </div>
 
                 <section className="flex flex-col py-3 px-4 gap-4">
-                    <Tabs value={activeTab} onValueChange={(val) => setSearchParams({ tab: val })}>
+                    <Tabs
+                        value={activeTab}
+                        onValueChange={(val) => setSearchParams({ tab: val })}
+                    >
                         <TabsList className="mb-4">
                             <TabsTrigger value="reported">
                                 Reported ({reportedPosts?.length ?? 0})
@@ -372,45 +514,80 @@ const ContentModerationPage = () => {
 
                         {/* ── TAB 1 — Reported Posts ── */}
                         <TabsContent value="reported">
-                            <div className="flex flex-col gap-4">
-                                {reportedPosts?.length === 0 ? (
+                            {reportedPosts?.length === 0 ? (
+                                <div className="flex flex-col">
                                     <div className="flex justify-center items-center py-10 text-muted-foreground border border-dashed rounded-lg">
                                         No reported posts to review.
                                     </div>
-                                ) : (
-                                    reportedPosts?.map((report) => (
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4 max-w-[1580px]">
+                                    {reportedPosts?.map((report) => (
                                         <div
                                             key={report.report_id}
                                             className="flex flex-col gap-3 p-4 border border-border rounded-lg bg-card cursor-pointer hover:border-primary transition-colors"
-                                            onClick={() => setSelectedReportPost(report)}
+                                            onClick={() =>
+                                                setSelectedReportPost(report)
+                                            }
                                         >
-                                            <div className="flex flex-row justify-between items-start">
-                                                <div className="flex flex-col gap-1">
-                                                    <p className="font-semibold text-lg">{report.news_posts?.title}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        Author: {report.news_posts?.users?.name} ({report.news_posts?.users?.email})
+                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                                <div className="flex flex-col gap-1 min-w-0 w-full">
+                                                    <p className="font-semibold text-lg">
+                                                        {
+                                                            report.news_posts
+                                                                ?.title
+                                                        }
                                                     </p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        Reported by: {report.users?.name} ({report.users?.email})
+                                                        Author:{" "}
+                                                        {
+                                                            report.news_posts
+                                                                ?.users?.name
+                                                        }{" "}
+                                                        (
+                                                        {
+                                                            report.news_posts
+                                                                ?.users?.email
+                                                        }
+                                                        )
+                                                    </p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Reported by:{" "}
+                                                        {report.users?.name} (
+                                                        {report.users?.email})
                                                     </p>
                                                     <p className="text-sm font-medium mt-1">
                                                         Reason: {report.reason}
                                                     </p>
                                                     {report.description && (
                                                         <p className="text-sm text-muted-foreground">
-                                                            Details: {report.description}
+                                                            Details:{" "}
+                                                            {report.description}
                                                         </p>
                                                     )}
                                                     <p className="text-xs text-muted-foreground">
-                                                        Reported on {new Date(report.created_at).toLocaleDateString()}
+                                                        Reported on{" "}
+                                                        {new Date(
+                                                            report.created_at,
+                                                        ).toLocaleDateString()}
                                                     </p>
                                                 </div>
-                                                <div className="flex flex-row gap-2">
+                                                {/* <div className="flex flex-row gap-2"> */}
+                                                <div className="flex flex-row gap-2 shrink-0">
                                                     <Button
                                                         className="bg-green-600 hover:bg-green-700 text-white"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setReportAction({ type: "dismiss", reportId: report.report_id, postId: report.post_id, postTitle: report.news_posts?.title });
+                                                            setReportAction({
+                                                                type: "dismiss",
+                                                                reportId:
+                                                                    report.report_id,
+                                                                postId: report.post_id,
+                                                                postTitle:
+                                                                    report
+                                                                        .news_posts
+                                                                        ?.title,
+                                                            });
                                                         }}
                                                     >
                                                         <Check size={16} />
@@ -420,7 +597,16 @@ const ContentModerationPage = () => {
                                                         className="bg-destructive hover:bg-destructive/80 text-white"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setReportAction({ type: "flag", reportId: report.report_id, postId: report.post_id, postTitle: report.news_posts?.title });
+                                                            setReportAction({
+                                                                type: "flag",
+                                                                reportId:
+                                                                    report.report_id,
+                                                                postId: report.post_id,
+                                                                postTitle:
+                                                                    report
+                                                                        .news_posts
+                                                                        ?.title,
+                                                            });
                                                         }}
                                                     >
                                                         <Flag size={16} />
@@ -429,37 +615,60 @@ const ContentModerationPage = () => {
                                                 </div>
                                             </div>
                                             {report.news_posts?.image_url && (
-                                                <img src={report.news_posts.image_url} alt={report.news_posts.title} className="w-full h-48 object-cover rounded-md" />
+                                                <img
+                                                    src={
+                                                        report.news_posts
+                                                            .image_url
+                                                    }
+                                                    alt={
+                                                        report.news_posts.title
+                                                    }
+                                                    className="w-full h-48 object-cover rounded-md"
+                                                />
                                             )}
                                             {report.news_posts?.description && (
-                                                <p className="text-sm text-muted-foreground">{report.news_posts.description}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {
+                                                        report.news_posts
+                                                            .description
+                                                    }
+                                                </p>
                                             )}
                                         </div>
-                                    ))
-                                )}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </TabsContent>
 
                         {/* ── TAB 2 — Flagged Posts ── */}
                         <TabsContent value="flagged">
-                            <div className="flex flex-col gap-4">
-                                {flaggedPosts?.length === 0 ? (
+                            {flaggedPosts?.length === 0 ? (
+                                <div className="flex flex-col">
                                     <div className="flex justify-center items-center py-10 text-muted-foreground border border-dashed rounded-lg">
                                         No flagged posts to review.
                                     </div>
-                                ) : (
-                                    flaggedPosts?.map((post) => (
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-[1580px]">
+                                    {flaggedPosts?.map((post) => (
                                         <div
                                             key={post.id}
                                             className="flex flex-col gap-3 p-4 border border-border rounded-lg bg-card cursor-pointer hover:border-primary transition-colors"
-                                            onClick={() => setSelectedPost(post)}
+                                            onClick={() =>
+                                                setSelectedPost(post)
+                                            }
                                         >
                                             <div className="flex flex-row justify-between items-start">
                                                 <div className="flex flex-col gap-1">
-                                                    <p className="font-semibold text-lg">{post.title}</p>
+                                                    <p className="font-semibold text-lg">
+                                                        {post.title}
+                                                    </p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        By {post.users?.name} ({post.users?.email}) •{" "}
-                                                        {new Date(post.created_at).toLocaleDateString()}
+                                                        By {post.users?.name} (
+                                                        {post.users?.email}) •{" "}
+                                                        {new Date(
+                                                            post.created_at,
+                                                        ).toLocaleDateString()}
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-row gap-2">
@@ -467,7 +676,12 @@ const ContentModerationPage = () => {
                                                         className="bg-green-600 hover:bg-green-700 text-white"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setConfirmAction({ type: "approve", postId: post.id, postTitle: post.title });
+                                                            setConfirmAction({
+                                                                type: "approve",
+                                                                postId: post.id,
+                                                                postTitle:
+                                                                    post.title,
+                                                            });
                                                         }}
                                                     >
                                                         <Check size={16} />
@@ -477,7 +691,12 @@ const ContentModerationPage = () => {
                                                         className="bg-destructive hover:bg-destructive/80 text-white"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setConfirmAction({ type: "reject", postId: post.id, postTitle: post.title });
+                                                            setConfirmAction({
+                                                                type: "reject",
+                                                                postId: post.id,
+                                                                postTitle:
+                                                                    post.title,
+                                                            });
                                                         }}
                                                     >
                                                         <X size={16} />
@@ -486,13 +705,19 @@ const ContentModerationPage = () => {
                                                 </div>
                                             </div>
                                             {post.image_url && (
-                                                <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-md" />
+                                                <img
+                                                    src={post.image_url}
+                                                    alt={post.title}
+                                                    className="w-full h-48 object-cover rounded-md"
+                                                />
                                             )}
-                                            <p className="text-sm text-muted-foreground">{post.description}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {post.description}
+                                            </p>
                                         </div>
-                                    ))
-                                )}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </TabsContent>
 
                         {/* ── TAB 3 — Published Posts ── */}
@@ -503,51 +728,79 @@ const ContentModerationPage = () => {
                                         type="text"
                                         placeholder="Search by author email..."
                                         value={searchEmail}
-                                        onChange={(e) => setSearchEmail(e.target.value)}
+                                        onChange={(e) =>
+                                            setSearchEmail(e.target.value)
+                                        }
                                         className="border border-border rounded-md px-3 py-2 text-sm w-80 bg-background"
                                     />
                                     {searchEmail && (
-                                        <button onClick={() => setSearchEmail("")} className="text-sm text-muted-foreground underline">
+                                        <button
+                                            onClick={() => setSearchEmail("")}
+                                            className="text-sm text-muted-foreground underline"
+                                        >
                                             Clear
                                         </button>
                                     )}
                                 </div>
                                 {filteredPublishedPosts?.length === 0 ? (
-                                    <div className="flex justify-center items-center py-10 text-muted-foreground border border-dashed rounded-lg">
-                                        No posts found for that email.
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex justify-center items-center py-10 text-muted-foreground border border-dashed rounded-lg">
+                                            No posts found for that email.
+                                        </div>
                                     </div>
                                 ) : (
-                                    filteredPublishedPosts?.map((post) => (
-                                        <div
-                                            key={post.id}
-                                            className="flex flex-col gap-3 p-4 border border-border rounded-lg bg-card cursor-pointer hover:border-primary transition-colors"
-                                            onClick={() => setSelectedPost(post)}
-                                        >
-                                            <div className="flex flex-row justify-between items-start">
-                                                <div className="flex flex-col gap-1">
-                                                    <p className="font-semibold text-lg">{post.title}</p>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        By {post.users?.name} ({post.users?.email}) •{" "}
-                                                        {new Date(post.created_at).toLocaleDateString()}
-                                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 max-w-[1580px]">
+                                        {filteredPublishedPosts?.map((post) => (
+                                            <div
+                                                key={post.id}
+                                                className="flex flex-col gap-3 p-4 border border-border rounded-lg bg-card cursor-pointer hover:border-primary transition-colors"
+                                                onClick={() =>
+                                                    setSelectedPost(post)
+                                                }
+                                            >
+                                                <div className="flex flex-row justify-between items-start">
+                                                    <div className="flex flex-col gap-1">
+                                                        <p className="font-semibold text-lg">
+                                                            {post.title}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            By{" "}
+                                                            {post.users?.name} (
+                                                            {post.users?.email})
+                                                            •{" "}
+                                                            {new Date(
+                                                                post.created_at,
+                                                            ).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                    <Button
+                                                        className="bg-orange-500 hover:bg-orange-600 text-white"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setFlagAction({
+                                                                postId: post.id,
+                                                                postTitle:
+                                                                    post.title,
+                                                            });
+                                                        }}
+                                                    >
+                                                        <Flag size={16} />
+                                                        Flag
+                                                    </Button>
                                                 </div>
-                                                <Button
-                                                    className="bg-orange-500 hover:bg-orange-600 text-white"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setFlagAction({ postId: post.id, postTitle: post.title });
-                                                    }}
-                                                >
-                                                    <Flag size={16} />
-                                                    Flag
-                                                </Button>
+                                                {post.image_url && (
+                                                    <img
+                                                        src={post.image_url}
+                                                        alt={post.title}
+                                                        className="w-full h-48 object-cover rounded-md"
+                                                    />
+                                                )}
+                                                <p className="text-sm text-muted-foreground">
+                                                    {post.description}
+                                                </p>
                                             </div>
-                                            {post.image_url && (
-                                                <img src={post.image_url} alt={post.title} className="w-full h-48 object-cover rounded-md" />
-                                            )}
-                                            <p className="text-sm text-muted-foreground">{post.description}</p>
-                                        </div>
-                                    ))
+                                        ))}
+                                    </div>
                                 )}
                             </div>
                         </TabsContent>
