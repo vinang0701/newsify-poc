@@ -56,7 +56,7 @@ const PLANS = [
   {
     icon: (<svg viewBox="0 0 24 24" width="28" height="28" fill="#D97706"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm0 2h14v2H5v-2z"/></svg>),
     name: "Premium", price: "$50,000", btnColor: "#D97706",
-    features: ["Unlimited users", "Unlimited communities", "Content moderation tools", "User management", "24/7 priority support", "Analytics dashboard", "Livestream (future addition)"],
+    features: ["Unlimited users", "Unlimited communities", "Content moderation tools", "User management", "24/7 priority support", "Analytics dashboard", "Livestream (Coming soon)"],
   },
 ];
 
