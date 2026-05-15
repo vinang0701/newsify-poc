@@ -280,9 +280,6 @@ export default function LandingPage() {
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
               style={{ background: "#fff", borderRadius: 14, padding: "28px 22px", position: "relative", transition: "all 0.2s", display: "flex", flexDirection: "column" }}
             >
-              {p.popular && (
-                <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: p.btnColor, color: "#fff", fontSize: 10, fontWeight: 700, padding: "4px 16px", borderRadius: 99, whiteSpace: "nowrap" }}>POPULAR</div>
-              )}
               <div style={{ fontSize: 22, marginBottom: 8 }}>{p.icon}</div>
               <div style={{ fontWeight: 700, fontSize: 16, color: "#111827", marginBottom: 6 }}>{p.name}</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: "#111827", marginBottom: 4 }}>
