@@ -9,10 +9,11 @@ class NewsPost(BaseModel):
     created_at: datetime
     author_id: str
     author: str
+    author_avatar_url: Optional[str] = None
     title: str
     description: str = ""
     image_url: str = ""
-    # content: Dict[str, Any]  # find a way to take in json to match DB / make new class
+    # content: Dict[str, Any]
     content: str | Dict[str, Any]
     likes_count: int = 0
     comments_count: int = 0

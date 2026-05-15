@@ -93,7 +93,8 @@ export default function RequestList({ data, refreshing, onRefresh }: Props) {
                             item.rejection_reason ? (
                                 <View style={styles.reasonBadge}>
                                     <Text style={styles.reasonBadgeText}>
-                                        Rejection Reason
+                                        Rejection Reason:{" "}
+                                        {item.rejection_reason}
                                     </Text>
                                 </View>
                             ) : null}

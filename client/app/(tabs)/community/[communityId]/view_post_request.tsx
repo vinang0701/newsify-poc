@@ -45,7 +45,7 @@ export default function ViewPostRequestPage() {
 
     const handlePost = async () => {
         try {
-            await postToCommunity(selectedRequest.request_id);
+            await postToCommunity(selectedRequest?.request_id);
         } catch (err) {
             console.error(err);
             alert("Failed to post to community.");
@@ -55,7 +55,7 @@ export default function ViewPostRequestPage() {
     const handleApprove = async () => {
         try {
             await updatePostRequestStatus(
-                selectedRequest.request_id,
+                selectedRequest?.request_id,
                 "approved",
             );
             router.back();
@@ -71,7 +71,7 @@ export default function ViewPostRequestPage() {
                 return alert("Please enter a rejection reason.");
             }
             await updatePostRequestStatus(
-                selectedRequest.request_id,
+                selectedRequest?.request_id,
                 "rejected",
                 reason.trim(),
             );
@@ -212,13 +212,11 @@ export default function ViewPostRequestPage() {
                                     </ThemedText>
                                 </Pressable>
                                 <Pressable
-                                    style={({ pressed }) => [
+                                    style={[
                                         styles.button,
                                         {
-                                            backgroundColor: pressed
-                                                ? Colors[colorScheme]
-                                                      .alert_red_dark
-                                                : Colors[colorScheme].alert_red,
+                                            backgroundColor:
+                                                Colors[colorScheme].alert_red,
                                         },
                                     ]}
                                     onPress={() => setRejectModalVisible(true)}

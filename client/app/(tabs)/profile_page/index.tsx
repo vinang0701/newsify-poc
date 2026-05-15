@@ -262,6 +262,8 @@ export default function Profile() {
             Alert.alert("Error", "No selected news given. Please try again.");
         }
         mu_suspendPost(news_id);
+        bottomSheetRef.current?.dismiss();
+        postBottomSheetRef.current?.dismiss();
     }
 
     const handleEditPress = async () => {

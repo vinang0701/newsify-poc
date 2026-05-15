@@ -1,6 +1,8 @@
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
+    Modal,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -9,8 +11,8 @@ import {
     useColorScheme,
     View,
 } from "react-native";
-import React, { useEffect, useRef, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { DraftData, ServerReponse, UpdatePostData } from "@/data/types";
@@ -53,6 +55,9 @@ const EditNewsPostTab = () => {
     );
     const [moderationModalVisible, setModerationModalVisible] = useState(false);
 
+    // cancel modal
+    const [modalVisible, setModalVisible] = useState(false);
+
     // Populate editor once data is available
     useEffect(() => {
         if (!postData) return;
@@ -60,6 +65,25 @@ const EditNewsPostTab = () => {
         setThumbnail(postData.image_url);
         ref.current?.setValue(postData.content ?? "");
     }, [postData, isLoading]);
+
+    useFocusEffect(
+        useCallback(() => {
+            const onBackPress = () => {
+                setModalVisible(true);
+
+                return true;
+            };
+
+            // Add listener on focus
+            const subscription = BackHandler.addEventListener(
+                "hardwareBackPress",
+                onBackPress,
+            );
+
+            // Remove listener on blur
+            return () => subscription.remove();
+        }, []),
+    );
 
     const generateDescription = (html: string) => {
         // 1. Remove HTML tags using regex
@@ -142,7 +166,7 @@ const EditNewsPostTab = () => {
                     { backgroundColor: Colors[colorScheme].tint },
                 ]}
             >
-                <Pressable onPress={() => router.back()}>
+                <Pressable onPress={() => setModalVisible(true)}>
                     <Feather
                         name="arrow-left"
                         size={24}
@@ -357,7 +381,7 @@ const EditNewsPostTab = () => {
                                     backgroundColor: Colors[colorScheme].text,
                                 },
                             ]}
-                            onPress={() => {}}
+                            onPress={() => setModalVisible(true)}
                         >
                             <ThemedText
                                 type="defaultSemiBold"
@@ -401,6 +425,96 @@ const EditNewsPostTab = () => {
                 setVisible={setModerationModalVisible}
                 data={moderationData}
             />
+            {/* Cancel Edit Modal */}
+            <Modal
+                animationType="slide"
+                visible={modalVisible}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            {
+                                backgroundColor: Colors[colorScheme].bg_light,
+                            },
+                        ]}
+                    >
+                        <View>
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={styles.modalText}
+                            >
+                                Cancel edit?
+                            </ThemedText>
+                            <ThemedText
+                                type="body_medium"
+                                style={{
+                                    color: Colors[colorScheme].caption,
+                                }}
+                            >
+                                Are you sure you want to cancel? Any changes
+                                made will be lost.
+                            </ThemedText>
+                        </View>
+                        <View style={{ flexDirection: "row", gap: 24 }}>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() => setModalVisible(false)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].tint,
+                                    },
+                                ]}
+                                onPress={() => {
+                                    {
+                                        setModalVisible(false);
+                                        router.dismissAll();
+                                        router.replace("/(tabs)");
+                                    }
+                                }}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Confirm
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -463,5 +577,40 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         borderRadius: 4,
         borderWidth: 1,
+    },
+    modalView: {
+        width: "100%",
+        gap: 16,
+        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    button: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        elevation: 2,
+    },
+    textStyle: {
+        textAlign: "center",
+    },
+    modalText: {
+        fontWeight: "bold",
+    },
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
     },
 });

@@ -8,9 +8,76 @@ from app.models.registeredUsers import (
     RegisteredUser,
 )
 from app.core.db import supabase
-
+from datetime import datetime
 
 # join table between communities and community_members
+
+
+async def get_user_communities(
+    supabase: Client,
+    inst_id: str,
+    profile_user_id: str,  # The profile being viewed
+    current_user_id: str,  # The logged-in user looking at the profile
+    search: Optional[str] = None,
+) -> List[Community]:
+
+    # 1. We keep !inner on profile_user_id because we ONLY want communities THAT profile has joined.
+    # 2. We use a regular join (no !inner) for current_user_id so it acts as an optional lookup.
+    query = (
+        supabase.table("communities")
+        .select("""
+            *, 
+            profile_info:community_members!inner(status),
+            current_user_info:community_members(role, status),
+            member_count:community_members(count)
+            """)
+        .eq("inst_id", inst_id)
+        .eq("status", "active")
+        # Filters communities strictly down to what the target profile is actively in
+        .eq("profile_info.user_id", profile_user_id)
+        .eq("profile_info.status", "active")
+        # Attaches the logged-in user's relationship state to those communities (if any)
+        .eq("current_user_info.user_id", current_user_id)
+        .order("name", desc=False)
+    )
+
+    if search:
+        query = query.ilike("name", f"%{search}%")
+
+    response = query.execute()
+
+    formatted_communities = []
+    for comm in response.data:
+        # Extract total community member count
+        count_list = comm.get("member_count", [])
+        total_count = count_list[0].get("count", 0) if count_list else 0
+
+        # Extract current logged-in user's info (might be empty list if they aren't a member)
+        current_user_list = comm.get("current_user_info", [])
+        has_membership = (
+            len(current_user_list) > 0
+            and current_user_list[0].get("status") == "active"
+        )
+
+        user_info = current_user_list[0] if len(current_user_list) > 0 else {}
+
+        # Construct payload matching your Pydantic model structure
+        comm["role"] = user_info.get("role") if has_membership else None
+        comm["member_status"] = (
+            user_info.get("status") if len(current_user_list) > 0 else None
+        )
+
+        # If viewing my own profile, profile_user_id == current_user_id, this cleanly turns out True.
+        # If viewing someone else's profile, it dynamically evaluates whether you are in it or not.
+        comm["isMember"] = has_membership
+        comm["member_count"] = total_count
+
+        formatted_communities.append(Community(**comm))
+
+    return formatted_communities
+
+
+"""
 async def get_user_communities(
     supabase: Client, inst_id: str, user_id: str, search: Optional[str] = None
 ) -> List[Community]:
@@ -50,6 +117,7 @@ async def get_user_communities(
         formatted_communities.append(Community(**comm))
 
     return formatted_communities
+"""
 
 
 async def get_user_profile(supabase: Client, inst_id: str, user_id: str) -> List[dict]:
@@ -111,6 +179,22 @@ async def follow_user(supabase: Client, user_id: str, followed_user_id: str):
         .execute()
     )
 
+    notification_data = {
+        "recipient_user_id": followed_user_id,
+        "actor_user_id": user_id,
+        "notification_type": "FOLLOW",
+        "reference_id": user_id,
+        "reference_table": "users",
+        "message": "has followed you.",
+        "is_read": False,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    insert_notification = (
+        supabase.table("notifications").insert(notification_data).execute()
+    )
+    print(insert_notification)
+
     return response
 
 
@@ -157,7 +241,7 @@ async def get_user_data(supabase: Client, inst_id: str, user_id: str):
 async def suspend_news_post(supabase: Client, inst_id: str, user_id: str, post_id: str):
     result = (
         supabase.table("news_posts")
-        .update({"status": "suspended"})
+        .update({"status": "SUSPENDED"})
         .eq("inst_id", inst_id)
         .eq("author", user_id)
         .eq("id", post_id)

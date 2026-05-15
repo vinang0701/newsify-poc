@@ -356,8 +356,15 @@ async def get_my_communities(
     try:
         user_id = app_user["id"]
         inst_id = app_user["inst_id"]
+        # user_communities = await users_service.get_user_communities(
+        #     supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+        # )
         user_communities = await users_service.get_user_communities(
-            supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+            supabase=supabase,
+            inst_id=inst_id,
+            profile_user_id=user_id,
+            current_user_id=user_id,
+            search=search,
         )
         if user_communities is None:
             raise HTTPException(
@@ -390,6 +397,7 @@ async def create_news_post(
     destination: str = Form(...),
     is_public: bool = Form(...),
     community_id: Optional[str] = Form(None),
+    draft_id: Optional[str] = Form(None),
     thumbnail: Optional[UploadFile] = File(None),
     content_images: list[UploadFile] = File([]),
     app_user=Depends(get_current_app_user),
@@ -431,9 +439,17 @@ async def create_news_post(
         if safety_score >= 90:
             post_status = "PUBLISHED"
         elif 80 <= safety_score < 90:
-            post_status = "PENDING REVIEW"
+            post_status = "FLAGGED"
         else:
             post_status = "REJECTED"
+            return {
+                "status": post_status,
+                "score": f"{safety_score}%",
+                "is_flagged": True,
+                "flagged_categories": list(
+                    set([c for r in all_results for c in r["categories"]])
+                ),
+            }
 
         await news_service.create_post(
             supabase=supabase,
@@ -446,6 +462,7 @@ async def create_news_post(
             destination=destination,
             is_public=is_public,
             community_id=community_id,
+            draft_id=draft_id,
             category_id=category_id,
             content_images=content_images,
             is_flagged=post_status,
@@ -459,18 +476,6 @@ async def create_news_post(
                 set([c for r in all_results for c in r["categories"]])
             ),
         }
-
-        # if moderation["flagged"]:
-        #     return {
-        #         "status": "flagged",
-        #         "flagged": True,
-        #         "message": "This post is being reviewed by staff to ensure it follows school community guidelines.",
-        #     }
-
-        # return {
-        #     "status": "success",
-        #     "message": "You have successfully published your news post.",
-        # }
 
     except Exception as e:
         print(f"Upload error: {e}")
@@ -809,11 +814,21 @@ async def get_user_news(inst_id: str, user_id: str):
 
 @router.get("/{inst_id}/users/{user_id}/communities")
 async def get_user_communities(
-    inst_id: str, user_id: str, search: Optional[str] = None
+    inst_id: str,
+    user_id: str,
+    search: Optional[str] = None,
+    current_user=Depends(get_current_app_user),
 ):
     user_communities = await users_service.get_user_communities(
-        supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+        supabase=supabase,
+        inst_id=inst_id,
+        profile_user_id=user_id,
+        current_user_id=current_user["id"],
+        search=search,
     )
+    # user_communities = await users_service.get_user_communities(
+    #     supabase=supabase, inst_id=inst_id, user_id=user_id, search=search
+    # )
     return user_communities
 
 

@@ -120,15 +120,9 @@ export default function FollowersPage() {
                 <ScrollView
                     contentContainerStyle={{
                         flex: 1,
-                        paddingBottom: insets.bottom + 80,
+                        paddingBottom: insets.bottom + 20,
                     }}
                     showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                        />
-                    }
                 >
                     <View
                         style={[
@@ -177,7 +171,14 @@ export default function FollowersPage() {
                         </View>
                     ) : (
                         <FlashList
+                            nestedScrollEnabled={true}
                             data={filteredUsers}
+                            refreshControl={
+                                <RefreshControl
+                                    refreshing={refreshing}
+                                    onRefresh={onRefresh}
+                                />
+                            }
                             renderItem={({ item }) =>
                                 // Only show follow button if not current user
                                 item.follower_user_id !== currentUserId ? (

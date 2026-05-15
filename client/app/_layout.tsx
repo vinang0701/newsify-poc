@@ -95,12 +95,7 @@ export default function RootLayout() {
                                             headerShown: false,
                                         }}
                                     />
-                                    <Stack.Screen
-                                        name="update_password"
-                                        options={{
-                                            headerShown: false,
-                                        }}
-                                    />
+
                                     <Stack.Screen
                                         name="edit_news_post"
                                         options={{
@@ -131,6 +126,12 @@ export default function RootLayout() {
                                     />
                                     <Stack.Screen
                                         name="verify_otp"
+                                        options={{
+                                            headerShown: false,
+                                        }}
+                                    />
+                                    <Stack.Screen
+                                        name="update_password"
                                         options={{
                                             headerShown: false,
                                         }}

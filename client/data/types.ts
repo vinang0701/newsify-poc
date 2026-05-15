@@ -3,6 +3,7 @@ export interface News {
     title: string;
     author: string;
     author_id: string;
+    author_avatar_url?: string | null;
     description: string;
     url: string;
     image_url: string;
@@ -150,6 +151,7 @@ export interface ServerReponse {
 export type PostDestination = "FOLLOWERS" | "COMMUNITY" | "PUBLIC";
 
 export interface PostData {
+    draft_id?: string | null;
     title: string;
     description: string;
     content: string;

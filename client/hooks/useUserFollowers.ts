@@ -3,6 +3,7 @@ import { API_BASE_URL } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
 import { useLocalSearchParams } from "expo-router";
 import { Alert } from "react-native";
+import { UserFollowing } from "./useUserFollowing";
 
 export type UserFollowers = {
     follower_user_id: string;
@@ -11,7 +12,7 @@ export type UserFollowers = {
 
 export function useUserFollowers(userId?: string) {
     const [followers, setFollowers] = useState<UserFollowers[]>([]);
-    const [myFollowing, setMyFollowing] = useState<UserFollowers[]>([]);
+    const [myFollowing, setMyFollowing] = useState<UserFollowing[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -91,16 +92,13 @@ export function useUserFollowers(userId?: string) {
                 return;
             }
 
-            const res = await fetch(
-                `${API_BASE_URL}/${inst_id}/users/me/following`,
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
+            const res = await fetch(`${API_BASE_URL}/users/me/following`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
                 },
-            );
+            });
 
             if (!res.ok) {
                 const errorData = await res.json();
@@ -190,10 +188,6 @@ export function useUserFollowers(userId?: string) {
         }
     };
 
-    const followingUserIds = useMemo(() => {
-        return new Set(myFollowing.map((u) => u.follower_user_id));
-    }, [myFollowing]);
-
     useEffect(() => {
         getCurrentUserId();
     }, []);
@@ -201,6 +195,14 @@ export function useUserFollowers(userId?: string) {
     useEffect(() => {
         if (userId) fetchUserFollowers();
     }, [fetchUserFollowers]);
+
+    useEffect(() => {
+        fetchMyFollowing();
+    }, [fetchMyFollowing]);
+
+    const followingUserIds = useMemo(() => {
+        return new Set(myFollowing.map((u) => u.followed_user_id));
+    }, [myFollowing]);
 
     return {
         followers,

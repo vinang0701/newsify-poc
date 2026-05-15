@@ -197,16 +197,18 @@ export default function PostRequestPage() {
                                     ]}
                                 >
                                     <View style={[styles.cardInfoContainer]}>
-                                        <Image
-                                            alt="image"
-                                            source={item.image_url}
-                                            style={{
-                                                borderRadius: 8,
-                                                width: 150,
-                                                height: "100%",
-                                                resizeMode: "cover",
-                                            }}
-                                        />
+                                        {item.image_url !== null && (
+                                            <Image
+                                                alt="image"
+                                                source={item.image_url}
+                                                style={{
+                                                    borderRadius: 8,
+                                                    width: 150,
+                                                    height: "100%",
+                                                    resizeMode: "cover",
+                                                }}
+                                            />
+                                        )}
                                         <View
                                             style={{
                                                 flexShrink: 1,

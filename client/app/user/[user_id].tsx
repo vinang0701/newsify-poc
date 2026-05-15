@@ -222,9 +222,6 @@ export default function OtherUserProfileStack() {
             </View>
 
             <ScrollView
-                contentContainerStyle={{
-                    flex: 1,
-                }}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                     <RefreshControl
@@ -244,10 +241,22 @@ export default function OtherUserProfileStack() {
                 >
                     <View style={styles.flexRowContainer}>
                         <View style={[styles.flexRowContainer, { gap: 20 }]}>
-                            <Image
-                                source={require("@/assets/images/profile.png")}
-                                style={{ width: 68, height: 68 }}
-                            />
+                            {profileData?.image_url ? (
+                                <Image
+                                    source={{ uri: profileData?.image_url }}
+                                    style={{
+                                        width: 68,
+                                        height: 68,
+                                        borderRadius: 1000,
+                                    }}
+                                    contentFit="cover"
+                                />
+                            ) : (
+                                <Image
+                                    source={require("@/assets/images/profile.png")}
+                                    style={{ width: 68, height: 68 }}
+                                />
+                            )}
                             <View>
                                 <ThemedText type="defaultSemiBold">
                                     {profileData?.name}
@@ -279,7 +288,7 @@ export default function OtherUserProfileStack() {
                                     paddingVertical: 8,
                                     paddingHorizontal: 12,
                                 }}
-                                onPress={() => unfollowUser(target_user_id)}
+                                onPress={() => setModalVisible(true)}
                             >
                                 <ThemedText
                                     type="body_small"
@@ -449,6 +458,82 @@ export default function OtherUserProfileStack() {
                         />
                     )}
                 </View>
+                <Modal
+                    animationType="slide"
+                    visible={modalVisible}
+                    backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                    onRequestClose={() => setModalVisible(false)}
+                >
+                    <View style={styles.centeredView}>
+                        <View
+                            style={[
+                                styles.modalView,
+                                {
+                                    backgroundColor:
+                                        Colors[colorScheme].bg_light,
+                                },
+                            ]}
+                        >
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={styles.modalText}
+                            >
+                                Unfollow {profileData?.name}?
+                            </ThemedText>
+                            <View style={{ flexDirection: "row", gap: 24 }}>
+                                <Pressable
+                                    style={[
+                                        styles.button,
+                                        {
+                                            backgroundColor:
+                                                Colors[colorScheme].text,
+                                        },
+                                    ]}
+                                    onPress={() => setModalVisible(false)}
+                                >
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={[
+                                            styles.textStyle,
+                                            {
+                                                color: Colors[colorScheme]
+                                                    .button_text,
+                                            },
+                                        ]}
+                                    >
+                                        Cancel
+                                    </ThemedText>
+                                </Pressable>
+                                <Pressable
+                                    style={[
+                                        styles.button,
+                                        {
+                                            backgroundColor:
+                                                Colors[colorScheme].alert_red,
+                                        },
+                                    ]}
+                                    onPress={() => {
+                                        unfollowUser(target_user_id);
+                                        setModalVisible(false);
+                                    }}
+                                >
+                                    <ThemedText
+                                        type="defaultSemiBold"
+                                        style={[
+                                            styles.textStyle,
+                                            {
+                                                color: Colors[colorScheme]
+                                                    .button_text,
+                                            },
+                                        ]}
+                                    >
+                                        Unfollow
+                                    </ThemedText>
+                                </Pressable>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
             </ScrollView>
         </SafeAreaView>
     );

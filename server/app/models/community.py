@@ -62,7 +62,7 @@ class CommunityMember(BaseModel):
 class CommunityPostRequest(BaseModel):
     request_id: str
     author_name: str
-    image_url: str
+    image_url: Optional[str] = None
     title: str
     description: str
     status: str

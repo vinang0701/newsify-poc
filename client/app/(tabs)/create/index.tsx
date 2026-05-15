@@ -55,8 +55,7 @@ export default function CreatePost() {
     if (!metadata) {
         return null;
     }
-    const inst_id = metadata.inst_id;
-    const user_id = metadata.user_id;
+
     const colorScheme = useColorScheme() ?? "light";
     // using steps instead of tabs
     const [inputValue, setInputValue] = useState("");

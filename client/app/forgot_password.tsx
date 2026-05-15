@@ -55,10 +55,6 @@ const ForgotPassword = () => {
                     params: { email: formData.email },
                 });
             }
-            // router.push({
-            //     pathname: "/verify_otp",
-            //     params: { email: formData.email },
-            // });
         } finally {
             setIsLoading(false);
         }

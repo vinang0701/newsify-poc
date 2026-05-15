@@ -151,7 +151,8 @@ export const ModerationModal = ({ visible, setVisible, data }: Props) => {
                             ]}
                             onPress={() => {
                                 setVisible(false);
-                                router.push("/(tabs)");
+                                router.dismissAll();
+                                router.replace("/(tabs)");
                             }}
                         >
                             <ThemedText

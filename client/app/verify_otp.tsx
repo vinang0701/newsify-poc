@@ -169,19 +169,6 @@ const VerifyOTP = () => {
                                 </ThemedText>
                             </View>
                         )}
-                        {/* <TextInput
-                            returnKeyType="send"
-                            keyboardType="email-address"
-                            placeholder="Email"
-                            placeholderTextColor={"#B3B3B3"}
-                            style={{
-                                borderWidth: 1,
-                                borderColor: Colors[colorScheme].border,
-                                borderRadius: 4,
-                                paddingHorizontal: 8,
-                                color: Colors[colorScheme].bg_light,
-                            }}
-                        /> */}
                     </View>
                     <Pressable
                         style={{

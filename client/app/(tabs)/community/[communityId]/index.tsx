@@ -8,6 +8,7 @@ import {
     Modal,
     ActivityIndicator,
     Alert,
+    BackHandler,
 } from "react-native";
 import {
     BottomSheetBackdrop,
@@ -151,6 +152,22 @@ export default function CommunityPage() {
     useFocusEffect(
         useCallback(() => {
             refetch();
+
+            const onBackPress = () => {
+                // Do your custom logic here (e.g., save draft, open modal)
+                router.replace("/(tabs)/community");
+
+                return true; // block default action
+            };
+
+            // Add listener on focus
+            const subscription = BackHandler.addEventListener(
+                "hardwareBackPress",
+                onBackPress,
+            );
+
+            // Remove listener on blur
+            return () => subscription.remove();
         }, []),
     );
 
@@ -183,7 +200,6 @@ export default function CommunityPage() {
     const handleLeaveCommunity = async () => {
         try {
             await leaveCommunity();
-            console.log("Left community successfully");
             setModalVisible(false);
         } catch (err) {
             console.error(err);
@@ -250,7 +266,7 @@ export default function CommunityPage() {
                     },
                 ]}
             >
-                <Pressable onPress={() => router.back()}>
+                <Pressable onPress={() => router.replace("/(tabs)/community")}>
                     <MaterialCommunityIcons
                         name="arrow-left"
                         size={24}

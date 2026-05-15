@@ -175,7 +175,7 @@ const DraftsTab = ({ draftData }: { draftData: DraftData[] }) => {
                                     source={{
                                         html: `<html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${item.content}</body></html>`,
                                     }}
-                                    style={{ height: 300 }}
+                                    style={{ height: 200 }}
                                 />
                             </View>
                         </View>

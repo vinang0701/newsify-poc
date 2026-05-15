@@ -38,13 +38,13 @@ last_names = [
 ]
 
 
-def generate_unique_users(filename, target_count=50):
+def generate_unique_users(filename, target_count=100):
     unique_users = []
     seen_emails = set()  # Track unique emails here
 
     while len(unique_users) < target_count:
-        fname = random.choice(first_names)
         lname = random.choice(last_names)
+        fname = random.choice(first_names)
         full_name = f"{fname} {lname}"
 
         # Standardize email: remove spaces and lowercase
@@ -64,5 +64,5 @@ def generate_unique_users(filename, target_count=50):
 
 
 if __name__ == "__main__":
-    generate_unique_users("50_sim_users.csv")
+    generate_unique_users("100_sim_users.csv")
     print(f"Successfully generated 50 unique users in 'unique_sim_users.csv'")

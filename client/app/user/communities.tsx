@@ -17,6 +17,7 @@ import {
     View,
     TextInput,
     RefreshControl,
+    Modal,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { Community } from "@/data/types";
@@ -30,9 +31,12 @@ import axios from "axios";
 import api from "@/lib/axios";
 import { useAuthStore } from "@/utils/authStore";
 import Loading from "@/components/loading";
-import { useCommunity } from "@/hooks/useCommunity";
 
-const HEADER_HEIGHT = 250;
+interface ConfirmationState {
+    isOpen: boolean;
+    communityId: string | null;
+    type: "leave" | "remove" | null;
+}
 
 export default function UserCommunitiesList() {
     const colorScheme = useColorScheme() ?? "light";
@@ -46,6 +50,13 @@ export default function UserCommunitiesList() {
     const inst_id = metadata?.inst_id;
 
     const { user_id } = useLocalSearchParams<{ user_id: string }>();
+
+    const [privateModalVisible, setPrivateModalVisible] = useState(false);
+    const [confirmState, setConfirmState] = useState<ConfirmationState>({
+        isOpen: false,
+        communityId: null,
+        type: null,
+    });
 
     function nameToAvatar(name: string) {
         // 1. Split by whitespace and filter out any empty strings from extra spaces
@@ -91,6 +102,22 @@ export default function UserCommunitiesList() {
         return `hsl(${hue}, 60%, 50%)`; // 60% saturation, 50% lightness
     };
 
+    const getButtonStatus = (item: Community) => {
+        if (item.isMember) {
+            if (item.member_status === "pending") {
+                return "Requested";
+            } else {
+                return "Leave";
+            }
+        }
+
+        if (item.public) {
+            return "Join";
+        }
+
+        return "Request";
+    };
+
     const { data, error, isFetching, refetch } = useQuery<Community[]>({
         queryKey: ["communities"],
         queryFn: async (): Promise<Community[]> => {
@@ -109,49 +136,88 @@ export default function UserCommunitiesList() {
             !!inst_id && (searchQuery.length === 0 || searchQuery.length > 2),
     });
 
-    const {
-        data: myComm,
-        error: myCommError,
-        isFetching: isFetchingMyComm,
-        refetch: refetchMyComm,
-    } = useQuery<Community[]>({
-        queryKey: ["my_communities"],
-        queryFn: async (): Promise<Community[]> => {
-            const response = await api(
-                `/${metadata?.inst_id}/users/${user?.id}/communities`,
-            );
+    // const {
+    //     data: myComm,
+    //     error: myCommError,
+    //     isFetching: isFetchingMyComm,
+    //     refetch: refetchMyComm,
+    // } = useQuery<Community[]>({
+    //     queryKey: ["my_communities"],
+    //     queryFn: async (): Promise<Community[]> => {
+    //         const response = await api(
+    //             `/${metadata?.inst_id}/users/${user?.id}/communities`,
+    //         );
 
-            return response.data;
-        },
-        enabled: !!metadata?.inst_id && !!user?.id,
-    });
+    //         return response.data;
+    //     },
+    //     enabled: !!metadata?.inst_id && !!user?.id,
+    // });
 
-    const myCommunityIds = React.useMemo(() => {
-        return myComm?.map((c) => c.id);
-    }, [myComm]);
+    const handleOpenModal = (community: Community) => {
+        const actionType =
+            community.member_status === "active" ? "leave" : "remove";
 
-    async function leaveCommunity(community_id: string) {
-        console.log("Leaving community");
-        try {
+        setConfirmState({
+            isOpen: true,
+            communityId: community.id,
+            type: actionType,
+        });
+    };
+
+    const { mutate: mu_leaveCommunity } = useMutation({
+        mutationKey: ["user_communities"],
+        mutationFn: async (community_id: string) => {
             const response = await api.delete(
                 `/users/me/communities/${community_id}`,
             );
 
-            queryClient.invalidateQueries({ queryKey: ["user_communities"] });
             return response.data;
-        } catch (error) {
-            console.error("Failed to leave:", error);
-        }
-    }
-
-    const { mutate: mu_leaveCommunity } = useMutation({
-        mutationKey: ["user_communities"],
-        mutationFn: leaveCommunity,
+        },
+        onSuccess: () => {
+            setConfirmState({
+                isOpen: false,
+                communityId: null,
+                type: null,
+            });
+            queryClient.invalidateQueries({ queryKey: ["communities"] });
+        },
         onError: (error) => {
             Alert.alert("Error", "Something went wrong.");
             console.error(error);
         },
     });
+
+    const handleLeaveCommunity = () => {
+        const { communityId } = confirmState;
+        if (!communityId || communityId === null) {
+            return;
+        }
+
+        mu_leaveCommunity(communityId);
+    };
+
+    const handleNavigatetoComm = (community: Community) => {
+        const isPublic = community.public;
+        const isActiveMember =
+            community.isMember && community.member_status === "active";
+        if (isPublic || isActiveMember) {
+            router.push({
+                pathname: "/community/[communityId]",
+                params: {
+                    communityId: community.id,
+                    inst_id: inst_id,
+                },
+            });
+            return;
+        }
+
+        if (community.member_status === "pending") {
+            setPrivateModalVisible(true);
+            return;
+        }
+
+        setPrivateModalVisible(true);
+    };
 
     // This creates a derived list that updates whenever 'data' or 'searchQuery' changes
     const filteredCommunities =
@@ -162,20 +228,15 @@ export default function UserCommunitiesList() {
     const onRefresh = React.useCallback(() => {
         setRefreshing(true);
         refetch();
-        // comm_mem_refetch();
+        // refetchMyComm();
         setTimeout(() => {
             setRefreshing(false);
         }, 2000);
     }, []);
 
-    // temp
-    const getRandomNumber = (): number => {
-        return Math.floor(Math.random() * (800 - 200 + 1)) + 200;
-    };
-
     return (
         <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
-            {isFetching && <Loading />}
+            {(isFetching || isPending) && <Loading />}
             <View
                 style={[
                     styles.headerContainer,
@@ -282,14 +343,7 @@ export default function UserCommunitiesList() {
                         </View>
                     }
                     renderItem={({ item }) => (
-                        <Link
-                            href={{
-                                pathname: "/community/[communityId]",
-                                params: {
-                                    communityId: item?.id,
-                                    inst_id: inst_id,
-                                },
-                            }}
+                        <Pressable
                             style={[
                                 styles.card,
                                 {
@@ -298,34 +352,33 @@ export default function UserCommunitiesList() {
                                         Colors[colorScheme].bg_light,
                                 },
                             ]}
-                            replace={true}
+                            onPress={() => handleNavigatetoComm(item)}
                         >
-                            <View
-                                style={[
-                                    {
-                                        width: "100%",
-                                    },
-                                ]}
-                            >
-                                {/* Top info */}
-                                {/* Avatar | (Name, Member Count) | Join Button */}
+                            {/* Top info */}
+                            {/* Avatar | (Name, Member Count) | Join Button */}
+                            <View style={[styles.flexRowContainer, { gap: 8 }]}>
                                 <View
                                     style={[
                                         styles.flexRowContainer,
                                         { gap: 8 },
                                     ]}
                                 >
-                                    <View
-                                        style={[
-                                            styles.flexRowContainer,
-                                            { gap: 8 },
-                                        ]}
-                                    >
+                                    {item.image_url !== null ? (
+                                        <Image
+                                            source={{ uri: item.image_url }}
+                                            style={{
+                                                width: 48,
+                                                height: 48,
+                                                borderRadius: 50,
+                                            }}
+                                            contentFit="contain"
+                                        />
+                                    ) : (
                                         <View
                                             style={{
-                                                width: 36,
-                                                height: 36,
-                                                borderRadius: 20,
+                                                width: 48,
+                                                height: 48,
+                                                borderRadius: 50,
                                                 backgroundColor: getAvatarColor(
                                                     item.name,
                                                 ),
@@ -347,84 +400,300 @@ export default function UserCommunitiesList() {
                                                 {nameToAvatar(item.name)[1]}
                                             </ThemedText>
                                         </View>
+                                    )}
 
-                                        <View style={{ flex: 1 }}>
-                                            <ThemedText type="defaultSemiBold">
-                                                {item.name}
-                                            </ThemedText>
+                                    <View style={{ flex: 1 }}>
+                                        <ThemedText type="defaultSemiBold">
+                                            {item.name}
+                                        </ThemedText>
+                                        <View
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                gap: 8,
+                                            }}
+                                        >
+                                            {item.public ? (
+                                                <View
+                                                    style={[
+                                                        styles.publicBadge,
+                                                        {
+                                                            backgroundColor:
+                                                                Colors[
+                                                                    colorScheme
+                                                                ].bg_light,
+                                                        },
+                                                    ]}
+                                                >
+                                                    <Feather
+                                                        name="user"
+                                                        size={10}
+                                                        color={
+                                                            Colors[colorScheme]
+                                                                .text
+                                                        }
+                                                    />
+                                                    <ThemedText
+                                                        type="caption"
+                                                        emphasized
+                                                        style={{
+                                                            color: Colors[
+                                                                colorScheme
+                                                            ].text,
+                                                        }}
+                                                    >
+                                                        Public
+                                                    </ThemedText>
+                                                </View>
+                                            ) : (
+                                                <View
+                                                    style={[
+                                                        styles.publicBadge,
+                                                        {
+                                                            backgroundColor:
+                                                                Colors[
+                                                                    colorScheme
+                                                                ].bg_light,
+                                                        },
+                                                    ]}
+                                                >
+                                                    <Feather
+                                                        name="lock"
+                                                        size={10}
+                                                        color={
+                                                            Colors[colorScheme]
+                                                                .text
+                                                        }
+                                                    />
+                                                    <ThemedText
+                                                        type="caption"
+                                                        emphasized
+                                                        style={{
+                                                            color: Colors[
+                                                                colorScheme
+                                                            ].text,
+                                                        }}
+                                                    >
+                                                        Private
+                                                    </ThemedText>
+                                                </View>
+                                            )}
                                             <ThemedText
-                                                type="caption"
+                                                type="body_small"
                                                 style={{
                                                     color: Colors[colorScheme]
-                                                        .text_light,
+                                                        .text,
                                                 }}
                                             >
-                                                {/* {getRandomNumber()} members */}
                                                 {item.member_count} members
                                             </ThemedText>
                                         </View>
                                     </View>
-                                    <Pressable
+                                </View>
+                                <Pressable
+                                    style={{
+                                        paddingVertical: 8,
+                                        paddingHorizontal: 12,
+                                        backgroundColor:
+                                            getButtonStatus(item) === "Leave"
+                                                ? Colors[colorScheme].alert_red
+                                                : Colors[colorScheme].bg_light,
+                                        borderRadius: 20,
+                                        borderWidth: 2,
+                                        borderColor:
+                                            getButtonStatus(item) === "Leave"
+                                                ? "transparent"
+                                                : Colors[colorScheme].tint,
+                                    }}
+                                    onPress={() => {
+                                        !item.isMember
+                                            ? mutate(item.id)
+                                            : handleOpenModal(item);
+                                    }}
+                                >
+                                    <ThemedText
+                                        type="body_small"
+                                        emphasized
                                         style={{
-                                            paddingVertical: 8,
-                                            paddingHorizontal: 12,
-                                            backgroundColor:
-                                                myCommunityIds?.includes(
-                                                    item.id,
-                                                )
-                                                    ? Colors[colorScheme]
-                                                          .alert_red
-                                                    : Colors[colorScheme]
-                                                          .bg_light,
-                                            borderRadius: 20,
-                                            borderWidth: 2,
-                                            borderColor:
-                                                myCommunityIds?.includes(
-                                                    item.id,
-                                                )
-                                                    ? "transparent"
-                                                    : Colors[colorScheme].tint,
-                                        }}
-                                        onPress={() => {
-                                            !myCommunityIds?.includes(item.id)
-                                                ? mutate(item.id)
-                                                : mu_leaveCommunity(item.id);
-                                        }}
-                                    >
-                                        <ThemedText
-                                            type="body_small"
-                                            emphasized
-                                            style={{
-                                                color: myCommunityIds?.includes(
-                                                    item.id,
-                                                )
+                                            color:
+                                                getButtonStatus(item) ===
+                                                "Leave"
                                                     ? Colors[colorScheme]
                                                           .button_text
                                                     : Colors[colorScheme].tint,
 
-                                                fontWeight: "semibold",
-                                            }}
-                                        >
-                                            {myCommunityIds?.includes(item.id)
-                                                ? "Leave"
-                                                : "Join"}
-                                        </ThemedText>
-                                    </Pressable>
-                                </View>
-                                <ThemedText
-                                    type="caption"
-                                    emphasized
-                                    style={{
-                                        color: Colors[colorScheme].caption,
-                                    }}
-                                >
-                                    {item.description}
-                                </ThemedText>
+                                            fontWeight: "semibold",
+                                        }}
+                                    >
+                                        {getButtonStatus(item)}
+                                    </ThemedText>
+                                </Pressable>
                             </View>
-                        </Link>
+                            <ThemedText
+                                type="caption"
+                                emphasized
+                                style={{
+                                    color: Colors[colorScheme].caption,
+                                }}
+                            >
+                                {item.description}
+                            </ThemedText>
+                        </Pressable>
                     )}
                 />
             </ScrollView>
+            <Modal
+                animationType="slide"
+                visible={confirmState.isOpen}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() =>
+                    setConfirmState({
+                        isOpen: false,
+                        communityId: null,
+                        type: null,
+                    })
+                }
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            { backgroundColor: Colors[colorScheme].bg_light },
+                        ]}
+                    >
+                        <ThemedText
+                            type="defaultSemiBold"
+                            style={styles.modalText}
+                        >
+                            {confirmState.type === "leave"
+                                ? "Leave Group?"
+                                : "Remove Request?"}
+                        </ThemedText>
+                        <View style={{ flexDirection: "row", gap: 24 }}>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].text,
+                                    },
+                                ]}
+                                onPress={() =>
+                                    setConfirmState({
+                                        isOpen: false,
+                                        communityId: null,
+                                        type: null,
+                                    })
+                                }
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Cancel
+                                </ThemedText>
+                            </Pressable>
+                            <Pressable
+                                style={[
+                                    styles.button,
+                                    {
+                                        backgroundColor:
+                                            Colors[colorScheme].alert_red,
+                                    },
+                                ]}
+                                onPress={handleLeaveCommunity}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    {confirmState.type === "leave"
+                                        ? "Leave"
+                                        : "Remove"}
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+            <Modal
+                animationType="slide"
+                visible={privateModalVisible}
+                backdropColor={"hsla(0, 0%, 50%, 0.1)"}
+                onRequestClose={() => setPrivateModalVisible(false)}
+            >
+                <View style={styles.centeredView}>
+                    <View
+                        style={[
+                            styles.modalView,
+                            { backgroundColor: Colors[colorScheme].bg_light },
+                        ]}
+                    >
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                            }}
+                        >
+                            <Feather
+                                name="x-octagon"
+                                size={20}
+                                color={Colors[colorScheme].alert_red}
+                            />
+                            <ThemedText
+                                type="defaultSemiBold"
+                                style={{
+                                    fontWeight: "bold",
+                                    color: Colors[colorScheme].alert_red,
+                                }}
+                            >
+                                Unauthorized
+                            </ThemedText>
+                        </View>
+                        <ThemedText type="body_medium" emphasized>
+                            This is a private community. Only approved members
+                            can view and contribute.
+                        </ThemedText>
+                        <View style={{ flexDirection: "row" }}>
+                            <Pressable
+                                style={{
+                                    flex: 1,
+                                    paddingVertical: 8,
+                                    backgroundColor: Colors[colorScheme].text,
+                                    borderRadius: 4,
+                                }}
+                                onPress={() => setPrivateModalVisible(false)}
+                            >
+                                <ThemedText
+                                    type="defaultSemiBold"
+                                    style={[
+                                        styles.textStyle,
+                                        {
+                                            color: Colors[colorScheme]
+                                                .button_text,
+                                        },
+                                    ]}
+                                >
+                                    Back
+                                </ThemedText>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -488,5 +757,55 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         fontSize: 12,
         textAlignVertical: "center",
+    },
+    publicBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        alignSelf: "flex-start",
+        borderRadius: 20,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        gap: 4,
+        borderWidth: 1,
+    },
+    modalText: {
+        fontWeight: "bold",
+    },
+    centeredView: {
+        flex: 1,
+        paddingHorizontal: 16,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    modalActionButtonCtn: {
+        flex: 0,
+        flexDirection: "row",
+        gap: 8,
+    },
+    modalView: {
+        width: "100%",
+        gap: 16,
+        borderRadius: 8,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: "flex-start",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    textStyle: {
+        textAlign: "center",
+    },
+    button: {
+        flex: 1,
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 8,
+        elevation: 2,
     },
 });

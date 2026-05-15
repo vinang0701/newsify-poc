@@ -1,11 +1,8 @@
 import {
     StyleSheet,
-    Text,
     View,
     TextInput,
-    Button,
     Pressable,
-    useColorScheme,
     ImageBackground,
     Alert,
 } from "react-native";
@@ -18,17 +15,26 @@ import { supabase } from "@/lib/supabase";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import Feather from "@expo/vector-icons/Feather";
 import { useAuthStore } from "@/utils/authStore";
 
 const UpdatePasswordSchema = z
     .object({
-        password: z.string().min(8, "Password must be at least 8 characters"),
-        confirmPassword: z.string(),
+        password: z
+            .string()
+            .min(1, "Password is required")
+            .min(8, "Must be at least 8 characters")
+            .regex(/[A-Z]/, "Must contain at least one uppercase letter")
+            .regex(/[0-9]/, "Must contain at least one number")
+            .regex(
+                /[^A-Za-z0-9]/,
+                "Must contain at least one special character",
+            ),
+        confirmPassword: z.string().min(1, "Please confirm your password"),
     })
     .refine((data) => data.password === data.confirmPassword, {
-        message: "Passwords do not match",
+        message: "Does not match password",
         path: ["confirmPassword"],
     });
 
@@ -36,11 +42,9 @@ type UpdatePasswordData = z.infer<typeof UpdatePasswordSchema>;
 
 const UpdatePassword = () => {
     const colorScheme = "light";
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
+
     const [isVisible, setisVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const router = useRouter();
 
@@ -57,19 +61,19 @@ const UpdatePassword = () => {
         },
     });
 
-    const signOut = useAuthStore((state) => state.signOut);
-
-    const handleSignOut = async () => {
-        setIsLoggingOut(true);
-        try {
-            await signOut();
-            router.replace("/login");
-        } catch (error) {
-            console.error("Error signing out:", error);
-        } finally {
-            setIsLoggingOut(false);
-        }
-    };
+    const watchedPassword = useWatch({ control, name: "password" }) || "";
+    const rules = [
+        { label: "Minimum 8 characters", valid: watchedPassword.length >= 8 },
+        {
+            label: "At least 1 uppercase letter",
+            valid: /[A-Z]/.test(watchedPassword),
+        },
+        { label: "At least 1 number", valid: /[0-9]/.test(watchedPassword) },
+        {
+            label: "At least 1 special character",
+            valid: /[^A-Za-z0-9]/.test(watchedPassword),
+        },
+    ];
 
     const onResetSubmit = async (data: UpdatePasswordData) => {
         setIsLoading(true);
@@ -80,16 +84,15 @@ const UpdatePassword = () => {
 
             if (error) {
                 Alert.alert("Update Failed", error.message);
-            } else {
-                Alert.alert("Success", "Your password has been updated.", [
-                    {
-                        text: "OK",
-                        onPress: async () => await handleSignOut(),
-                    },
-                ]);
+                return;
             }
+            router.replace("/password_update_success");
         } catch (e) {
             console.error(e);
+            Alert.alert(
+                "An error occurred",
+                "Unable to update password. Please check your connection and try again.",
+            );
         } finally {
             setIsLoading(false);
         }
@@ -218,7 +221,43 @@ const UpdatePassword = () => {
                                     </View>
                                 )}
                             />
-                            {errors.password && (
+                            <View style={{ marginTop: 6, gap: 4 }}>
+                                {rules.map((rule, index) => {
+                                    // Determine styles dynamically based on whether criteria is fulfilled
+                                    const iconName = rule.valid
+                                        ? "check-circle-outline"
+                                        : "alert-circle-outline";
+                                    const textColor = rule.valid
+                                        ? "hsl(145, 80%, 65%)" // Green if condition met
+                                        : watchedPassword.length > 0
+                                          ? "hsl(352, 100%, 75%)" // Red if user typed but it's wrong
+                                          : "#B3B3B3"; // Neutral gray if input is completely empty
+
+                                    return (
+                                        <View
+                                            key={index}
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                gap: 6,
+                                            }}
+                                        >
+                                            <MaterialCommunityIcons
+                                                size={14}
+                                                name={iconName}
+                                                color={textColor}
+                                            />
+                                            <ThemedText
+                                                type="body_small"
+                                                style={{ color: textColor }}
+                                            >
+                                                {rule.label}
+                                            </ThemedText>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                            {/* {errors.password && (
                                 <View
                                     style={{
                                         flexDirection: "row",
@@ -238,7 +277,7 @@ const UpdatePassword = () => {
                                         {errors.password.message}
                                     </ThemedText>
                                 </View>
-                            )}
+                            )} */}
                         </View>
                         {/* Confirm Password Field */}
                         <View style={{ gap: 4 }}>

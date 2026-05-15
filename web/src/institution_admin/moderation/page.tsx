@@ -469,7 +469,8 @@ const ContentModerationPage = () => {
                     open={!!selectedReportPost}
                     onOpenChange={() => setSelectedReportPost(null)}
                 >
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    {/* <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto"> */}
+                    <DialogContent className="min-w-[30vw] sm:w-full max-w-4xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle className="text-xl">
                                 {selectedReportPost.news_posts?.title}
@@ -535,9 +536,9 @@ const ContentModerationPage = () => {
                                         <div
                                             key={report.report_id}
                                             className="flex flex-col gap-3 p-4 border border-border rounded-lg bg-card cursor-pointer hover:border-primary transition-colors"
-                                            onClick={() =>
-                                                setSelectedReportPost(report)
-                                            }
+                                            onClick={() => {
+                                                setSelectedReportPost(report);
+                                            }}
                                         >
                                             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                                 <div className="flex flex-col gap-1 min-w-0 w-full">

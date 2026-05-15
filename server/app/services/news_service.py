@@ -138,11 +138,16 @@ async def create_post(
     destination: str,
     is_public: bool,
     community_id: Optional[str],
+    draft_id: Optional[str],
     thumbnail: UploadFile | None,
     content_images: list[UploadFile],
     is_flagged: str,
 ) -> List[dict]:
     try:
+        if draft_id:
+            supabase.table("user_drafts").delete().eq("draft_id", draft_id).eq(
+                "user_id", user_id
+            ).execute()
         user_role = None
         is_request = False
         if destination == "COMMUNITY" and community_id:
@@ -226,7 +231,7 @@ async def create_post(
             "title": title,
             "description": description,
             "content": final_content_html,
-            "status": is_flagged,
+            "status": is_flagged if not is_request else "PENDING_COMMUNITY",
             "category_id": category_id,
             "is_public": (
                 is_public if not is_request else False
@@ -459,6 +464,7 @@ async def get_user_news(supabase: Client, user_id: str) -> List[dict]:
                 created_at=post["created_at"],
                 author_id=post["author"],
                 author=post["users"]["name"],
+                author_avatar_url=post["users"]["image_url"],
                 title=post["title"],
                 description=post["description"] or "",
                 image_url=post["image_url"] or "",

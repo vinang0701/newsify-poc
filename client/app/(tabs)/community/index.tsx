@@ -163,7 +163,10 @@ export default function CommunitiesTab() {
     };
 
     const handleNavigatetoComm = (community: Community) => {
-        if (community.public) {
+        const isPublic = community.public;
+        const isActiveMember =
+            community.isMember && community.member_status === "active";
+        if (isPublic || isActiveMember) {
             router.push({
                 pathname: "/community/[communityId]",
                 params: {
@@ -174,14 +177,8 @@ export default function CommunitiesTab() {
             return;
         }
 
-        if (community.isMember && community.member_status === "active") {
-            router.push({
-                pathname: "/community/[communityId]",
-                params: {
-                    communityId: community.id,
-                    inst_id: inst_id,
-                },
-            });
+        if (community.member_status === "pending") {
+            setPrivateModalVisible(true);
             return;
         }
 

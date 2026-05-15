@@ -25,6 +25,10 @@ import AboutPage from "./AboutPage";
 import PrivacyPolicyPage from "./PrivacyPolicyPage";
 import TermsOfServicePage from "./TermsOfServicePage";
 import FeaturesPage from "./FeaturesPage";
+import ForgotPasswordPage from "./forgot_password/forgot_password";
+import VerifyOTPPage from "./forgot_password/verify_otp";
+import UpdatePasswordPage from "./forgot_password/update_password";
+import PasswordUpdateSuccessPage from "./forgot_password/password_update_success";
 
 const router = createBrowserRouter([
     {
@@ -43,6 +47,22 @@ const router = createBrowserRouter([
     {
         path: "/login",
         element: <LoginPage />,
+    },
+    {
+        path: "/forgot_password",
+        element: <ForgotPasswordPage />,
+    },
+    {
+        path: "/verify_otp",
+        element: <VerifyOTPPage />,
+    },
+    {
+        path: "/update_password",
+        element: <UpdatePasswordPage />,
+    },
+    {
+        path: "/password_update_success",
+        element: <PasswordUpdateSuccessPage />,
     },
     {
         path: "/admin",

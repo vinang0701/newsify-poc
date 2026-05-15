@@ -415,13 +415,8 @@ async def update_community_post_request(
         "status": status,
         "reviewed_at": reviewed_at,
         "reviewed_by_user_id": reviewed_by_user_id,
+        "rejection_reason": rejection_reason if status == "rejected" else "",
     }
-
-    # rejection_reason if status is rejected
-    if status == "rejected":
-        update_data["rejection_reason"] = rejection_reason
-    else:
-        update_data["rejection_reason"] = ""
 
     response = (
         supabase.table("community_post_requests")
@@ -429,6 +424,34 @@ async def update_community_post_request(
         .eq("request_id", request_id)
         .execute()
     )
+
+    if not response.data:
+        return None, "Failed to update community post request."
+
+    request_info = response.data[0]
+    community_id = request_info.get("community_id")
+    user_id = request_info.get("requested_by_user_id")
+
+    if status == "approved":
+        update_news_post = (
+            supabase.table("news_posts")
+            .update({"community_id": community_id, "status": "PUBLISHED"})
+            .eq("id", request_id)
+            .execute()
+        )
+
+    notification_data = {
+        "recipient_user_id": user_id,
+        "actor_user_id": reviewed_by_user_id,
+        "notification_type": "COMMUNITY_POST_REQUEST_UPDATE",
+        "reference_id": request_id,
+        "reference_table": "news_posts",
+        "message": f"Your post request was {status}.",
+        "is_read": False,
+        "created_at": reviewed_at,
+    }
+
+    supabase.table("notifications").insert(notification_data).execute()
 
     return response.data, None
 

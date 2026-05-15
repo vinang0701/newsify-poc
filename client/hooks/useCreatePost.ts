@@ -97,7 +97,10 @@ export default function useCreatePost() {
                 appendFileToFormData(formData, data.thumbnail, "thumbnail");
             }
 
-            console.log(formData);
+            if (data.draft_id) {
+                formData.append("draft_id", data.draft_id);
+            }
+
             // return formData;
 
             const response = await api.post(`/users/me/news`, formData, {

@@ -31,6 +31,7 @@ import api from "@/lib/axios";
 import Feather from "@expo/vector-icons/Feather";
 import { useAuthStore } from "@/utils/authStore";
 import { InvitedUser } from "@/data/types";
+import Loading from "@/components/loading";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
@@ -335,6 +336,7 @@ const MembersPage = () => {
 
     return (
         <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+            {isPendingUpdateMem || (isPendingRemoveInvite && <Loading />)}
             {/* Header */}
             <View
                 style={[

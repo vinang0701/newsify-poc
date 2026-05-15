@@ -234,10 +234,22 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                                     gap: 4,
                                 }}
                             >
-                                <Image
-                                    source={require("@/assets/images/profile.png")}
-                                    style={{ width: 28, height: 28 }}
-                                />
+                                {news.community_image ? (
+                                    <Image
+                                        source={{ uri: news.community_image }}
+                                        style={{
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 100,
+                                        }}
+                                        contentFit="cover"
+                                    />
+                                ) : (
+                                    <Image
+                                        source={require("@/assets/images/profile.png")}
+                                        style={{ width: 28, height: 28 }}
+                                    />
+                                )}
                                 <ThemedText type="defaultSemiBold">
                                     {news.community_name}
                                 </ThemedText>
@@ -255,10 +267,22 @@ function NewsPostCard({ news, handleSheetExpand }: NewsPostCardProps) {
                                     gap: 4,
                                 }}
                             >
-                                <Image
-                                    source={require("@/assets/images/profile.png")}
-                                    style={{ width: 28, height: 28 }}
-                                />
+                                {news.author_avatar_url ? (
+                                    <Image
+                                        source={{ uri: news.author_avatar_url }}
+                                        style={{
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 100,
+                                        }}
+                                        contentFit="cover"
+                                    />
+                                ) : (
+                                    <Image
+                                        source={require("@/assets/images/profile.png")}
+                                        style={{ width: 28, height: 28 }}
+                                    />
+                                )}
                                 <ThemedText type="defaultSemiBold">
                                     {news.author}
                                 </ThemedText>

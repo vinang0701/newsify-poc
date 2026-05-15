@@ -10,6 +10,7 @@ import {
 import { NotificationItem } from "@/hooks/useNotifications";
 import { ThemedText } from "../themed-text";
 import { Image } from "expo-image";
+import Feather from "@expo/vector-icons/Feather";
 
 type Props = {
     data: NotificationItem[];
@@ -31,10 +32,6 @@ function formatRelativeTime(dateString: string) {
     if (diffMins < 60) return `${diffMins}m`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h`;
     return `${Math.floor(diffMins / 1440)}d`;
-}
-
-function AvatarPlaceholder() {
-    return <View style={styles.avatar} />;
 }
 
 const NotificationView = ({ notification }: NotificationViewProps) => {
@@ -136,11 +133,23 @@ export default function NotificationList({
                     {item.actor_avatar_url !== null ? (
                         <Image
                             source={{ uri: item.actor_avatar_url }}
-                            style={{ width: 48, height: 48, borderRadius: 100 }}
+                            style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 100,
+                            }}
                             contentFit="contain"
                         />
                     ) : (
-                        <AvatarPlaceholder />
+                        <Feather
+                            name="mail"
+                            size={38}
+                            style={{
+                                marginRight: 8,
+                                alignSelf: "center",
+                                paddingLeft: 4,
+                            }}
+                        />
                     )}
                     {/* <View style={styles.content}>
                         <Text style={styles.messageText}>
@@ -167,15 +176,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 10,
         backgroundColor: "#F3F4F6",
+        gap: 8,
     },
-    avatar: {
-        width: 35,
-        height: 35,
-        borderRadius: 15,
-        backgroundColor: "#D1D5DB",
-        marginTop: 1,
-        marginRight: 8,
-    },
+
     content: {
         flex: 1,
         paddingRight: 8,

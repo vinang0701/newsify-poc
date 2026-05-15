@@ -5,8 +5,7 @@ from app.core.db import supabase
 async def get_user_invitations(user_id: str) -> list[dict]:
     response = (
         supabase.table("community_invitations")
-        .select(
-            """
+        .select("""
             invitation_id,
             community_id,
             invited_user_id,
@@ -16,8 +15,7 @@ async def get_user_invitations(user_id: str) -> list[dict]:
             responded_at,
             community:communities!community_invitations_community_id_fkey(name),
             inviter:users!community_invitations_invited_by_user_id_fkey(name, image_url)
-            """
-        )
+            """)
         .eq("invited_user_id", user_id)
         .order("status", desc=False)
         .order("created_at", desc=True)
@@ -98,6 +96,7 @@ async def respond_to_invitation(user_id: str, invitation_id: str, action: str) -
                     "community_id": invitation["community_id"],
                     "joined_at": now,
                     "role": "member",
+                    "status": "active",
                 }
             ).execute()
 

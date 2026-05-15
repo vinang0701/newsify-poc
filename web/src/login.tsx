@@ -4,7 +4,7 @@ import { FieldSet, FieldGroup, Field, FieldLabel } from "./components/ui/field";
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import Loading from "./components/loading";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
@@ -41,7 +41,7 @@ const LoginPage = () => {
             );
 
             const role = payload.app_metadata.user_role;
-            
+
             // Check if user is banned or suspended
             const { data: userData } = await supabase
                 .from("users")
@@ -52,14 +52,18 @@ const LoginPage = () => {
             if (userData?.status === "banned") {
                 // Sign them out immediately and show ban message
                 await supabase.auth.signOut();
-                setError("Your account has been banned. Please contact your institution admin.");
+                setError(
+                    "Your account has been banned. Please contact your institution admin.",
+                );
                 return;
             }
 
             if (userData?.status === "suspended") {
                 // Sign them out immediately and show suspended message
                 await supabase.auth.signOut();
-                setError("Your account has been suspended. Please contact your institution admin.");
+                setError(
+                    "Your account has been suspended. Please contact your institution admin.",
+                );
                 return;
             }
 
@@ -78,8 +82,11 @@ const LoginPage = () => {
             }
         } catch (err: any) {
             setError(err.message || "An unexpected error occurred");
+            setPassword("");
+            setEmail("");
         } finally {
             setIsLoading(false);
+            setShowPassword(false);
         }
     };
 
@@ -158,9 +165,12 @@ const LoginPage = () => {
                             </Field>
                         </FieldGroup>
                     </FieldSet>
-                    <p className="text-sm text-caption underline self-end cursor-pointer">
+                    <Link
+                        to="/forgot_password"
+                        className="text-sm text-caption underline self-end cursor-pointer"
+                    >
                         Forgot your password?
-                    </p>
+                    </Link>
                     <Button type="submit" className=" text-md">
                         Log in
                     </Button>
