@@ -50,7 +50,7 @@ const PLANS = [
   },
   {
     icon: (<svg viewBox="0 0 24 24" width="28" height="28" fill="#7C3AED"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>),
-    name: "Pro", price: "$30,000", btnColor: "#7C3AED", popular: true,
+    name: "Pro", price: "$30,000", btnColor: "#7C3AED", // popular: true,
     features: ["Up to 20,000 users", "Up to 200 communities", "Content moderation tools", "User management", "Priority email support", "Analytics dashboard"],
   },
   {
