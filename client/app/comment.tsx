@@ -42,7 +42,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import DropdownMenu, { MenuOption } from "@/components/dropdown_menu";
 import Feather from "@expo/vector-icons/Feather";
 
 export const CreateCommentSchema = z.object({
