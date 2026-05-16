@@ -20,8 +20,6 @@ import { supabase } from "@/lib/supabase";
 import api from "@/lib/axios";
 import Loading from "./loading";
 
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-
 //UPDATE: inst_id is pased from HomeScreen using authStore metadata.
 type NewsPostCardProps = {
     news: News;

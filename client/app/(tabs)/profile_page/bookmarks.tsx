@@ -21,8 +21,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import api from "@/lib/axios";
 import { BottomSheetModal } from "@gorhom/bottom-sheet";
 
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-
 export default function BookmarksScreen() {
     const colorScheme = useColorScheme() ?? "light";
     const { session, metadata, initialized } = useAuthStore();

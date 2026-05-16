@@ -21,7 +21,6 @@ import React, { useMemo, useState } from "react";
 import api from "@/lib/axios";
 import Feather from "@expo/vector-icons/Feather";
 
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
 const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
 interface InvitableUser {

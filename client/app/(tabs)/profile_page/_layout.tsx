@@ -14,18 +14,6 @@ export default function UserProfileTabLayout() {
             >
                 <Stack.Screen name="index" options={{ headerShown: false }} />
                 <Stack.Screen
-                    name="communities"
-                    options={{ headerShown: false }}
-                />
-                {/* <Stack.Screen
-                    name="following"
-                    options={{ headerShown: false }}
-                /> */}
-                {/* <Stack.Screen
-                    name="followers"
-                    options={{ headerShown: false }}
-                /> */}
-                <Stack.Screen
                     name="bookmarks"
                     options={{ headerShown: false }}
                 />

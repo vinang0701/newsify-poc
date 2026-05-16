@@ -32,6 +32,7 @@ import { FlashList } from "@shopify/flash-list";
 import NewsPostCard from "@/components/news_post_card";
 import BottomSheet, {
     BottomSheetBackdrop,
+    BottomSheetModal,
     BottomSheetView,
 } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -39,6 +40,7 @@ import { useAuthStore } from "@/utils/authStore";
 import api from "@/lib/axios";
 import { useUserFollowing } from "@/hooks/useUserFollowing";
 import Loading from "@/components/loading";
+import NewsPostBottomSheet from "@/components/news_post_bottom_sheet";
 
 export default function OtherUserProfileStack() {
     const router = useRouter();
@@ -57,6 +59,22 @@ export default function OtherUserProfileStack() {
 
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
+
+    // News Post Bottom Sheet
+    const [selectedNewsId, setSelectedNewsID] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
+
+    const postBottomSheetRef = useRef<BottomSheetModal>(null);
+    const handlePostSheetExpand = useCallback(
+        (news_id: string, news_author_id: string) => {
+            setSelectedNewsID(news_id);
+            setNewsAuthorId(news_author_id);
+            postBottomSheetRef?.current?.present();
+        },
+        [],
+    );
+    // Suspend post
+    const [suspendModalVisible, setSuspendModalVisible] = useState(false);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -77,6 +95,19 @@ export default function OtherUserProfileStack() {
     const isFollowing = myFollowing.some(
         (user) => user.followed_user_id === target_user_id,
     );
+
+    function handleReportPost() {
+        // setMenuVisible(false);
+        postBottomSheetRef.current?.dismiss();
+
+        router.push({
+            pathname: "/report-post",
+            params: {
+                post_id: selectedNewsId,
+                inst_id: metadata?.inst_id,
+            },
+        });
+    }
 
     async function fetchUserNews(): Promise<News[]> {
         try {
@@ -452,7 +483,7 @@ export default function OtherUserProfileStack() {
                             renderItem={({ item }) => (
                                 <NewsPostCard
                                     news={item}
-                                    handleSheetExpand={() => {}}
+                                    handleSheetExpand={handlePostSheetExpand}
                                 />
                             )}
                         />
@@ -534,6 +565,17 @@ export default function OtherUserProfileStack() {
                         </View>
                     </View>
                 </Modal>
+                <NewsPostBottomSheet
+                    ref={postBottomSheetRef}
+                    newsAuthorId={newsAuthorId}
+                    userId={user?.id ?? ""}
+                    colorScheme={colorScheme}
+                    onReport={handleReportPost}
+                    onSuspend={() => {
+                        postBottomSheetRef.current?.dismiss();
+                        setSuspendModalVisible(true);
+                    }}
+                />
             </ScrollView>
         </SafeAreaView>
     );
