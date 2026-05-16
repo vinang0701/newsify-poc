@@ -97,20 +97,6 @@ const PlatformAdminDashboardPage = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={s.statsRow}>
-        {[
-          { label: "Students", value: stats.students.toLocaleString() },
-          { label: "Staff Members", value: stats.staff_members.toLocaleString() },
-          { label: "Community Admins", value: stats.community_admins.toLocaleString() },
-        ].map((stat) => (
-          <div key={stat.label} style={s.statCard}>
-            <span style={s.statLabel}>{stat.label}</span>
-            <span style={s.statValue}>{stat.value}</span>
-          </div>
-        ))}
-      </div>
-
       {/* Management Cards */}
       {[
         {
