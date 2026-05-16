@@ -235,7 +235,7 @@ export default function LandingPage() {
 		<iframe
 		width="100%"
 		height="100%"
-		src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+		src="https://www.youtube.com/embed/1IsbebGEkc4?si=jrAZ8OXhJdoNEeKx"
 		title="Newsify Video"
 		frameBorder="0"
 		allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
