@@ -33,6 +33,7 @@ async def get_all_categories(supabase: Client) -> List[dict]:
 
 async def create_category(
     supabase: Client,
+    inst_id: str,
     category_name: str,
     created_by: str,
 ) -> dict:
@@ -40,6 +41,7 @@ async def create_category(
         supabase.table("categories")
         .insert(
             {
+                "inst_id": inst_id,
                 "category_name": category_name,
                 "status": "active",
                 "created_by": created_by,
@@ -101,16 +103,7 @@ async def hard_delete_category(supabase: Client, category_id: str) -> dict:
             .execute()
         )
 
-        # Check if category is being used in community_categories
-        comm_check = (
-            supabase.table("community_categories")
-            .select("category_id")
-            .eq("category_id", category_id)
-            .limit(1)
-            .execute()
-        )
-
-        if prefs_check.data or comm_check.data:
+        if prefs_check.data:
             raise ValueError("Category is currently in use and cannot be deleted.")
 
         response = (

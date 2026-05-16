@@ -30,7 +30,7 @@ async def create_category(
     try:
         admin_id = current_user["id"]
         result = await categories_service.create_category(
-            supabase, category_name, admin_id
+            supabase, inst_id=inst_id, category_name=category_name, created_by=admin_id
         )
         if not result:
             raise HTTPException(status_code=400, detail="Could not create category")

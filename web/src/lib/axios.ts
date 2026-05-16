@@ -25,6 +25,12 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             await supabase.auth.signOut();
             window.location.href = "/login";
+        } else if (
+            error.response?.status === 403 ||
+            error.response?.data?.detail === "User account is banned" ||
+            error.response?.data?.detail === "User account is suspended"
+        ) {
+            await supabase.auth.signOut();
         }
         return Promise.reject(error);
     },

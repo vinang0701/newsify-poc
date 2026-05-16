@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
         elevation: 2,
         paddingVertical: 12,
         marginBottom: 8,
-        height: 180,
+        minHeight: 120,
     },
     cardInfoContainer: {
         flex: 1,

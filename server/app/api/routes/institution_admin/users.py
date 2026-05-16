@@ -50,7 +50,7 @@ async def get_staff_users(inst_id: str):
     try:
         staff_users = await users_service.get_staff_users(supabase, inst_id)
         if staff_users is None or len(staff_users) == 0:
-            raise HTTPException(status_code=404, detail="No staff found")
+            return []
         return staff_users
     except HTTPException:
         raise

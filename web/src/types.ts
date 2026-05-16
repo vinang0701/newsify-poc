@@ -44,6 +44,7 @@ export interface UserProfileDetails {
 
 export interface UserAuth {
     id: string;
+    user_id: string;
     inst_id: string;
     name: string;
     email: string;

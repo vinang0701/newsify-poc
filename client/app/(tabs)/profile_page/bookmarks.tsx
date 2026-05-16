@@ -17,7 +17,9 @@ import { News } from "@/data/types";
 import { supabase } from "@/lib/supabase";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAuthStore } from "@/utils/authStore";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import api from "@/lib/axios";
+import { BottomSheetModal } from "@gorhom/bottom-sheet";
 
 const BASE_URL = "http://10.0.2.2:8000/api/v1";
 
@@ -38,18 +40,25 @@ export default function BookmarksScreen() {
             return user;
         },
     });
+    const [selectedNewsId, setSelectedNewsId] = useState("");
+    const [newsAuthorId, setNewsAuthorId] = useState("");
+    const postBottomSheetRef = useRef<BottomSheetModal>(null);
+    const handlePostSheetExpand = useCallback(
+        (news_id: string, news_author_id: string) => {
+            setSelectedNewsId(news_id);
+            setNewsAuthorId(news_author_id);
+            postBottomSheetRef?.current?.present();
+        },
+        [],
+    );
 
     // Fetch saved posts
     const { data: savedPosts, isLoading } = useQuery<News[]>({
         queryKey: ["saved_posts"],
         queryFn: async (): Promise<News[]> => {
-            const token = (await supabase.auth.getSession()).data.session
-                ?.access_token;
-            const response = await fetch(`${BASE_URL}/users/me/saved`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!response.ok) throw new Error("Could not fetch saved posts");
-            return await response.json();
+            const response = await api.get(`/users/me/saved`);
+
+            return response.data;
         },
         enabled: !!currentUser?.id,
     });
@@ -104,8 +113,7 @@ export default function BookmarksScreen() {
                         renderItem={({ item }) => (
                             <NewsPostCard
                                 news={item}
-                                currentUserId={currentUser?.id}
-                                inst_id={metadata?.inst_id}
+                                handleSheetExpand={handlePostSheetExpand}
                             />
                         )}
                     />

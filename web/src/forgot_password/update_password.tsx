@@ -79,7 +79,7 @@ const UpdatePasswordPage = () => {
             if (error) {
                 setServerError(error.message);
             } else {
-                navigate("/password_update_sucess"); // Open the shadcn Dialog on success
+                navigate("/password_update_success"); // Open the shadcn Dialog on success
             }
         } catch (e) {
             console.error(e);

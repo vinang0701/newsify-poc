@@ -18,8 +18,6 @@ import { ThemedText } from "@/components/themed-text";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { FlashList } from "@shopify/flash-list";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import axios from "axios";
 import { Image } from "expo-image";
 import React, { act, useCallback, useMemo, useRef, useState } from "react";
 import BottomSheet, {
@@ -32,11 +30,6 @@ import Feather from "@expo/vector-icons/Feather";
 import { useAuthStore } from "@/utils/authStore";
 import { InvitedUser } from "@/data/types";
 import Loading from "@/components/loading";
-
-const BASE_URL = "http://10.0.2.2:8000/api/v1";
-const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
-const user_id = "4813d507-9b97-4bb7-bee4-39ec47070889";
-const role = "community_admin";
 
 interface CommunityMembers {
     community_id: string;
@@ -62,6 +55,8 @@ const MembersPage = () => {
     const insets = useSafeAreaInsets();
     const [activeFilter, setActiveFilter] = useState("Active");
 
+    const inst_id = metadata?.inst_id;
+
     const [searchQuery, setSearchQuery] = useState("");
     const [selectedMember, setSelectedMember] =
         useState<CommunityMembers | null>(null);
@@ -71,7 +66,7 @@ const MembersPage = () => {
         queryKey: ["community_members", communityId],
         queryFn: async () => {
             const res = await api.get(
-                `/${inst_id}/communities/${communityId}/members`,
+                `/${metadata?.inst_id}/communities/${communityId}/members`,
             );
             console.log(res.data);
             return res.data;
@@ -136,9 +131,9 @@ const MembersPage = () => {
 
     const promoteMutation = useMutation({
         mutationFn: async (targetUserId: string) => {
-            await axios.patch(
-                `${BASE_URL}/${inst_id}/communities/${communityId}/members/${targetUserId}/role`,
-                { role: "community_admin" },
+            await api.patch(
+                `/${inst_id}/communities/${communityId}/members/${targetUserId}/role`,
+                { role: "admin" },
             );
         },
         onSuccess: () => {
@@ -156,8 +151,8 @@ const MembersPage = () => {
 
     const revokeMutation = useMutation({
         mutationFn: async (targetUserId: string) => {
-            await axios.patch(
-                `${BASE_URL}/${inst_id}/communities/${communityId}/members/${targetUserId}/role`,
+            await api.patch(
+                `/${inst_id}/communities/${communityId}/members/${targetUserId}/role`,
                 { role: "member" },
             );
         },
@@ -226,12 +221,6 @@ const MembersPage = () => {
         setSelectedMember(member);
         bottomSheetRef.current?.present();
     }, []);
-
-    const handleSheetChange = (index: number) => {
-        if (index === -1) {
-            setSelectedMember(null);
-        }
-    };
 
     const renderBackdrop = useCallback(
         (props: any) => (

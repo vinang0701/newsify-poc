@@ -20,6 +20,7 @@ function parseUserFromSession(
 
     return {
         id: session.user.id,
+        user_id: app_metadata?.user_id || "",
         inst_id: app_metadata?.inst_id,
         name: app_metadata?.name,
         email: session.user.email ?? "",

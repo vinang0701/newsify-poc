@@ -53,7 +53,7 @@ async def get_current_user(
             signing_key.key,
             algorithms=["ES256"],
             audience="authenticated",
-            leeway=30,
+            leeway=120,
         )
 
         user_payload = UserPayload(**payload)

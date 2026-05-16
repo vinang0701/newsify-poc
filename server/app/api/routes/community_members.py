@@ -133,10 +133,8 @@ async def ban_member(inst_id: str, community_id: str, user_id: str):
 async def update_member_role(
     inst_id: str, community_id: str, user_id: str, body: RoleUpdateRequest
 ):
-    if body.role not in ("community_admin", "member"):
-        raise HTTPException(
-            status_code=400, detail="Role must be 'community_admin' or 'member'."
-        )
+    if body.role not in ("admin", "member"):
+        raise HTTPException(status_code=400, detail="Role must be 'admin' or 'member'.")
     try:
         result = await community_members_service.update_member_role(
             supabase, community_id, user_id, body.role
@@ -144,11 +142,7 @@ async def update_member_role(
         if result is None:
             raise HTTPException(status_code=404, detail="Member not found.")
 
-        action = (
-            "promoted to admin"
-            if body.role == "community_admin"
-            else "revoked to member"
-        )
+        action = "promoted to admin" if body.role == "admin" else "revoked to member"
         return {"message": f"Member {action} successfully.", "role": body.role}
     except HTTPException:
         raise
