@@ -1,6 +1,5 @@
-import { useState, useEffect, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
 import { useNavigate } from "react-router";
-import api from "@/lib/axios";
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 const s: Record<string, CSSProperties> = {
