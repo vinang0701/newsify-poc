@@ -110,7 +110,7 @@ const BillingPage = () => {
             const sessionId = searchParams.get("session_id");
             const plan = searchParams.get("plan");
 
-            if (success && sessionId && plan) {
+            if (success && sessionId && plan && inst_id) {
                 try {
                     await api.post(
                         `/${inst_id}/admin/billing/verify-payment?session_id=${sessionId}&plan=${plan}`
@@ -123,7 +123,7 @@ const BillingPage = () => {
             }
         };
         verifyPayment();
-    }, [success]);
+    }, [success, inst_id]);
 
     if (isLoading) return <Loading />;
 
