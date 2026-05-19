@@ -26,6 +26,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import type { User } from "@/types";
 import { useAuth } from "@/components/auth-provider";
+import { useEffect } from "react";
 
 //const inst_id = "391848ae-e6c6-43ec-a34c-e6ce06f0d842";
 
@@ -51,14 +52,21 @@ const UpdateUserDialog = ({ user, open, onClose }: UpdateUserDialogProps) => {
     const queryClient = useQueryClient();
 
     const form = useForm<UpdateUserFormData>({
-        resolver: zodResolver(updateUserSchema),
-        // Pre-fill form with user's current details
-        defaultValues: {
+    resolver: zodResolver(updateUserSchema),
+    defaultValues: {
+        name: user.name,
+        email: user.email,
+        role: user.role as "student" | "staff" | "institution_admin",
+        },
+    });
+
+    useEffect(() => {
+        form.reset({
             name: user.name,
             email: user.email,
             role: user.role as "student" | "staff" | "institution_admin",
-        },
-    });
+        });
+    }, [user]);
 
     const handleClose = () => {
         form.reset();
@@ -84,6 +92,8 @@ const UpdateUserDialog = ({ user, open, onClose }: UpdateUserDialogProps) => {
 
             // Refetch users table so changes show immediately
             queryClient.invalidateQueries({ queryKey: ["studentUsers"] });
+            queryClient.invalidateQueries({ queryKey: ["staffUsers"] });
+            queryClient.invalidateQueries({ queryKey: ["adminUsers"] });
             handleClose();
         } catch (err) {
             console.error("Update failed:", err);

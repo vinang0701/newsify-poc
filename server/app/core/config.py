@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     SUPABASE_JWT_URL: HttpUrl | None = None
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
+    FRONTEND_URL: str = "http://localhost:5173"
     FRONTEND_HOST: str = "http://localhost:8081"
     WEB_FRONTEND_HOST: str = "http://localhost:5173"
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"

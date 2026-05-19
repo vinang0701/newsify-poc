@@ -78,8 +78,8 @@ async def create_checkout_session(
                 "quantity": 1,
             }],
             mode="subscription",
-            success_url=f"http://localhost:5173/admin/billing?success=true&plan={plan}&session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"http://localhost:5173/admin/billing?cancelled=true",
+            success_url=f"{settings.FRONTEND_URL}/admin/billing?session_id={{CHECKOUT_SESSION_ID}}&plan={plan}",
+            cancel_url=f"{settings.FRONTEND_URL}/admin/billing?cancelled=true",
             metadata={
                 "inst_id": inst_id,
                 "plan": plan,
