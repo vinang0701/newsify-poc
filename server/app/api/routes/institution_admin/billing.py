@@ -101,7 +101,9 @@ async def verify_payment(
 ):
     try:
         # Verify the session with Stripe
+        print(f"verify-payment called: inst_id={inst_id}, session_id={session_id}, plan={plan}")
         session = stripe.checkout.Session.retrieve(session_id)
+        print(f"payment_status: {session.payment_status}")
 
         if session.payment_status == "paid":
             from datetime import datetime, timedelta
