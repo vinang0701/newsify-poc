@@ -295,7 +295,6 @@ const InstitutionsMgmtPage = () => {
         setError(null);
         try {
             const res = await api.get("/platform/institutions/");
-            console.log(res.data); // temporary - remove after checking
             const data = Array.isArray(res.data)
                 ? res.data
                 : (res.data.data ?? []);
@@ -661,7 +660,9 @@ const InstitutionsMgmtPage = () => {
                                     <td style={s.td}>{inst.name}</td>
                                     <td style={s.td}>{inst.domain}</td>
                                     <td style={s.td}>{inst.phone ?? "-"}</td>
-                                    <td style={s.td}>{inst.plan ?? "-"}</td>
+                                    <td style={s.td}>
+                                        {inst.plan?.toUpperCase() ?? "-"}
+                                    </td>
                                     <td style={s.td}>
                                         <span style={statusBadge(inst.status)}>
                                             {inst.status}

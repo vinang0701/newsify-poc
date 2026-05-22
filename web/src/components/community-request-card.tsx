@@ -93,7 +93,7 @@ const CommunityRequestCard = ({ data }: CommunityRequestCardProps) => {
                     className="size-28.5 rounded-full self-center justify-self-center flex"
                 />
             ) : (
-                <div className="size-28.5 bg-muted-foreground/20 rounded-full items-center flex">
+                <div className="size-28.5 bg-muted-foreground/20 rounded-full items-center justify-center flex">
                     <Image size={48} />
                 </div>
             )}
