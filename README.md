@@ -1,4 +1,4 @@
-# Newsify Prototype
+# Newsify
 
 Newsify is a school-centric news platform that redefines how we consume news. It is not just another news app. It encourages users to share their insights and have meaningful discussions with others, which increases the student's engagement in the school!
 
